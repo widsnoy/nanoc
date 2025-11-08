@@ -1,0 +1,6 @@
+[workspace]
+members = ["src/nanoc-compiler"]
+
+resolver = "3"
+
+[workspace.dependencies]
