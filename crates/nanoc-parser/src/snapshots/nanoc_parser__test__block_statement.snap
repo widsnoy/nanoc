@@ -1,0 +1,41 @@
+---
+source: crates/nanoc-parser/src/test.rs
+expression: try_it(source)
+---
+ROOT@0..73
+  NEWLINE@0..1 "\n"
+  WHITESPACE@1..5 "    "
+  FUNC_DEF@5..68
+    FUNC_TYPE@5..9
+      VOID_KW@5..9 "void"
+    NAME@9..14
+      WHITESPACE@9..10 " "
+      IDENT@10..14 "test"
+    L_PAREN@14..15 "("
+    R_PAREN@15..16 ")"
+    BLOCK@16..68
+      WHITESPACE@16..17 " "
+      L_BRACE@17..18 "{"
+      STMT@18..62
+        BLOCK@18..62
+          NEWLINE@18..19 "\n"
+          WHITESPACE@19..27 "        "
+          L_BRACE@27..28 "{"
+          VAR_DECL@28..52
+            TYPE@28..44
+              NEWLINE@28..29 "\n"
+              WHITESPACE@29..41 "            "
+              INT_KW@41..44 "int"
+            VAR_DEF@44..51
+              NAME@44..51
+                WHITESPACE@44..45 " "
+                IDENT@45..51 "nested"
+            SEMI@51..52 ";"
+          NEWLINE@52..53 "\n"
+          WHITESPACE@53..61 "        "
+          R_BRACE@61..62 "}"
+      NEWLINE@62..63 "\n"
+      WHITESPACE@63..67 "    "
+      R_BRACE@67..68 "}"
+  NEWLINE@68..69 "\n"
+  WHITESPACE@69..73 "    "

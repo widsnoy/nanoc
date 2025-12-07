@@ -1,9 +1,10 @@
 # nanoc
 
-基于 SysY 语言，增加结构体、指针支持 
+Based on SysY language, added structure and pointer support
 
-- [x] 文法定义
-- [ ] 语法分析
-- [ ] 语义分析
-- [ ] llvm ir 
+- [X] ebnf
+- [X] lexer
+- [X] parser
+- [ ] semantic analysis
+- [ ] llvm ir
 - [ ] language server
