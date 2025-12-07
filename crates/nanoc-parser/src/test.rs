@@ -4,10 +4,10 @@ use crate::{parser::Parser, syntax_kind::NanocLanguage};
 
 fn try_it(source: &str) -> SyntaxNode<NanocLanguage> {
     let parser = Parser::new(source);
-    let (tree, erros) = parser.parse();
+    let (tree, errors) = parser.parse();
 
-    if !erros.is_empty() {
-        panic!("Parser errors: {:?}", erros);
+    if !errors.is_empty() {
+        panic!("Parser errors: {:?}", errors);
     }
 
     Parser::new_root(tree)

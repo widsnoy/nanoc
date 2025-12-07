@@ -139,7 +139,7 @@ impl Parser<'_> {
 
     fn parse_type(&mut self) {
         self.start_node(SyntaxKind::TYPE);
-        let current_token = self.peak();
+        let current_token = self.peek();
         if matches!(current_token, SyntaxKind::INT_KW | SyntaxKind::FLOAT_KW) {
             self.bump();
         } else if current_token == SyntaxKind::STRUCT_KW {
@@ -155,7 +155,7 @@ impl Parser<'_> {
         self.start_node(SyntaxKind::CONST_INIT_VAL);
         if self.at(SyntaxKind::L_BRACE) {
             self.bump();
-            while !self.at(SyntaxKind::R_BRACE) && !self.at(SyntaxKind::EOF) {
+            while !matches!(self.peek(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
                 self.parse_const_init_val();
                 if self.at(SyntaxKind::COMMA) {
                     self.bump();
@@ -172,7 +172,7 @@ impl Parser<'_> {
         self.start_node(SyntaxKind::INIT_VAL);
         if self.at(SyntaxKind::L_BRACE) {
             self.bump();
-            while !matches!(self.peak(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
+            while !matches!(self.peek(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
                 self.parse_init_val();
                 if self.at(SyntaxKind::COMMA) {
                     self.bump();
@@ -225,7 +225,7 @@ impl Parser<'_> {
     pub(super) fn parse_block(&mut self) {
         self.start_node(SyntaxKind::BLOCK);
         self.expect(SyntaxKind::L_BRACE);
-        while !matches!(self.peak(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
+        while !matches!(self.peek(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
             self.parse_block_item();
         }
         self.expect(SyntaxKind::R_BRACE);
@@ -233,7 +233,7 @@ impl Parser<'_> {
     }
 
     fn parse_block_item(&mut self) {
-        match self.peak() {
+        match self.peek() {
             SyntaxKind::INT_KW | SyntaxKind::FLOAT_KW | SyntaxKind::STRUCT_KW => {
                 // 感觉应该把 parse_decl_or_func_def 拆出来，不过有点麻烦，先重新再写一遍
                 self.start_node(SyntaxKind::VAR_DECL);

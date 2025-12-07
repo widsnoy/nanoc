@@ -42,7 +42,7 @@ impl Parser<'_> {
     fn parse_eq_exp(&mut self) {
         let cp = self.checkpoint();
         self.parse_rel_exp();
-        while matches!(self.peak(), SyntaxKind::EQEQ | SyntaxKind::NEQ) {
+        while matches!(self.peek(), SyntaxKind::EQEQ | SyntaxKind::NEQ) {
             self.start_node_at(cp, SyntaxKind::BINARY_EXPR);
             self.bump(); // op
             self.parse_rel_exp();
@@ -54,7 +54,7 @@ impl Parser<'_> {
         let cp = self.checkpoint();
         self.parse_add_exp();
         while matches!(
-            self.peak(),
+            self.peek(),
             SyntaxKind::LT | SyntaxKind::GT | SyntaxKind::LTEQ | SyntaxKind::GTEQ
         ) {
             self.start_node_at(cp, SyntaxKind::BINARY_EXPR);
@@ -67,7 +67,7 @@ impl Parser<'_> {
     fn parse_add_exp(&mut self) {
         let cp = self.checkpoint();
         self.parse_mul_exp();
-        while matches!(self.peak(), SyntaxKind::PLUS | SyntaxKind::MINUS) {
+        while matches!(self.peek(), SyntaxKind::PLUS | SyntaxKind::MINUS) {
             self.start_node_at(cp, SyntaxKind::BINARY_EXPR);
             self.bump(); // op
             self.parse_mul_exp();
@@ -79,7 +79,7 @@ impl Parser<'_> {
         let cp = self.checkpoint();
         self.parse_unary_exp();
         while matches!(
-            self.peak(),
+            self.peek(),
             SyntaxKind::STAR | SyntaxKind::SLASH | SyntaxKind::PERCENT
         ) {
             self.start_node_at(cp, SyntaxKind::BINARY_EXPR);
@@ -90,7 +90,7 @@ impl Parser<'_> {
     }
 
     fn parse_unary_exp(&mut self) {
-        if self.peak().is_unary_op() {
+        if self.peek().is_unary_op() {
             self.start_node(SyntaxKind::UNARY_EXPR);
             self.bump(); // op
             self.parse_unary_exp();
@@ -107,7 +107,7 @@ impl Parser<'_> {
             self.parse_exp();
             self.expect(SyntaxKind::R_PAREN);
             self.finish_node();
-        } else if self.peak().is_number() {
+        } else if self.peek().is_number() {
             self.start_node(SyntaxKind::LITERAL);
             self.bump(); // number
             self.finish_node();

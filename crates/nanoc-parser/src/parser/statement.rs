@@ -4,7 +4,7 @@ use crate::syntax_kind::SyntaxKind;
 impl Parser<'_> {
     pub(super) fn parse_statement(&mut self) {
         self.start_node(SyntaxKind::STMT);
-        match self.peak() {
+        match self.peek() {
             SyntaxKind::IF_KW => self.parse_if_statement(),
             SyntaxKind::WHILE_KW => self.parse_while_statement(),
             SyntaxKind::BREAK_KW => self.parse_break_statement(),

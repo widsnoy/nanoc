@@ -60,7 +60,7 @@ impl<'a> Parser<'a> {
         self.lexer.bump();
     }
 
-    /// 消费当前 Token，直到不是 Trival 为止
+    /// 消费当前 Token，直到不是 Trivia 为止
     pub(crate) fn bump_trivia(&mut self) {
         while self.lexer.current().is_trivia() {
             self.builder.token(
@@ -102,21 +102,21 @@ impl<'a> Parser<'a> {
 
     /// 检查当前 Token 是否匹配 `kind` (过滤掉 Trivia)
     pub(crate) fn at(&self, kind: SyntaxKind) -> bool {
-        self.peak() == kind
+        self.peek() == kind
     }
 
     /// 检查下一个 Token 是否匹配 `kind` (过滤掉 Trivia)
     pub(crate) fn at_1(&self, kind: SyntaxKind) -> bool {
-        self.peak_1() == kind
+        self.peek_1() == kind
     }
 
     /// 获取当前的 Kind (过滤掉 Trivia)
-    pub(crate) fn peak(&self) -> SyntaxKind {
+    pub(crate) fn peek(&self) -> SyntaxKind {
         self.lexer.current_without_trivia()
     }
 
     /// 获取下一个的 Kind (过滤掉 Trivia)
-    pub(crate) fn peak_1(&self) -> SyntaxKind {
+    pub(crate) fn peek_1(&self) -> SyntaxKind {
         self.lexer.current_without_trivia_1()
     }
 }
