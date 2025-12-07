@@ -83,3 +83,76 @@ fn test_complex_mix() {
     "#;
     insta::assert_debug_snapshot!(try_it(source));
 }
+
+#[test]
+fn test_if_statement() {
+    let source = r#"
+    void test() {
+        if (a) {
+            return;
+        }
+        if (a) return; else return 1;
+    }
+    "#;
+    insta::assert_debug_snapshot!(try_it(source));
+}
+
+#[test]
+fn test_while_statement() {
+    let source = r#"
+    void test() {
+        while (1) {
+            break;
+            continue;
+        }
+    }
+    "#;
+    insta::assert_debug_snapshot!(try_it(source));
+}
+
+#[test]
+fn test_return_statement() {
+    let source = r#"
+    void test() {
+        return;
+        return 1;
+    }
+    "#;
+    insta::assert_debug_snapshot!(try_it(source));
+}
+
+#[test]
+fn test_block_statement() {
+    let source = r#"
+    void test() {
+        {
+            int nested;
+        }
+    }
+    "#;
+    insta::assert_debug_snapshot!(try_it(source));
+}
+
+#[test]
+fn test_assign_statement() {
+    let source = r#"
+    void test() {
+        a = 1;
+        *p = 2;
+        arr[0] = 3;
+    }
+    "#;
+    insta::assert_debug_snapshot!(try_it(source));
+}
+
+#[test]
+fn test_expr_statement() {
+    let source = r#"
+    void test() {
+        func();
+        a + b;
+        ;
+    }
+    "#;
+    insta::assert_debug_snapshot!(try_it(source));
+}

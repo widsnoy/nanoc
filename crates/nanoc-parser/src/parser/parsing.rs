@@ -1,4 +1,4 @@
-use crate::{parser::Parser, parser::expression::*, syntax_kind::SyntaxKind};
+use crate::{parser::Parser, syntax_kind::SyntaxKind};
 
 impl Parser<'_> {
     pub(super) fn parse_root(&mut self) {
@@ -36,7 +36,7 @@ impl Parser<'_> {
 
         self.parse_pointers();
 
-        self.expect(SyntaxKind::IDENT);
+        self.parse_name();
 
         while self.at(SyntaxKind::L_BRACK) {
             self.bump();
@@ -58,7 +58,7 @@ impl Parser<'_> {
             self.bump(); // void
             self.parse_pointers();
             self.finish_node(); // FUNC_TYPE
-            self.expect(SyntaxKind::IDENT);
+            self.parse_name();
             self.parse_func_def_body();
             self.finish_node();
             return;
@@ -77,14 +77,14 @@ impl Parser<'_> {
             self.start_node_at(cp_func_type, SyntaxKind::FUNC_TYPE);
             self.finish_node();
 
-            self.expect(SyntaxKind::IDENT);
+            self.parse_name();
             self.parse_func_def_body();
             self.finish_node();
         } else {
             self.start_node_at(cp_start, SyntaxKind::VAR_DECL);
 
             self.start_node_at(cp_vardef, SyntaxKind::VAR_DEF);
-            self.expect(SyntaxKind::IDENT);
+            self.parse_name();
             self.parse_var_def_suffix();
             self.finish_node();
 
@@ -119,7 +119,7 @@ impl Parser<'_> {
     fn parse_var_def(&mut self) {
         self.start_node(SyntaxKind::VAR_DEF);
         self.parse_pointers();
-        self.expect(SyntaxKind::IDENT);
+        self.parse_name();
         self.parse_var_def_suffix();
         self.finish_node();
     }
@@ -144,7 +144,7 @@ impl Parser<'_> {
             self.bump();
         } else if current_token == SyntaxKind::STRUCT_KW {
             self.bump();
-            self.expect(SyntaxKind::IDENT);
+            self.parse_name();
         } else {
             self.error("Expected type");
         }
@@ -199,7 +199,7 @@ impl Parser<'_> {
         self.start_node(SyntaxKind::FUNC_F_PARAM);
         self.parse_type();
         self.parse_pointers();
-        self.expect(SyntaxKind::IDENT);
+        self.parse_name();
         if self.at(SyntaxKind::L_BRACK) {
             self.bump();
             self.expect(SyntaxKind::R_BRACK);
@@ -222,7 +222,7 @@ impl Parser<'_> {
         self.finish_node();
     }
 
-    fn parse_block(&mut self) {
+    pub(super) fn parse_block(&mut self) {
         self.start_node(SyntaxKind::BLOCK);
         self.expect(SyntaxKind::L_BRACE);
         while !matches!(self.peak(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
@@ -254,5 +254,11 @@ impl Parser<'_> {
                 self.parse_statement();
             }
         }
+    }
+
+    pub(super) fn parse_name(&mut self) {
+        self.start_node(SyntaxKind::NAME);
+        self.expect(SyntaxKind::IDENT);
+        self.finish_node();
     }
 }

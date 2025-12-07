@@ -2,6 +2,12 @@ use crate::{parser::Parser, syntax_kind::SyntaxKind};
 
 impl Parser<'_> {
     pub(super) fn parse_exp(&mut self) {
+        self.start_node(SyntaxKind::EXPR);
+        self.parse_l_or_exp();
+        self.finish_node();
+    }
+
+    pub(super) fn parse_lval_or_exp(&mut self) {
         self.parse_l_or_exp();
     }
 
@@ -11,7 +17,7 @@ impl Parser<'_> {
         self.finish_node();
     }
 
-    pub(super) fn parse_l_or_exp(&mut self) {
+    fn parse_l_or_exp(&mut self) {
         let cp = self.checkpoint();
         self.parse_l_and_exp();
         while self.at(SyntaxKind::PIPEPIPE) {
@@ -22,7 +28,7 @@ impl Parser<'_> {
         }
     }
 
-    pub(super) fn parse_l_and_exp(&mut self) {
+    fn parse_l_and_exp(&mut self) {
         let cp = self.checkpoint();
         self.parse_eq_exp();
         while self.at(SyntaxKind::AMPAMP) {
@@ -33,7 +39,7 @@ impl Parser<'_> {
         }
     }
 
-    pub(super) fn parse_eq_exp(&mut self) {
+    fn parse_eq_exp(&mut self) {
         let cp = self.checkpoint();
         self.parse_rel_exp();
         while matches!(self.peak(), SyntaxKind::EQEQ | SyntaxKind::NEQ) {
@@ -44,7 +50,7 @@ impl Parser<'_> {
         }
     }
 
-    pub(super) fn parse_rel_exp(&mut self) {
+    fn parse_rel_exp(&mut self) {
         let cp = self.checkpoint();
         self.parse_add_exp();
         while matches!(
@@ -58,7 +64,7 @@ impl Parser<'_> {
         }
     }
 
-    pub(super) fn parse_add_exp(&mut self) {
+    fn parse_add_exp(&mut self) {
         let cp = self.checkpoint();
         self.parse_mul_exp();
         while matches!(self.peak(), SyntaxKind::PLUS | SyntaxKind::MINUS) {
@@ -69,7 +75,7 @@ impl Parser<'_> {
         }
     }
 
-    pub(super) fn parse_mul_exp(&mut self) {
+    fn parse_mul_exp(&mut self) {
         let cp = self.checkpoint();
         self.parse_unary_exp();
         while matches!(
@@ -83,7 +89,7 @@ impl Parser<'_> {
         }
     }
 
-    pub(super) fn parse_unary_exp(&mut self) {
+    fn parse_unary_exp(&mut self) {
         if self.peak().is_unary_op() {
             self.start_node(SyntaxKind::UNARY_EXPR);
             self.bump(); // op
@@ -94,7 +100,7 @@ impl Parser<'_> {
         }
     }
 
-    pub(super) fn parse_primary_exp(&mut self) {
+    fn parse_primary_exp(&mut self) {
         if self.at(SyntaxKind::L_PAREN) {
             self.start_node(SyntaxKind::PAREN_EXPR);
             self.expect(SyntaxKind::L_PAREN);
@@ -112,14 +118,14 @@ impl Parser<'_> {
 
     pub fn parse_lval_or_call_expr(&mut self) {
         if self.at(SyntaxKind::STAR) {
-            self.start_node(SyntaxKind::LVAL_EXPR);
+            self.start_node(SyntaxKind::LVAL);
             self.bump(); // '*'
             self.parse_unary_exp();
             self.finish_node();
             return;
         }
         let cp = self.checkpoint();
-        self.expect(SyntaxKind::IDENT);
+        self.parse_name();
         if self.at(SyntaxKind::L_PAREN) {
             self.start_node_at(cp, SyntaxKind::CALL_EXPR);
             self.expect(SyntaxKind::L_PAREN);
@@ -129,7 +135,7 @@ impl Parser<'_> {
             self.expect(SyntaxKind::R_PAREN);
             self.finish_node();
         } else {
-            self.start_node_at(cp, SyntaxKind::LVAL_EXPR);
+            self.start_node_at(cp, SyntaxKind::LVAL);
             while self.at(SyntaxKind::L_BRACK) {
                 self.bump(); // `[`
                 self.parse_exp();

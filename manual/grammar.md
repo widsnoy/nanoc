@@ -11,14 +11,15 @@ FuncDef := FuncType **Ident** '(' [FuncFParams] ')' Block
 FuncType := ('**void**' | Type) {'\*' ['**const**']} 
 FuncFParams := FuncFParam {',' FuncFParam}  
 FuncFParam := Type {'\*' ['**const**']} Ident ['[' ']' {'[' ConstExp ']'}]  
-Block := '{' {Decl | Stmt} '}' 
-Stmt := Lval '=' Exp ';' | 
-    [Exp] ';' | 
-    Block | 
-    '**if**' '(' Exp ')' Stmt ['**else**' Stmt] |
-    '**while**' '(' Cond ')' Stmt | 
-    '**break**' ';' | 
-    '**continue**' ';' | 
+Block := '{' {Decl | Stmt} '}'   
+Stmt :=   
+    Lval '=' Exp ';' |    
+    [Exp] ';' |  
+    Block |  
+    '**if**' '(' Exp ')' Stmt ['**else**' Stmt] |  
+    '**while**' '(' Exp ')' Stmt |  
+    '**break**' ';' |  
+    '**continue**' ';' |  
     '**return**' [Exp] ';'  
 Exp := AddExp   
 Lval := **Ident** {'[' Exp ']'} | '\*' UnaryExp

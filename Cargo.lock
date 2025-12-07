@@ -104,6 +104,9 @@ dependencies = [
 [[package]]
 name = "nanoc-compiler"
 version = "0.1.0"
+dependencies = [
+ "nanoc-parser",
+]
 
 [[package]]
 name = "nanoc-parser"

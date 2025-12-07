@@ -11,8 +11,9 @@ ROOT@0..168
       WHITESPACE@10..11 " "
       INT_KW@11..14 "int"
     CONST_DEF@14..24
-      WHITESPACE@14..15 " "
-      IDENT@15..18 "MAX"
+      NAME@14..18
+        WHITESPACE@14..15 " "
+        IDENT@15..18 "MAX"
       WHITESPACE@18..19 " "
       EQ@19..20 "="
       CONST_INIT_VAL@20..24
@@ -26,11 +27,13 @@ ROOT@0..168
   VAR_DECL@30..45
     TYPE@30..42
       STRUCT_KW@30..36 "struct"
-      WHITESPACE@36..37 " "
-      IDENT@37..42 "Point"
+      NAME@36..42
+        WHITESPACE@36..37 " "
+        IDENT@37..42 "Point"
     VAR_DEF@42..44
-      WHITESPACE@42..43 " "
-      IDENT@43..44 "p"
+      NAME@42..44
+        WHITESPACE@42..43 " "
+        IDENT@43..44 "p"
     SEMI@44..45 ";"
   NEWLINE@45..46 "\n"
   WHITESPACE@46..50 "    "
@@ -40,15 +43,17 @@ ROOT@0..168
     FUNC_TYPE@55..58
       TYPE@55..58
         INT_KW@55..58 "int"
-    WHITESPACE@58..59 " "
-    IDENT@59..63 "main"
+    NAME@58..63
+      WHITESPACE@58..59 " "
+      IDENT@59..63 "main"
     L_PAREN@63..64 "("
     FUNC_F_PARAMS@64..85
       FUNC_F_PARAM@64..72
         TYPE@64..67
           INT_KW@64..67 "int"
-        WHITESPACE@67..68 " "
-        IDENT@68..72 "argc"
+        NAME@67..72
+          WHITESPACE@67..68 " "
+          IDENT@68..72 "argc"
       COMMA@72..73 ","
       FUNC_F_PARAM@73..85
         TYPE@73..77
@@ -56,7 +61,8 @@ ROOT@0..168
           INT_KW@74..77 "int"
         WHITESPACE@77..78 " "
         STAR@78..79 "*"
-        IDENT@79..83 "argv"
+        NAME@79..83
+          IDENT@79..83 "argv"
         L_BRACK@83..84 "["
         R_BRACK@84..85 "]"
     R_PAREN@85..86 ")"
@@ -69,14 +75,16 @@ ROOT@0..168
           WHITESPACE@89..97 "        "
           INT_KW@97..100 "int"
         VAR_DEF@100..106
-          WHITESPACE@100..101 " "
-          IDENT@101..102 "a"
+          NAME@100..102
+            WHITESPACE@100..101 " "
+            IDENT@101..102 "a"
           WHITESPACE@102..103 " "
           EQ@103..104 "="
           INIT_VAL@104..106
-            LITERAL@104..106
-              WHITESPACE@104..105 " "
-              INT_LITERAL@105..106 "1"
+            EXPR@104..106
+              LITERAL@104..106
+                WHITESPACE@104..105 " "
+                INT_LITERAL@105..106 "1"
         SEMI@106..107 ";"
       VAR_DECL@107..130
         TYPE@107..119
@@ -86,15 +94,18 @@ ROOT@0..168
         VAR_DEF@119..129
           WHITESPACE@119..120 " "
           STAR@120..121 "*"
-          IDENT@121..124 "ptr"
+          NAME@121..124
+            IDENT@121..124 "ptr"
           WHITESPACE@124..125 " "
           EQ@125..126 "="
           INIT_VAL@126..129
-            UNARY_EXPR@126..129
-              WHITESPACE@126..127 " "
-              AMP@127..128 "&"
-              LVAL_EXPR@128..129
-                IDENT@128..129 "a"
+            EXPR@126..129
+              UNARY_EXPR@126..129
+                WHITESPACE@126..127 " "
+                AMP@127..128 "&"
+                LVAL@128..129
+                  NAME@128..129
+                    IDENT@128..129 "a"
         SEMI@129..130 ";"
       CONST_DECL@130..157
         NEWLINE@130..131 "\n"
@@ -104,15 +115,17 @@ ROOT@0..168
           WHITESPACE@144..145 " "
           INT_KW@145..148 "int"
         CONST_DEF@148..156
-          WHITESPACE@148..149 " "
-          IDENT@149..150 "b"
+          NAME@148..150
+            WHITESPACE@148..149 " "
+            IDENT@149..150 "b"
           WHITESPACE@150..151 " "
           EQ@151..152 "="
           CONST_INIT_VAL@152..156
             CONST_EXPR@152..156
-              LVAL_EXPR@152..156
-                WHITESPACE@152..153 " "
-                IDENT@153..156 "MAX"
+              LVAL@152..156
+                NAME@152..156
+                  WHITESPACE@152..153 " "
+                  IDENT@153..156 "MAX"
         SEMI@156..157 ";"
       NEWLINE@157..158 "\n"
       WHITESPACE@158..162 "    "

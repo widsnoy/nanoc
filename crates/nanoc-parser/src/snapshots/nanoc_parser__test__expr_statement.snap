@@ -1,0 +1,52 @@
+---
+source: crates/nanoc-parser/src/test.rs
+expression: try_it(source)
+---
+ROOT@0..70
+  NEWLINE@0..1 "\n"
+  WHITESPACE@1..5 "    "
+  FUNC_DEF@5..65
+    FUNC_TYPE@5..9
+      VOID_KW@5..9 "void"
+    NAME@9..14
+      WHITESPACE@9..10 " "
+      IDENT@10..14 "test"
+    L_PAREN@14..15 "("
+    R_PAREN@15..16 ")"
+    BLOCK@16..65
+      WHITESPACE@16..17 " "
+      L_BRACE@17..18 "{"
+      STMT@18..34
+        EXPR_STMT@18..34
+          CALL_EXPR@18..33
+            NAME@18..31
+              NEWLINE@18..19 "\n"
+              WHITESPACE@19..27 "        "
+              IDENT@27..31 "func"
+            L_PAREN@31..32 "("
+            R_PAREN@32..33 ")"
+          SEMI@33..34 ";"
+      STMT@34..49
+        EXPR_STMT@34..49
+          BINARY_EXPR@34..48
+            LVAL@34..44
+              NAME@34..44
+                NEWLINE@34..35 "\n"
+                WHITESPACE@35..43 "        "
+                IDENT@43..44 "a"
+            WHITESPACE@44..45 " "
+            PLUS@45..46 "+"
+            LVAL@46..48
+              NAME@46..48
+                WHITESPACE@46..47 " "
+                IDENT@47..48 "b"
+          SEMI@48..49 ";"
+      STMT@49..59
+        NEWLINE@49..50 "\n"
+        WHITESPACE@50..58 "        "
+        SEMI@58..59 ";"
+      NEWLINE@59..60 "\n"
+      WHITESPACE@60..64 "    "
+      R_BRACE@64..65 "}"
+  NEWLINE@65..66 "\n"
+  WHITESPACE@66..70 "    "

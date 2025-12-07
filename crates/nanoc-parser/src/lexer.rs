@@ -21,6 +21,7 @@ pub struct LexerError {
 /// 词法单元 (Tokens)
 #[derive(Logos, Debug, PartialEq, Clone)]
 #[logos(error = LexerErrorKind)]
+#[allow(clippy::upper_case_acronyms)]
 #[allow(non_camel_case_types)]
 pub enum Token {
     // Trivia (空白与注释)
@@ -196,9 +197,9 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     pub fn new(text: &'a str) -> Self {
         let mut tokens = Vec::new();
-        let mut inner = Token::lexer(text).spanned();
+        let inner = Token::lexer(text).spanned();
 
-        while let Some((res, span)) = inner.next() {
+        for (res, span) in inner {
             let kind = match res {
                 Ok(token) => token.into(),
                 Err(_) => SyntaxKind::ERROR,
@@ -218,7 +219,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// 获取从当前位置开始的第一个非 Trivia Token 的位置
-    fn get_next_non_trivia_pos(tokens: &Vec<(SyntaxKind, &str)>, start_pos: usize) -> usize {
+    fn get_next_non_trivia_pos(tokens: &[(SyntaxKind, &str)], start_pos: usize) -> usize {
         let mut pos = start_pos;
         while pos < tokens.len() {
             let kind = tokens[pos].0;

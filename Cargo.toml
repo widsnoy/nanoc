@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["crates/*"]
+members = ["crates/nanoc-parser"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -13,3 +13,6 @@ text-size = "1.1.1"
 thiserror = "2.0.17"
 rowan = "0.16.1"
 insta = "1.44.3"
+
+[dependencies]
+nanoc-parser = { path = "crates/nanoc-parser" }

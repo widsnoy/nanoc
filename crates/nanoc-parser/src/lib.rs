@@ -1,6 +1,6 @@
 mod ast;
 mod lexer;
-mod parser;
+pub mod parser;
 
 pub mod syntax_kind;
 

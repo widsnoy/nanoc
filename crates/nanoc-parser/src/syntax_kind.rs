@@ -1,7 +1,7 @@
 /// 语法树节点的类型
 #[derive(Debug, Clone, Hash, Copy, Ord, Eq, PartialEq, PartialOrd)]
-#[allow(non_camel_case_types)]
 #[repr(u16)]
+#[allow(non_camel_case_types)]
 pub enum SyntaxKind {
     WHITESPACE,    // 空格, \t
     NEWLINE,       // \n, \r, \r\n
@@ -10,7 +10,6 @@ pub enum SyntaxKind {
 
     ERROR,
     EOF,
-
     CONST_KW,    // "const"
     INT_KW,      // "int"
     FLOAT_KW,    // "float"
@@ -69,16 +68,16 @@ pub enum SyntaxKind {
     POINTER,
 
     LITERAL,
+    EXPR,
     CONST_EXPR,
     BINARY_EXPR,
     UNARY_EXPR,
     CALL_EXPR,
-    LVAL_EXPR,
     PAREN_EXPR,
     LVAL,
 
     BLOCK,
-    BLOCK_ITEM,
+    STMT,
     IF_STMT,
     WHILE_STMT,
     ASSIGN_STMT,
