@@ -2,7 +2,7 @@
 source: crates/nanoc-parser/src/test.rs
 expression: try_it(source)
 ---
-ROOT@0..114
+COMP_UNIT@0..114
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
   FUNC_DEF@5..109
@@ -16,59 +16,50 @@ ROOT@0..114
     BLOCK@16..109
       WHITESPACE@16..17 " "
       L_BRACE@17..18 "{"
-      STMT@18..65
-        IF_STMT@18..65
-          NEWLINE@18..19 "\n"
-          WHITESPACE@19..27 "        "
-          IF_KW@27..29 "if"
-          WHITESPACE@29..30 " "
-          L_PAREN@30..31 "("
-          EXPR@31..32
-            LVAL@31..32
-              NAME@31..32
-                IDENT@31..32 "a"
-          R_PAREN@32..33 ")"
-          STMT@33..65
-            BLOCK@33..65
-              WHITESPACE@33..34 " "
-              L_BRACE@34..35 "{"
-              STMT@35..55
-                RETURN_STMT@35..55
-                  NEWLINE@35..36 "\n"
-                  WHITESPACE@36..48 "            "
-                  RETURN_KW@48..54 "return"
-                  SEMI@54..55 ";"
-              NEWLINE@55..56 "\n"
-              WHITESPACE@56..64 "        "
-              R_BRACE@64..65 "}"
-      STMT@65..103
-        IF_STMT@65..103
-          NEWLINE@65..66 "\n"
-          WHITESPACE@66..74 "        "
-          IF_KW@74..76 "if"
-          WHITESPACE@76..77 " "
-          L_PAREN@77..78 "("
-          EXPR@78..79
-            LVAL@78..79
-              NAME@78..79
-                IDENT@78..79 "a"
-          R_PAREN@79..80 ")"
-          STMT@80..88
-            RETURN_STMT@80..88
-              WHITESPACE@80..81 " "
-              RETURN_KW@81..87 "return"
-              SEMI@87..88 ";"
-          WHITESPACE@88..89 " "
-          ELSE_KW@89..93 "else"
-          STMT@93..103
-            RETURN_STMT@93..103
-              WHITESPACE@93..94 " "
-              RETURN_KW@94..100 "return"
-              EXPR@100..102
-                LITERAL@100..102
-                  WHITESPACE@100..101 " "
-                  INT_LITERAL@101..102 "1"
-              SEMI@102..103 ";"
+      IF_STMT@18..65
+        NEWLINE@18..19 "\n"
+        WHITESPACE@19..27 "        "
+        IF_KW@27..29 "if"
+        WHITESPACE@29..30 " "
+        L_PAREN@30..31 "("
+        INDEX_VAL@31..32
+          NAME@31..32
+            IDENT@31..32 "a"
+        R_PAREN@32..33 ")"
+        BLOCK@33..65
+          WHITESPACE@33..34 " "
+          L_BRACE@34..35 "{"
+          RETURN_STMT@35..55
+            NEWLINE@35..36 "\n"
+            WHITESPACE@36..48 "            "
+            RETURN_KW@48..54 "return"
+            SEMI@54..55 ";"
+          NEWLINE@55..56 "\n"
+          WHITESPACE@56..64 "        "
+          R_BRACE@64..65 "}"
+      IF_STMT@65..103
+        NEWLINE@65..66 "\n"
+        WHITESPACE@66..74 "        "
+        IF_KW@74..76 "if"
+        WHITESPACE@76..77 " "
+        L_PAREN@77..78 "("
+        INDEX_VAL@78..79
+          NAME@78..79
+            IDENT@78..79 "a"
+        R_PAREN@79..80 ")"
+        RETURN_STMT@80..88
+          WHITESPACE@80..81 " "
+          RETURN_KW@81..87 "return"
+          SEMI@87..88 ";"
+        WHITESPACE@88..89 " "
+        ELSE_KW@89..93 "else"
+        RETURN_STMT@93..103
+          WHITESPACE@93..94 " "
+          RETURN_KW@94..100 "return"
+          LITERAL@100..102
+            WHITESPACE@100..101 " "
+            INT_LITERAL@101..102 "1"
+          SEMI@102..103 ";"
       NEWLINE@103..104 "\n"
       WHITESPACE@104..108 "    "
       R_BRACE@108..109 "}"

@@ -54,30 +54,40 @@ pub enum SyntaxKind {
     L_BRACK,  // [
     R_BRACK,  // ]
 
-    ROOT,
+    COMP_UNIT,
 
     FUNC_DEF,
     CONST_DECL,
-    VAR_DECL,
-
     CONST_DEF,
+    CONST_INIT_VAL,
+    VAR_DECL,
     VAR_DEF,
+    INIT_VAL,
 
     TYPE,
     FUNC_TYPE,
-    POINTER,
 
+    POINTER,
+    NAME,
+    FUNC_F_PARAMS,
+    FUNC_F_PARAM,
+    FUNC_R_PARAMS,
     LITERAL,
-    EXPR,
+
+    UNARY_OP,
+    BINARY_OP,
+
     CONST_EXPR,
     BINARY_EXPR,
     UNARY_EXPR,
     CALL_EXPR,
     PAREN_EXPR,
-    LVAL,
+    DEREF_EXPR,
+
+    INDEX_VAL,
+    CONST_INDEX_VAL,
 
     BLOCK,
-    STMT,
     IF_STMT,
     WHILE_STMT,
     ASSIGN_STMT,
@@ -85,12 +95,6 @@ pub enum SyntaxKind {
     BREAK_STMT,
     CONTINUE_STMT,
     RETURN_STMT,
-    FUNC_F_PARAMS,
-    FUNC_F_PARAM,
-    FUNC_R_PARAMS,
-    INIT_VAL,
-    CONST_INIT_VAL,
-    NAME,
 
     __LAST,
 }
@@ -131,6 +135,26 @@ impl SyntaxKind {
         matches!(
             self,
             SyntaxKind::PLUS | SyntaxKind::MINUS | SyntaxKind::BANG | SyntaxKind::AMP
+        )
+    }
+
+    /// 判断是否为二元运算符
+    pub fn is_binary_op(self) -> bool {
+        matches!(
+            self,
+            SyntaxKind::PLUS
+                | SyntaxKind::MINUS
+                | SyntaxKind::STAR
+                | SyntaxKind::SLASH
+                | SyntaxKind::PERCENT
+                | SyntaxKind::EQEQ
+                | SyntaxKind::NEQ
+                | SyntaxKind::LT
+                | SyntaxKind::GT
+                | SyntaxKind::LTEQ
+                | SyntaxKind::GTEQ
+                | SyntaxKind::AMPAMP
+                | SyntaxKind::PIPEPIPE
         )
     }
 

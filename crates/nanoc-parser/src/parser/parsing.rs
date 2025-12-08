@@ -2,14 +2,14 @@ use crate::{parser::Parser, syntax_kind::SyntaxKind};
 
 impl Parser<'_> {
     pub(super) fn parse_root(&mut self) {
-        self.start_node(SyntaxKind::ROOT);
+        self.start_node(SyntaxKind::COMP_UNIT);
         self.bump_trivia();
 
-        while !self.at(SyntaxKind::EOF) {
-            if self.at(SyntaxKind::CONST_KW) {
-                self.parse_const_decl();
-            } else {
-                self.parse_decl_or_func_def();
+        loop {
+            match self.peek() {
+                SyntaxKind::CONST_KW => self.parse_const_decl(),
+                SyntaxKind::EOF => break,
+                _ => self.parse_decl_or_func_def(),
             }
             self.bump_trivia();
         }
@@ -36,13 +36,7 @@ impl Parser<'_> {
 
         self.parse_pointers();
 
-        self.parse_name();
-
-        while self.at(SyntaxKind::L_BRACK) {
-            self.bump();
-            self.parse_const_exp();
-            self.expect(SyntaxKind::R_BRACK);
-        }
+        self.parse_const_index_val();
 
         self.expect(SyntaxKind::EQ);
         self.parse_const_init_val();
@@ -84,8 +78,14 @@ impl Parser<'_> {
             self.start_node_at(cp_start, SyntaxKind::VAR_DECL);
 
             self.start_node_at(cp_vardef, SyntaxKind::VAR_DEF);
-            self.parse_name();
-            self.parse_var_def_suffix();
+
+            self.parse_const_index_val();
+
+            if self.at(SyntaxKind::EQ) {
+                self.bump();
+                self.parse_init_val();
+            }
+
             self.finish_node();
 
             while self.at(SyntaxKind::COMMA) {
@@ -99,12 +99,17 @@ impl Parser<'_> {
     }
 
     fn parse_pointers(&mut self) {
+        if !self.at(SyntaxKind::STAR) {
+            return;
+        }
+        self.start_node(SyntaxKind::POINTER);
         while self.at(SyntaxKind::STAR) {
             self.bump();
             if self.at(SyntaxKind::CONST_KW) {
                 self.bump();
             }
         }
+        self.finish_node();
     }
 
     fn parse_func_def_body(&mut self) {
@@ -119,22 +124,12 @@ impl Parser<'_> {
     fn parse_var_def(&mut self) {
         self.start_node(SyntaxKind::VAR_DEF);
         self.parse_pointers();
-        self.parse_name();
-        self.parse_var_def_suffix();
-        self.finish_node();
-    }
-
-    // {'[' ConstExp ']'} ['=' InitVal]
-    fn parse_var_def_suffix(&mut self) {
-        while self.at(SyntaxKind::L_BRACK) {
-            self.bump();
-            self.parse_const_exp();
-            self.expect(SyntaxKind::R_BRACK);
-        }
+        self.parse_const_index_val();
         if self.at(SyntaxKind::EQ) {
             self.bump();
             self.parse_init_val();
         }
+        self.finish_node();
     }
 
     fn parse_type(&mut self) {
@@ -259,6 +254,17 @@ impl Parser<'_> {
     pub(super) fn parse_name(&mut self) {
         self.start_node(SyntaxKind::NAME);
         self.expect(SyntaxKind::IDENT);
+        self.finish_node();
+    }
+
+    pub(super) fn parse_const_index_val(&mut self) {
+        self.start_node(SyntaxKind::CONST_INDEX_VAL);
+        self.parse_name();
+        while self.at(SyntaxKind::L_BRACK) {
+            self.bump();
+            self.parse_const_exp();
+            self.expect(SyntaxKind::R_BRACK);
+        }
         self.finish_node();
     }
 }

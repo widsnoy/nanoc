@@ -3,7 +3,6 @@ use crate::syntax_kind::SyntaxKind;
 
 impl Parser<'_> {
     pub(super) fn parse_statement(&mut self) {
-        self.start_node(SyntaxKind::STMT);
         match self.peek() {
             SyntaxKind::IF_KW => self.parse_if_statement(),
             SyntaxKind::WHILE_KW => self.parse_while_statement(),
@@ -17,7 +16,7 @@ impl Parser<'_> {
             _ => {
                 // 等语义分析检查 Assign 左边是不是 Lval
                 let cp = self.checkpoint();
-                self.parse_lval_or_exp();
+                self.parse_exp();
                 if self.at(SyntaxKind::EQ) {
                     self.start_node_at(cp, SyntaxKind::ASSIGN_STMT);
                     self.bump(); // =
@@ -31,7 +30,6 @@ impl Parser<'_> {
                 }
             }
         }
-        self.finish_node();
     }
 
     fn parse_if_statement(&mut self) {

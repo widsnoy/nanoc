@@ -2,12 +2,6 @@ use crate::{parser::Parser, syntax_kind::SyntaxKind};
 
 impl Parser<'_> {
     pub(super) fn parse_exp(&mut self) {
-        self.start_node(SyntaxKind::EXPR);
-        self.parse_l_or_exp();
-        self.finish_node();
-    }
-
-    pub(super) fn parse_lval_or_exp(&mut self) {
         self.parse_l_or_exp();
     }
 
@@ -22,7 +16,7 @@ impl Parser<'_> {
         self.parse_l_and_exp();
         while self.at(SyntaxKind::PIPEPIPE) {
             self.start_node_at(cp, SyntaxKind::BINARY_EXPR);
-            self.bump(); // op
+            self.parse_binary_op();
             self.parse_l_and_exp();
             self.finish_node();
         }
@@ -33,7 +27,7 @@ impl Parser<'_> {
         self.parse_eq_exp();
         while self.at(SyntaxKind::AMPAMP) {
             self.start_node_at(cp, SyntaxKind::BINARY_EXPR);
-            self.bump(); // op
+            self.parse_binary_op();
             self.parse_eq_exp();
             self.finish_node();
         }
@@ -44,7 +38,7 @@ impl Parser<'_> {
         self.parse_rel_exp();
         while matches!(self.peek(), SyntaxKind::EQEQ | SyntaxKind::NEQ) {
             self.start_node_at(cp, SyntaxKind::BINARY_EXPR);
-            self.bump(); // op
+            self.parse_binary_op();
             self.parse_rel_exp();
             self.finish_node();
         }
@@ -58,7 +52,7 @@ impl Parser<'_> {
             SyntaxKind::LT | SyntaxKind::GT | SyntaxKind::LTEQ | SyntaxKind::GTEQ
         ) {
             self.start_node_at(cp, SyntaxKind::BINARY_EXPR);
-            self.bump(); // op
+            self.parse_binary_op();
             self.parse_add_exp();
             self.finish_node();
         }
@@ -69,7 +63,7 @@ impl Parser<'_> {
         self.parse_mul_exp();
         while matches!(self.peek(), SyntaxKind::PLUS | SyntaxKind::MINUS) {
             self.start_node_at(cp, SyntaxKind::BINARY_EXPR);
-            self.bump(); // op
+            self.parse_binary_op();
             self.parse_mul_exp();
             self.finish_node();
         }
@@ -83,7 +77,7 @@ impl Parser<'_> {
             SyntaxKind::STAR | SyntaxKind::SLASH | SyntaxKind::PERCENT
         ) {
             self.start_node_at(cp, SyntaxKind::BINARY_EXPR);
-            self.bump(); // op
+            self.parse_binary_op();
             self.parse_unary_exp();
             self.finish_node();
         }
@@ -92,7 +86,7 @@ impl Parser<'_> {
     fn parse_unary_exp(&mut self) {
         if self.peek().is_unary_op() {
             self.start_node(SyntaxKind::UNARY_EXPR);
-            self.bump(); // op
+            self.parse_unary_op();
             self.parse_unary_exp();
             self.finish_node();
         } else {
@@ -118,7 +112,7 @@ impl Parser<'_> {
 
     pub(super) fn parse_lval_or_call_expr(&mut self) {
         if self.at(SyntaxKind::STAR) {
-            self.start_node(SyntaxKind::LVAL);
+            self.start_node(SyntaxKind::DEREF_EXPR);
             self.bump(); // '*'
             self.parse_unary_exp();
             self.finish_node();
@@ -135,7 +129,7 @@ impl Parser<'_> {
             self.expect(SyntaxKind::R_PAREN);
             self.finish_node();
         } else {
-            self.start_node_at(cp, SyntaxKind::LVAL);
+            self.start_node_at(cp, SyntaxKind::INDEX_VAL);
             while self.at(SyntaxKind::L_BRACK) {
                 self.bump(); // `[`
                 self.parse_exp();
@@ -143,5 +137,19 @@ impl Parser<'_> {
             }
             self.finish_node();
         }
+    }
+
+    /// 先验证是二元运算符才调用
+    fn parse_binary_op(&mut self) {
+        self.start_node(SyntaxKind::BINARY_OP);
+        self.bump(); // op
+        self.finish_node();
+    }
+
+    /// 先验证是一元运算符才调用
+    fn parse_unary_op(&mut self) {
+        self.start_node(SyntaxKind::UNARY_OP);
+        self.bump(); // op
+        self.finish_node();
     }
 }
