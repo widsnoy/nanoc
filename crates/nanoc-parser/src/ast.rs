@@ -1,229 +1,348 @@
-// use crate::{
-//     ast_enum, ast_methods, ast_node,
-//     syntax_kind::{NanocLanguage, SyntaxKind},
-// };
+use crate::syntax_kind::{
+    NanocLanguage,
+    SyntaxKind::{self, *},
+};
 
-// pub type SyntaxNode = rowan::SyntaxNode<NanocLanguage>;
-// pub type SyntaxToken = rowan::SyntaxToken<NanocLanguage>;
-// pub type SyntaxElement = rowan::SyntaxElement<NanocLanguage>;
+pub type SyntaxNode = rowan::SyntaxNode<NanocLanguage>;
+pub type SyntaxToken = rowan::SyntaxToken<NanocLanguage>;
 
-// pub trait AstNode {
-//     fn cast(syntax: SyntaxNode) -> Option<Self>
-//     where
-//         Self: Sized;
-//     fn syntax(&self) -> &SyntaxNode;
-// }
+pub trait AstNode {
+    type Language: rowan::Language;
+    fn can_cast(kind: <Self::Language as rowan::Language>::Kind) -> bool;
+    fn cast(syntax: rowan::SyntaxNode<Self::Language>) -> Option<Self>
+    where
+        Self: Sized;
+    fn syntax(&self) -> &rowan::SyntaxNode<Self::Language>;
+}
 
-// // 根节点
-// ast_node!(CompUnit, ROOT);
+macro_rules! ast_node {
+    (
+        $Name:ident~$Kind:path {
+            $( $method:ident : $handler:ident $( ( $($arg:tt)* ) )? ),* $(,)?
+        }
+    ) => {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        pub struct $Name { syntax: SyntaxNode }
+        impl AstNode for $Name {
+            type Language = NanocLanguage;
+            fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, $Kind) }
+            fn cast(syntax: SyntaxNode) -> Option<Self> {
+                if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+            }
+            fn syntax(&self) -> &SyntaxNode { &self.syntax }
+        }
+        impl $Name {
+            $(
+                pub fn $method(&self) -> ast_node!(@ret $handler $( ( $($arg)* ) )? ) {
+                    ast_node!(@impl self, $handler $( ( $($arg)* ) )? )
+                }
+            )*
+        }
+    };
 
-// // 声明相关
-// ast_node!(ConstDecl, CONST_DECL);
-// ast_node!(VarDecl, VAR_DECL);
-// ast_node!(ConstDef, CONST_DEF);
-// ast_node!(VarDef, VAR_DEF);
-// ast_node!(InitVal, INIT_VAL);
-// ast_node!(ConstInitVal, CONST_INIT_VAL);
+    (@ret node ($Type:ty)) => { Option<$Type> };
+    (@ret nodes ($Type:ty)) => { impl Iterator<Item = $Type> };
+    (@ret token ($Kind:expr)) => { Option<SyntaxToken> };
+    (@ret nth ($Type:ty, $Index:expr)) => { Option<$Type> };
 
-// // 函数相关
-// ast_node!(FuncDef, FUNC_DEF);
-// ast_node!(FuncType, FUNC_TYPE);
-// ast_node!(FuncFParams, FUNC_F_PARAMS);
-// ast_node!(FuncFParam, FUNC_F_PARAM);
-// ast_node!(FuncRParams, FUNC_R_PARAMS);
+    (@impl $self:ident, node ($Type:ty)) => {
+        $self.syntax().children().find_map(<$Type as AstNode>::cast)
+    };
+    (@impl $self:ident, nodes ($Type:ty)) => {
+        $self.syntax().children().filter_map(<$Type as AstNode>::cast)
+    };
+    (@impl $self:ident, token ($Kind:expr)) => {
+        $self.syntax().children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == $Kind)
+    };
+    (@impl $self:ident, nth ($Type:ty, $Index:expr)) => {
+        $self.syntax().children().filter_map(<$Type as AstNode>::cast).nth($Index)
+    };
+}
 
-// // 语句相关
-// ast_node!(Block, BLOCK);
-// ast_node!(IfStmt, IF_STMT);
-// ast_node!(WhileStmt, WHILE_STMT);
-// ast_node!(AssignStmt, ASSIGN_STMT);
-// ast_node!(ExprStmt, EXPR_STMT);
-// ast_node!(BreakStmt, BREAK_STMT);
-// ast_node!(ContinueStmt, CONTINUE_STMT);
-// ast_node!(ReturnStmt, RETURN_STMT);
+macro_rules! ast_enum {
+    (
+        $Name:ident {
+            $($Variant:ident),* $(,)?
+        }
+    ) => {
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        pub enum $Name {
+            $($Variant($Variant),)*
+        }
+        impl AstNode for $Name {
+            type Language = NanocLanguage;
+            fn can_cast(kind: SyntaxKind) -> bool {
+                $( $Variant::can_cast(kind) )||*
+            }
+            fn cast(syntax: SyntaxNode) -> Option<Self> {
+                let kind = syntax.kind();
+                match kind {
+                    $(
+                        _ if $Variant::can_cast(kind) => Some($Name::$Variant($Variant::cast(syntax).unwrap())),
+                    )*
+                    _ => None,
+                }
+            }
+            fn syntax(&self) -> &SyntaxNode {
+                match self {
+                    $($Name::$Variant(it) => it.syntax(),)*
+                }
+            }
+        }
+    }
+}
 
-// // 表达式相关
-// ast_node!(BinaryExpr, BINARY_EXPR);
-// ast_node!(UnaryExpr, UNARY_EXPR);
-// ast_node!(CallExpr, CALL_EXPR);
-// ast_node!(ParenExpr, PAREN_EXPR);
-// ast_node!(IndexExpr, INDEX_EXPR);
-// ast_node!(DerefExpr, DEREF_EXPR);
-// ast_node!(Literal, LITERAL);
-// ast_node!(Name, NAME);
-// ast_node!(ConstExpr, CONST_EXPR);
-// ast_node!(Exp, EXPR);
+// 1. Compilation Unit
+ast_node!(
+    CompUnit ~ COMP_UNIT {
+        global_decls: nodes(GlobalDecl),
+    }
+);
 
-// // 类型
-// ast_node!(Type, TYPE);
+ast_enum!(GlobalDecl { Decl, FuncDef });
 
-// // enum
-// ast_enum!(Decl { ConstDecl, VarDecl });
+// 2. Declarations
+ast_enum!(Decl { ConstDecl, VarDecl });
 
-// ast_enum!(LVal {
-//     IndexExpr,
-//     DerefExpr
-// });
+ast_node!(
+    ConstDecl ~ CONST_DECL {
+        ty: node(Type),
+        const_defs: nodes(ConstDef),
+    }
+);
 
-// ast_enum!(Stmt {
-//     Block,
-//     IfStmt,
-//     WhileStmt,
-//     AssignStmt,
-//     ExprStmt,
-//     BreakStmt,
-//     ContinueStmt,
-//     ReturnStmt,
-// });
+ast_node!(
+    ConstDef ~ CONST_DEF {
+        pointer: node(Pointer),
+        name: node(ConstIndexVal),
+        init: node(ConstInitVal),
+    }
+);
 
-// ast_enum!(Expr {
-//     BinaryExpr,
-//     UnaryExpr,
-//     CallExpr,
-//     ParenExpr,
-//     LVal,
-//     Literal,
-//     ConstExpr,
-//     Exp,
-// });
+ast_node!(
+    ConstInitVal ~ CONST_INIT_VAL {
+        expr: node(ConstExpr),
+        inits: nodes(ConstInitVal),
+    }
+);
 
-// ast_methods!(CompUnit {
-//     func_defs(): FuncDef => children,
-//     decls(): Decl => children,
-// });
+ast_node!(
+    VarDecl ~ VAR_DECL {
+        ty: node(Type),
+        var_defs: nodes(VarDef),
+    }
+);
 
-// ast_methods!(FuncDef {
-//     func_type(): FuncType => child,
-//     name(): Name => child,
-//     params(): FuncFParams => child,
-//     body(): Block => child,
-// });
+ast_node!(
+    VarDef ~ VAR_DEF {
+        pointer: node(Pointer),
+        name: node(ConstIndexVal),
+        init: node(InitVal),
+    }
+);
 
-// ast_methods!(Block {
-//     stmts(): Stmt => children,
-//     decls(): Decl => children,
-// });
+ast_node!(
+    InitVal ~ INIT_VAL {
+        expr: node(Expr),
+        inits: nodes(InitVal),
+    }
+);
 
-// ast_methods!(BinaryExpr {
-//     lhs(0): Expr => nth,
-//     rhs(1): Expr => nth,
-//     op_token(): SyntaxToken => first_token,
-// });
+// 3. Functions
+ast_node!(
+    FuncDef ~ FUNC_DEF {
+        func_type: node(FuncType),
+        name: node(Name),
+        params: node(FuncFParams),
+        block: node(Block),
+    }
+);
 
-// ast_methods!(UnaryExpr {
-//     expr(): Expr => child,
-//     op_token(): SyntaxToken => first_token,
-// });
+ast_node!(
+    FuncType ~ FUNC_TYPE {
+        ty: node(Type),
+        pointer: node(Pointer),
+        void_token: token(VOID_KW),
+    }
+);
 
-// ast_methods!(ParenExpr {
-//     expr(): Expr => child,
-// });
+ast_node!(
+    FuncFParams ~ FUNC_F_PARAMS {
+        params: nodes(FuncFParam),
+    }
+);
 
-// ast_methods!(CallExpr {
-//     name(): Name => child,
-//     args(): FuncRParams => child,
-// });
+ast_node!(
+    FuncFParam ~ FUNC_F_PARAM {
+        ty: node(Type),
+        pointer: node(Pointer),
+        name: node(Name),
+        // 加上这个以区分 `int a` 和 `int a[]`
+        // 如果 l_brack_token 存在，说明是数组形式
+        l_brack_token: token(L_BRACK),
+        indices: nodes(ConstExpr),
+    }
+);
 
-// ast_methods!(Name {
-//     ident_token(IDENT): SyntaxToken => token,
-// });
+// 4. Block & Statements
+ast_node!(
+    Block ~ BLOCK {
+        items: nodes(BlockItem),
+    }
+);
 
-// ast_methods!(IfStmt {
-//     condition(): Expr => child,
-//     then_branch(0): Stmt => nth,
-//     else_branch(1): Stmt => nth,
-// });
+ast_enum!(BlockItem { Decl, Stmt });
 
-// ast_methods!(WhileStmt {
-//     condition(): Expr => child,
-//     body(): Stmt => child,
-// });
+ast_enum!(Stmt {
+    AssignStmt,
+    ExprStmt,
+    Block,
+    IfStmt,
+    WhileStmt,
+    BreakStmt,
+    ContinueStmt,
+    ReturnStmt,
+});
 
-// ast_methods!(ReturnStmt {
-//     expr(): Expr => child,
-// });
+ast_node!(
+    AssignStmt ~ ASSIGN_STMT {
+        lhs: node(LVal),
+        rhs: node(Expr),
+    }
+);
 
-// ast_methods!(AssignStmt {
-//     lval(): LVal => child,
-//     expr(): Expr => child,
-// });
+ast_enum!(LVal {
+    IndexVal,
+    DerefExpr
+});
 
-// ast_methods!(ConstDecl {
-//     ty(): Type => child,
-//     defs(): ConstDef => children,
-// });
+ast_node!(
+    ExprStmt ~ EXPR_STMT {
+        expr: node(Expr),
+    }
+);
 
-// ast_methods!(VarDecl {
-//     ty(): Type => child,
-//     defs(): VarDef => children,
-// });
+ast_node!(
+    IfStmt ~ IF_STMT {
+        condition: node(Expr),
+        then_branch: nth(Stmt, 0),
+        else_branch: nth(Stmt, 1),
+    }
+);
 
-// ast_methods!(ConstDef {
-//     name(): Name => child,
-//     dims(): ConstExpr => children,
-//     init_val(): ConstInitVal => child,
-// });
+ast_node!(
+    WhileStmt ~ WHILE_STMT {
+        condition: node(Expr),
+        body: node(Stmt),
+    }
+);
 
-// ast_methods!(VarDef {
-//     name(): Name => child,
-//     dims(): ConstExpr => children,
-//     init_val(): InitVal => child,
-// });
+ast_node!(BreakStmt ~ BREAK_STMT {});
+ast_node!(ContinueStmt ~ CONTINUE_STMT {});
 
-// ast_methods!(InitVal {
-//     expr(): Exp => child,
-//     values(): InitVal => children,
-// });
+ast_node!(
+    ReturnStmt ~ RETURN_STMT {
+        expr: node(Expr),
+    }
+);
 
-// ast_methods!(ConstInitVal {
-//     expr(): ConstExpr => child,
-//     values(): ConstInitVal => children,
-// });
+// 5. Expressions
+ast_enum!(Expr {
+    BinaryExpr,
+    UnaryExpr,
+    CallExpr,
+    ParenExpr,
+    DerefExpr,
+    IndexVal,
+    Literal,
+});
 
-// ast_methods!(FuncType {
-//     ty(): Type => child,
-// });
+ast_node!(
+    BinaryExpr ~ BINARY_EXPR {
+        lhs: nth(Expr, 0),
+        rhs: nth(Expr, 1),
+        op: node(BinaryOp),
+    }
+);
 
-// ast_methods!(FuncFParams {
-//     params(): FuncFParam => children,
-// });
+ast_node!(
+    UnaryExpr ~ UNARY_EXPR {
+        op: node(UnaryOp),
+        expr: node(Expr),
+    }
+);
 
-// ast_methods!(FuncFParam {
-//     ty(): Type => child,
-//     name(): Name => child,
-//     dims(): ConstExpr => children,
-// });
+ast_node!(BinaryOp ~ BINARY_OP {});
+ast_node!(UnaryOp ~ UNARY_OP {});
 
-// ast_methods!(FuncRParams {
-//     args(): Exp => children,
-// });
+ast_node!(
+    CallExpr ~ CALL_EXPR {
+        name: node(Name),
+        args: node(FuncRParams),
+    }
+);
 
-// ast_methods!(ExprStmt {
-//     expr(): Exp => child,
-// });
+ast_node!(
+    FuncRParams ~ FUNC_R_PARAMS {
+        args: nodes(Expr),
+    }
+);
 
-// ast_methods!(IndexExpr {
-//     name(): Name => child,
-//     indices(): Exp => children,
-// });
+ast_node!(
+    ParenExpr ~ PAREN_EXPR {
+        expr: node(Expr),
+    }
+);
 
-// ast_methods!(DerefExpr {
-//     unary_expr(): UnaryExpr => child,
-// });
+ast_node!(
+    DerefExpr ~ DEREF_EXPR {
+        expr: node(Expr),
+    }
+);
 
-// ast_methods!(Literal {
-//     value(): SyntaxToken => first_token,
-// });
+ast_node!(
+    IndexVal ~ INDEX_VAL {
+        name: node(Name),
+        indices: nodes(Expr),
+    }
+);
 
-// ast_methods!(Type {
-//     name(): Name => child,
-//     ty(): SyntaxToken => first_token,
-// });
+ast_node!(
+    ConstIndexVal ~ CONST_INDEX_VAL {
+        name: node(Name),
+        indices: nodes(ConstExpr),
+    }
+);
 
-// ast_methods!(ConstExpr {
-//     expr(): Expr => child,
-// });
+ast_node!(
+    ConstExpr ~ CONST_EXPR {
+        expr: node(Expr),
+    }
+);
 
-// ast_methods!(Exp {
-//     expr(): Expr => child,
-// });
+ast_node!(
+    Literal ~ LITERAL {
+        int_token: token(INT_LITERAL),
+        float_token: token(FLOAT_LITERAL),
+    }
+);
+
+// 6. Basic Elements
+ast_node!(
+    Type ~ TYPE {
+        int_token: token(INT_KW),
+        float_token: token(FLOAT_KW),
+        struct_token: token(STRUCT_KW),
+        name: node(Name),
+    }
+);
+
+ast_node!(
+    Name ~ NAME {
+        ident: token(IDENT),
+    }
+);
+
+ast_node!(Pointer ~ POINTER {});
