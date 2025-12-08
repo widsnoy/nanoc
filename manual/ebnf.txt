@@ -1,5 +1,5 @@
-CompUnit    := {GlobalDef}
-GlobalDef   := Decl | FuncDef
+CompUnit    := {GlobalDecl}
+GlobalDecl   := Decl | FuncDef
 
 Type        := 'int' | 'float' | 'struct' Name
 
