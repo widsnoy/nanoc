@@ -2,7 +2,7 @@
 source: crates/nanoc-parser/src/test.rs
 expression: try_it(source)
 ---
-ROOT@0..173
+COMP_UNIT@0..173
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
   COMMENT_BLOCK@5..25 "/* normal comment */"
@@ -30,16 +30,16 @@ ROOT@0..173
     TYPE@158..161
       INT_KW@158..161 "int"
     VAR_DEF@161..167
-      NAME@161..163
-        WHITESPACE@161..162 " "
-        IDENT@162..163 "a"
+      CONST_INDEX_VAL@161..163
+        NAME@161..163
+          WHITESPACE@161..162 " "
+          IDENT@162..163 "a"
       WHITESPACE@163..164 " "
       EQ@164..165 "="
       INIT_VAL@165..167
-        EXPR@165..167
-          LITERAL@165..167
-            WHITESPACE@165..166 " "
-            INT_LITERAL@166..167 "1"
+        LITERAL@165..167
+          WHITESPACE@165..166 " "
+          INT_LITERAL@166..167 "1"
     SEMI@167..168 ";"
   NEWLINE@168..169 "\n"
   WHITESPACE@169..173 "    "

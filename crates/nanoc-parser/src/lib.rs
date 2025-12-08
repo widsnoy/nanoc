@@ -1,4 +1,5 @@
 mod ast;
+mod ast_macro;
 mod lexer;
 pub mod parser;
 
