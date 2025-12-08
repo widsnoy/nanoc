@@ -2,23 +2,23 @@
 source: crates/nanoc-parser/src/test.rs
 expression: try_it(source)
 ---
-ROOT@0..165
+COMP_UNIT@0..165
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
   VAR_DECL@5..15
     TYPE@5..8
       INT_KW@5..8 "int"
     VAR_DEF@8..14
-      NAME@8..10
-        WHITESPACE@8..9 " "
-        IDENT@9..10 "a"
+      CONST_INDEX_VAL@8..10
+        NAME@8..10
+          WHITESPACE@8..9 " "
+          IDENT@9..10 "a"
       WHITESPACE@10..11 " "
       EQ@11..12 "="
       INIT_VAL@12..14
-        EXPR@12..14
-          LITERAL@12..14
-            WHITESPACE@12..13 " "
-            INT_LITERAL@13..14 "1"
+        LITERAL@12..14
+          WHITESPACE@12..13 " "
+          INT_LITERAL@13..14 "1"
     SEMI@14..15 ";"
   NEWLINE@15..16 "\n"
   WHITESPACE@16..20 "    "
@@ -26,24 +26,23 @@ ROOT@0..165
     TYPE@20..23
       INT_KW@20..23 "int"
     VAR_DEF@23..34
-      NAME@23..25
-        WHITESPACE@23..24 " "
-        IDENT@24..25 "b"
+      CONST_INDEX_VAL@23..25
+        NAME@23..25
+          WHITESPACE@23..24 " "
+          IDENT@24..25 "b"
       WHITESPACE@25..26 " "
       EQ@26..27 "="
       INIT_VAL@27..34
         WHITESPACE@27..28 " "
         L_BRACE@28..29 "{"
         INIT_VAL@29..30
-          EXPR@29..30
-            LITERAL@29..30
-              INT_LITERAL@29..30 "1"
+          LITERAL@29..30
+            INT_LITERAL@29..30 "1"
         COMMA@30..31 ","
         INIT_VAL@31..33
-          EXPR@31..33
-            LITERAL@31..33
-              WHITESPACE@31..32 " "
-              INT_LITERAL@32..33 "2"
+          LITERAL@31..33
+            WHITESPACE@31..32 " "
+            INT_LITERAL@32..33 "2"
         R_BRACE@33..34 "}"
     SEMI@34..35 ";"
   NEWLINE@35..36 "\n"
@@ -52,9 +51,10 @@ ROOT@0..165
     TYPE@40..43
       INT_KW@40..43 "int"
     VAR_DEF@43..58
-      NAME@43..45
-        WHITESPACE@43..44 " "
-        IDENT@44..45 "c"
+      CONST_INDEX_VAL@43..45
+        NAME@43..45
+          WHITESPACE@43..44 " "
+          IDENT@44..45 "c"
       WHITESPACE@45..46 " "
       EQ@46..47 "="
       INIT_VAL@47..58
@@ -63,18 +63,16 @@ ROOT@0..165
         INIT_VAL@49..52
           L_BRACE@49..50 "{"
           INIT_VAL@50..51
-            EXPR@50..51
-              LITERAL@50..51
-                INT_LITERAL@50..51 "1"
+            LITERAL@50..51
+              INT_LITERAL@50..51 "1"
           R_BRACE@51..52 "}"
         COMMA@52..53 ","
         INIT_VAL@53..57
           WHITESPACE@53..54 " "
           L_BRACE@54..55 "{"
           INIT_VAL@55..56
-            EXPR@55..56
-              LITERAL@55..56
-                INT_LITERAL@55..56 "2"
+            LITERAL@55..56
+              INT_LITERAL@55..56 "2"
           R_BRACE@56..57 "}"
         R_BRACE@57..58 "}"
     SEMI@58..59 ";"
@@ -86,9 +84,10 @@ ROOT@0..165
       WHITESPACE@69..70 " "
       INT_KW@70..73 "int"
     CONST_DEF@73..85
-      NAME@73..76
-        WHITESPACE@73..74 " "
-        IDENT@74..76 "cb"
+      CONST_INDEX_VAL@73..76
+        NAME@73..76
+          WHITESPACE@73..74 " "
+          IDENT@74..76 "cb"
       WHITESPACE@76..77 " "
       EQ@77..78 "="
       CONST_INIT_VAL@78..85
@@ -114,19 +113,20 @@ ROOT@0..165
       WHITESPACE@96..97 " "
       INT_KW@97..100 "int"
     CONST_DEF@100..130
-      NAME@100..103
-        WHITESPACE@100..101 " "
-        IDENT@101..103 "cb"
-      L_BRACK@103..104 "["
-      CONST_EXPR@104..105
-        LITERAL@104..105
-          INT_LITERAL@104..105 "2"
-      R_BRACK@105..106 "]"
-      L_BRACK@106..107 "["
-      CONST_EXPR@107..108
-        LITERAL@107..108
-          INT_LITERAL@107..108 "3"
-      R_BRACK@108..109 "]"
+      CONST_INDEX_VAL@100..109
+        NAME@100..103
+          WHITESPACE@100..101 " "
+          IDENT@101..103 "cb"
+        L_BRACK@103..104 "["
+        CONST_EXPR@104..105
+          LITERAL@104..105
+            INT_LITERAL@104..105 "2"
+        R_BRACK@105..106 "]"
+        L_BRACK@106..107 "["
+        CONST_EXPR@107..108
+          LITERAL@107..108
+            INT_LITERAL@107..108 "3"
+        R_BRACK@108..109 "]"
       WHITESPACE@109..110 " "
       EQ@110..111 "="
       CONST_INIT_VAL@111..130
@@ -178,9 +178,10 @@ ROOT@0..165
       WHITESPACE@141..142 " "
       INT_KW@142..145 "int"
     CONST_DEF@145..159
-      NAME@145..147
-        WHITESPACE@145..146 " "
-        IDENT@146..147 "d"
+      CONST_INDEX_VAL@145..147
+        NAME@145..147
+          WHITESPACE@145..146 " "
+          IDENT@146..147 "d"
       WHITESPACE@147..148 " "
       EQ@148..149 "="
       CONST_INIT_VAL@149..159
@@ -189,14 +190,16 @@ ROOT@0..165
             LITERAL@149..151
               WHITESPACE@149..150 " "
               INT_LITERAL@150..151 "1"
-            WHITESPACE@151..152 " "
-            PLUS@152..153 "+"
+            BINARY_OP@151..153
+              WHITESPACE@151..152 " "
+              PLUS@152..153 "+"
             BINARY_EXPR@153..159
               LITERAL@153..155
                 WHITESPACE@153..154 " "
                 INT_LITERAL@154..155 "2"
-              WHITESPACE@155..156 " "
-              STAR@156..157 "*"
+              BINARY_OP@155..157
+                WHITESPACE@155..156 " "
+                STAR@156..157 "*"
               LITERAL@157..159
                 WHITESPACE@157..158 " "
                 INT_LITERAL@158..159 "3"

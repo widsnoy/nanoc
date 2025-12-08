@@ -4,7 +4,10 @@ Based on SysY language, added structure and pointer support
 
 - [X] ebnf
 - [X] lexer
-- [X] parser
+- [ ] parser
+  - [X] parsing
+  - [ ] ast
+
 - [ ] semantic analysis
 - [ ] llvm ir
 - [ ] language server
