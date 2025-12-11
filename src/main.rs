@@ -21,7 +21,7 @@ fn main() {
     }
     "#;
 
-    let parser = nanoc_parser::parser::Parser::new(&input);
+    let parser = nanoc_parser::parser::Parser::new(input);
     let (green_node, errors) = parser.parse();
     if !errors.is_empty() {
         eprintln!("Parser errors:");

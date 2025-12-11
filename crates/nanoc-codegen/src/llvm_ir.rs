@@ -143,7 +143,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     fn compile_const_init_val(
         &mut self,
         init: ConstInitVal,
-        ty: BasicTypeEnum<'ctx>,
+        _ty: BasicTypeEnum<'ctx>,
     ) -> Option<BasicValueEnum<'ctx>> {
         if let Some(expr) = init.expr() {
             return Some(self.compile_const_expr(expr));
@@ -206,13 +206,13 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         init: Option<InitVal>,
         ty: BasicTypeEnum<'ctx>,
     ) -> BasicValueEnum<'ctx> {
-        if let Some(init) = init {
-            if let Some(expr) = init.expr() {
-                if let Expr::Literal(lit) = expr {
-                    return self.compile_literal(lit);
-                }
-            }
+        if let Some(init) = init
+            && let Some(expr) = init.expr()
+            && let Expr::Literal(lit) = expr
+        {
+            return self.compile_literal(lit);
         }
+
         ty.const_zero()
     }
 
@@ -319,7 +319,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .ty()
             .map(|t| self.compile_type(t))
             .expect("参数缺类型");
-        let mut full = apply_pointer(base, param.pointer());
+        let full = apply_pointer(base, param.pointer());
         // 形参写成 a[] 等价指针
         if param.l_brack_token().is_some() {
             todo!("暂不支持数组形参");
@@ -388,7 +388,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let else_bb = self.context.append_basic_block(func, "else");
         let merge_bb = self.context.append_basic_block(func, "merge");
 
-        let bool_val = as_bool(&self.builder, self.context, cond_val);
+        let bool_val = as_bool(self.builder, self.context, cond_val);
         self.builder
             .build_conditional_branch(bool_val, then_bb, else_bb)
             .expect("if 跳转失败");
@@ -449,7 +449,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .condition()
             .map(|e| self.compile_expr(e))
             .expect("while 条件缺失");
-        let bool_val = as_bool(&self.builder, self.context, cond_val);
+        let bool_val = as_bool(self.builder, self.context, cond_val);
         self.builder
             .build_conditional_branch(bool_val, body_bb, end_bb)
             .expect("while 条件跳转失败");
@@ -525,7 +525,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .children_with_tokens()
                     .filter_map(|it| {
                         it.into_token()
-                            .and_then(|x| x.kind().is_binary_op().then(|| x))
+                            .and_then(|x| x.kind().is_binary_op().then_some(x))
                     })
                     .next()
             })
@@ -696,7 +696,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .expect("变量读取失败");
         }
 
-        let mut indices: Vec<_> = expr
+        let indices: Vec<_> = expr
             .indices()
             .map(|e| self.compile_expr(e).into_int_value())
             .collect();
@@ -743,7 +743,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         }
     }
 
-    fn compile_const_index_val(&mut self, _val: ConstIndexVal) {
+    fn _compile_const_index_val(&mut self, _val: ConstIndexVal) {
         todo!();
     }
 
@@ -767,7 +767,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let name = name_text(&v.name().expect("左值缺名"));
                 self.lookup_var(&name).map(|(p, _)| p).expect(err)
             }
-            LVal::DerefExpr(d) => {
+            LVal::DerefExpr(_d) => {
                 todo!()
             }
         }

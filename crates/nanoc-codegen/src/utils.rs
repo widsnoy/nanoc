@@ -2,8 +2,8 @@ use core::panic;
 
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, IntValue};
-use inkwell::{AddressSpace, builder::Builder, context::Context};
-use nanoc_parser::ast::{AstNode, ConstIndexVal, Expr, Literal, Name, Pointer};
+use inkwell::{builder::Builder, context::Context};
+use nanoc_parser::ast::{AstNode, ConstIndexVal, Name, Pointer};
 use nanoc_parser::syntax_kind::SyntaxKind;
 
 /// 统计指针星号数量
@@ -21,12 +21,9 @@ pub fn apply_pointer<'ctx>(
     base: BasicTypeEnum<'ctx>,
     pointer: Option<Pointer>,
 ) -> BasicTypeEnum<'ctx> {
-    let mut ty = base;
-    if let Some(ptr) = pointer {
+    let ty = base;
+    if let Some(_ptr) = pointer {
         panic!("指针未实现");
-        for _ in 0..pointer_depth(&ptr) {
-            ty = ty.ptr_type(AddressSpace::default()).into();
-        }
     }
     ty
 }
