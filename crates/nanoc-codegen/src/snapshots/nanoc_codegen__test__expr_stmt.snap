@@ -1,0 +1,15 @@
+---
+source: crates/nanoc-codegen/src/test.rs
+expression: try_it(code)
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+define i32 @main() {
+entry:
+  %y = alloca i32, align 4
+  %x = alloca i32, align 4
+  store i32 233, ptr %x, align 4
+  store i32 7, ptr %y, align 4
+  ret i32 0
+}

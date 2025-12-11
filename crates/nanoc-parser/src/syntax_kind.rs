@@ -54,6 +54,7 @@ pub enum SyntaxKind {
     L_BRACK,  // [
     R_BRACK,  // ]
 
+    // syntax tree nodes
     COMP_UNIT,
 
     FUNC_DEF,

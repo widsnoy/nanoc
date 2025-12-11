@@ -1,0 +1,8 @@
+---
+source: crates/nanoc-codegen/src/test.rs
+expression: try_it(code)
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+@x = constant i32 233

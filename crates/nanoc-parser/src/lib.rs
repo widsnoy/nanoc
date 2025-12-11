@@ -1,7 +1,7 @@
-mod ast;
-mod ast_macro;
+pub mod ast;
 mod lexer;
 pub mod parser;
+pub mod visitor;
 
 pub mod syntax_kind;
 

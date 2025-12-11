@@ -33,6 +33,7 @@ macro_rules! ast_node {
         }
         impl $Name {
             $(
+                #[allow(unused)]
                 pub fn $method(&self) -> ast_node!(@ret $handler $( ( $($arg)* ) )? ) {
                     ast_node!(@impl self, $handler $( ( $($arg)* ) )? )
                 }
@@ -208,8 +209,8 @@ ast_enum!(Stmt {
 
 ast_node!(
     AssignStmt ~ ASSIGN_STMT {
-        lhs: node(LVal),
-        rhs: node(Expr),
+        lhs: nth(LVal, 0),
+        rhs: nth(Expr, 1),
     }
 );
 
@@ -274,8 +275,12 @@ ast_node!(
     }
 );
 
-ast_node!(BinaryOp ~ BINARY_OP {});
-ast_node!(UnaryOp ~ UNARY_OP {});
+ast_node!(BinaryOp ~ BINARY_OP {
+    op: token(BINARY_OP)
+});
+ast_node!(UnaryOp ~ UNARY_OP {
+    op: token(UNARY_OP)
+});
 
 ast_node!(
     CallExpr ~ CALL_EXPR {

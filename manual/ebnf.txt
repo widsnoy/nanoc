@@ -1,15 +1,15 @@
 CompUnit    := {GlobalDecl}
-GlobalDecl   := Decl | FuncDef
+GlobalDecl  := Decl | FuncDef
 
 Type        := 'int' | 'float' | 'struct' Name
 
 Decl        := ConstDecl | VarDecl
 ConstDecl   := 'const' Type ConstDef {',' ConstDef} ';'
-ConstDef    := Pointer LIndexVal '=' ConstInitVal
+ConstDef    := Pointer ConstIndexVal '=' ConstInitVal
 ConstInitVal:= ConstExpr | '{' [ConstInitVal {',' ConstInitVal}] '}'
 
 VarDecl     := Type VarDef {',' VarDef} ';'
-VarDef      := Pointer LIndexVal ['=' InitVal]
+VarDef      := Pointer ConstIndexVal ['=' InitVal]
 InitVal     := Expr | '{' [InitVal {',' InitVal}] '}'
 
 Pointer     := {'*' ['const']}
@@ -39,7 +39,6 @@ BreakStmt   := 'break' ';'
 ContinueStmt:= 'continue' ';'
 ReturnStmt  := 'return' [Expr] ';'
 
-
 Expr        := LOrExpr
 LOrExpr     := LAndExpr {'||' LAndExpr}
 LAndExpr    := EqExpr {'&&' EqExpr}
@@ -48,24 +47,18 @@ RelExpr     := AddExpr {('<' | '>' | '<=' | '>=') AddExpr}
 AddExpr     := MulExpr {('+' | '-') MulExpr}
 MulExpr     := UnaryExpr {('*' | '/' | '%') UnaryExpr}
 
-
 UnaryExpr   := PrimaryExpr
              | DerefExpr
              | UnaryOp UnaryExpr
              | CallExpr
-
 DerefExpr   := '*' UnaryExpr
 UnaryOp     := '+' | '-' | '!' | '&'
-
 CallExpr    := Name '(' [FuncRParams] ')'
-
 PrimaryExpr := '(' Expr ')' | LVal | Literal
 
-LVal      := IndexVal | DerefExpr
-
+LVal        := IndexVal | DerefExpr
 IndexVal    := Name {'[' Expr ']'}
-
-LIndexVal   := Name {'[' ConstExpr ']'}
+ConstIndexVal   := Name {'[' ConstExpr ']'}
 
 FuncRParams := Expr {',' Expr}
 Literal     := IntConst | FloatConst

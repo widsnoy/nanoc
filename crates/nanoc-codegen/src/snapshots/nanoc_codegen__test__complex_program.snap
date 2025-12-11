@@ -1,0 +1,51 @@
+---
+source: crates/nanoc-codegen/src/test.rs
+expression: try_it(code)
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+define void @solve(i32 %n, i32 %a, i32 %b, i32 %c) {
+entry:
+  %c4 = alloca i32, align 4
+  %b3 = alloca i32, align 4
+  %a2 = alloca i32, align 4
+  %n1 = alloca i32, align 4
+  store i32 %n, ptr %n1, align 4
+  store i32 %a, ptr %a2, align 4
+  store i32 %b, ptr %b3, align 4
+  store i32 %c, ptr %c4, align 4
+  %n5 = load i32, ptr %n1, align 4
+  %eq = icmp eq i32 %n5, 1
+  br i1 %eq, label %then, label %else
+
+then:                                             ; preds = %entry
+  ret void
+
+else:                                             ; preds = %entry
+  br label %merge
+
+merge:                                            ; preds = %else
+  %n6 = load i32, ptr %n1, align 4
+  %sub = sub i32 %n6, 1
+  %a7 = load i32, ptr %a2, align 4
+  %c8 = load i32, ptr %c4, align 4
+  %b9 = load i32, ptr %b3, align 4
+  call void @solve(i32 %sub, i32 %a7, i32 %c8, i32 %b9)
+  %n10 = load i32, ptr %n1, align 4
+  %sub11 = sub i32 %n10, 1
+  %b12 = load i32, ptr %b3, align 4
+  %a13 = load i32, ptr %a2, align 4
+  %c14 = load i32, ptr %c4, align 4
+  call void @solve(i32 %sub11, i32 %b12, i32 %a13, i32 %c14)
+  ret void
+}
+
+define i32 @main() {
+entry:
+  %n = alloca i32, align 4
+  store i32 3, ptr %n, align 4
+  %n1 = load i32, ptr %n, align 4
+  call void @solve(i32 %n1, i32 1, i32 2, i32 3)
+  ret i32 0
+}
