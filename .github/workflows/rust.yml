@@ -2,42 +2,23 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "ci"]
   pull_request:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cargo fmt
-        run: cargo fmt --all -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cargo Clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Cargo Build
-        run: cargo build --verbose --workspace
-
   test:
-    name: Test
+    name: Rust-Check
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/widsnoy/rust-llvm19:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Cargo Test
-        run: cargo test --verbose --workspace
-          
+      - name: fmt & clippy & test
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --all-features -- -D warnings
+          cargo build --verbose --workspace
+          cargo test --verbose --workspace
