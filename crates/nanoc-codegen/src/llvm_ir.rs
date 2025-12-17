@@ -111,7 +111,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .expect("const 没有类型");
 
         for def in decl.const_defs() {
-            let name_node = def.name().expect("const 缺名字");
+            let name_node = def.const_index_val().expect("const 缺名字");
             let name = const_name(&name_node);
             let dims = const_index_dims(&name_node).unwrap_or_default();
             let arr_ty = wrap_array_dims(base_ty, &dims);
@@ -169,8 +169,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     fn compile_var_def(&mut self, def: VarDef, base_ty: BasicTypeEnum<'ctx>) {
-        let name = const_name(&def.name().expect("var 没有名字"));
-        let dims = const_index_dims(&def.name().expect("var 没有名字")).unwrap_or_default();
+        let name = const_name(&def.const_index_val().expect("var 没有名字"));
+        let dims =
+            const_index_dims(&def.const_index_val().expect("var 没有名字")).unwrap_or_default();
         let arr_ty = wrap_array_dims(base_ty, &dims);
         let full_ty = apply_pointer(arr_ty, def.pointer());
         let init = def.init();
