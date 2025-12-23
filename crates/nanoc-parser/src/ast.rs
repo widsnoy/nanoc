@@ -117,7 +117,7 @@ ast_node!(
 ast_node!(
     ConstDef ~ CONST_DEF {
         pointer: node(Pointer),
-        name: node(ConstIndexVal),
+        const_index_val: node(ConstIndexVal),
         init: node(ConstInitVal),
     }
 );
@@ -139,7 +139,7 @@ ast_node!(
 ast_node!(
     VarDef ~ VAR_DEF {
         pointer: node(Pointer),
-        name: node(ConstIndexVal),
+        const_index_val: node(ConstIndexVal),
         init: node(InitVal),
     }
 );
@@ -180,12 +180,16 @@ ast_node!(
         ty: node(Type),
         pointer: node(Pointer),
         name: node(Name),
-        // 加上这个以区分 `int a` 和 `int a[]`
-        // 如果 l_brack_token 存在，说明是数组形式
         l_brack_token: token(L_BRACK),
         indices: nodes(ConstExpr),
     }
 );
+
+impl FuncFParam {
+    pub fn is_array(&self) -> bool {
+        self.l_brack_token().is_some()
+    }
+}
 
 // 4. Block & Statements
 ast_node!(
@@ -275,12 +279,31 @@ ast_node!(
     }
 );
 
-ast_node!(BinaryOp ~ BINARY_OP {
-    op: token(BINARY_OP)
-});
-ast_node!(UnaryOp ~ UNARY_OP {
-    op: token(UNARY_OP)
-});
+ast_node!(BinaryOp ~ BINARY_OP {});
+
+impl BinaryOp {
+    pub fn op(&self) -> String {
+        let token = self
+            .syntax
+            .children_with_tokens()
+            .find_map(|t| t.into_token().filter(|t| !t.kind().is_trivia()))
+            .expect("impossible");
+        token.text().to_string()
+    }
+}
+
+ast_node!(UnaryOp ~ UNARY_OP {});
+
+impl UnaryOp {
+    pub fn op(&self) -> String {
+        let token = self
+            .syntax
+            .children_with_tokens()
+            .find_map(|t| t.into_token().filter(|t| !t.kind().is_trivia()))
+            .expect("impossible");
+        token.text().to_string()
+    }
+}
 
 ast_node!(
     CallExpr ~ CALL_EXPR {
@@ -351,3 +374,28 @@ ast_node!(
 );
 
 ast_node!(Pointer ~ POINTER {});
+
+impl Pointer {
+    /// true 表示可变指针，false 表示不可变指针
+    pub fn stars(&self) -> Vec<bool> {
+        let iter = self
+            .syntax()
+            .children_with_tokens()
+            .filter_map(|x| x.into_token())
+            .filter(|x| !x.kind().is_trivia());
+        let mut iter = iter.peekable();
+        let mut vec = Vec::new();
+        while let Some(_) = iter.next() {
+            if let Some(nxt) = iter.peek()
+                && nxt.kind() == SyntaxKind::CONST_KW
+            {
+                iter.next();
+                vec.push(false);
+            } else {
+                vec.push(true);
+            }
+        }
+
+        vec
+    }
+}
