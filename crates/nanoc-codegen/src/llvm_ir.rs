@@ -754,8 +754,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let (ptr, elem_ty) = self.lookup_var(&name).expect("变量未定义");
         let ptr_ty = ptr.get_type();
 
-        dbg!(&expr);
-
         if expr.indices().next().is_none() {
             return self
                 .builder
