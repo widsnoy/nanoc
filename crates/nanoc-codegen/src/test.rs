@@ -29,8 +29,6 @@ fn try_it(code: &str) -> String {
 
     program.compile_comp_unit(comp_unit);
 
-    dbg!(program.module.get_globals().collect::<Vec<_>>());
-
     program.module.print_to_string().to_string()
 }
 

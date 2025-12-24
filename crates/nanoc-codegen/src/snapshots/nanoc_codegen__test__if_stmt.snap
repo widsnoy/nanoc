@@ -5,46 +5,68 @@ expression: try_it(code)
 ; ModuleID = 'main'
 source_filename = "main"
 
+declare i32 @getint()
+
+declare i32 @getch()
+
+declare i32 @getarray(ptr)
+
+declare void @putint(i32)
+
+declare void @putch(i32)
+
+declare void @putarray(i32, ptr)
+
+declare void @starttime()
+
+declare void @stoptime()
+
 define i32 @main() {
 entry:
   %x = alloca i32, align 4
   store i32 0, ptr %x, align 4
   %x1 = load i32, ptr %x, align 4
   %gt = icmp sgt i32 %x1, 1
-  br i1 %gt, label %then, label %else
+  %gt.ext = zext i1 %gt to i32
+  %inttobool = icmp ne i32 %gt.ext, 0
+  br i1 %inttobool, label %then, label %else
 
 then:                                             ; preds = %entry
   %x2 = load i32, ptr %x, align 4
   %gt3 = icmp sgt i32 %x2, 2
-  br i1 %gt3, label %then4, label %else5
+  %gt.ext4 = zext i1 %gt3 to i32
+  %inttobool8 = icmp ne i32 %gt.ext4, 0
+  br i1 %inttobool8, label %then5, label %else6
 
 else:                                             ; preds = %entry
   store i32 6, ptr %x, align 4
   br label %merge
 
-merge:                                            ; preds = %else, %merge6
+merge:                                            ; preds = %else, %merge7
   ret i32 0
 
-then4:                                            ; preds = %then
+then5:                                            ; preds = %then
   store i32 3, ptr %x, align 4
-  br label %merge6
+  br label %merge7
 
-else5:                                            ; preds = %then
-  %x7 = load i32, ptr %x, align 4
-  %gt8 = icmp sgt i32 %x7, 3
-  br i1 %gt8, label %then9, label %else10
+else6:                                            ; preds = %then
+  %x9 = load i32, ptr %x, align 4
+  %gt10 = icmp sgt i32 %x9, 3
+  %gt.ext11 = zext i1 %gt10 to i32
+  %inttobool15 = icmp ne i32 %gt.ext11, 0
+  br i1 %inttobool15, label %then12, label %else13
 
-merge6:                                           ; preds = %merge11, %then4
+merge7:                                           ; preds = %merge14, %then5
   br label %merge
 
-then9:                                            ; preds = %else5
+then12:                                           ; preds = %else6
   store i32 4, ptr %x, align 4
-  br label %merge11
+  br label %merge14
 
-else10:                                           ; preds = %else5
+else13:                                           ; preds = %else6
   store i32 5, ptr %x, align 4
-  br label %merge11
+  br label %merge14
 
-merge11:                                          ; preds = %else10, %then9
-  br label %merge6
+merge14:                                          ; preds = %else13, %then12
+  br label %merge7
 }

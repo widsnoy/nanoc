@@ -88,7 +88,43 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         builder.build_alloca(ty, name).expect("创建 alloca 失败")
     }
 
+    fn declare_sysy_runtime(&self) {
+        let i32_type = self.context.i32_type();
+        let void_type = self.context.void_type();
+        let i32_ptr_type = self.context.ptr_type(inkwell::AddressSpace::default());
+
+        // int getint()
+        let fn_type = i32_type.fn_type(&[], false);
+        self.module.add_function("getint", fn_type, None);
+
+        // int getch()
+        self.module.add_function("getch", fn_type, None);
+
+        // int getarray(int a[])
+        let fn_type = i32_type.fn_type(&[i32_ptr_type.into()], false);
+        self.module.add_function("getarray", fn_type, None);
+
+        // void putint(int a)
+        let fn_type = void_type.fn_type(&[i32_type.into()], false);
+        self.module.add_function("putint", fn_type, None);
+
+        // void putch(int a)
+        self.module.add_function("putch", fn_type, None);
+
+        // void putarray(int n, int a[])
+        let fn_type = void_type.fn_type(&[i32_type.into(), i32_ptr_type.into()], false);
+        self.module.add_function("putarray", fn_type, None);
+
+        // void starttime()
+        let fn_type = void_type.fn_type(&[], false);
+        self.module.add_function("starttime", fn_type, None);
+
+        // void stoptime()
+        self.module.add_function("stoptime", fn_type, None);
+    }
+
     pub fn compile_comp_unit(&mut self, node: CompUnit) {
+        self.declare_sysy_runtime();
         for global in node.global_decls() {
             match global {
                 GlobalDecl::Decl(decl) => self.compile_global_decl(decl),
@@ -119,7 +155,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             let init = def.init();
             let value = init
                 .and_then(|i| self.compile_const_init_val(i, full_ty))
-                .unwrap_or_else(|| full_ty.const_zero());
+                .unwrap();
 
             if self.current_function.is_none() {
                 // global 常量
@@ -149,12 +185,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             return Some(self.compile_const_expr(expr));
         }
         todo!();
-        // // 仅支持简单常量数组的 {} 初始化，复杂场景后续扩展
-        // if init.inits().next().is_some() {
-        //     Some(ty.const_zero())
-        // } else {
-        //     None
-        // }
     }
 
     fn compile_var_decl(&mut self, decl: VarDecl) {
@@ -200,21 +230,23 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         }
     }
 
-    /// 全局变量的安全初始化（非常量退化为 0）
-    /// todo: 应该支持对 const 的变量初始化
+    /// 全局变量初始化（没有就是 0）
     fn const_init_or_zero(
         &mut self,
         init: Option<InitVal>,
         ty: BasicTypeEnum<'ctx>,
     ) -> BasicValueEnum<'ctx> {
-        if let Some(init) = init
-            && let Some(expr) = init.expr()
+        let Some(init) = init else {
+            return ty.const_zero();
+        };
+
+        if let Some(expr) = init.expr()
             && let Expr::Literal(lit) = expr
         {
             return self.compile_literal(lit);
         }
 
-        ty.const_zero()
+        todo!();
     }
 
     fn compile_init_val(&mut self, init: InitVal) -> Option<BasicValueEnum<'ctx>> {
@@ -365,7 +397,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .rhs()
             .map(|e| self.compile_expr(e))
             .expect("赋值缺右值");
-        dbg!(&rhs);
         let lhs_ptr = self.lval_to_ptr(stmt.lhs().expect("赋值缺左值"), "暂不支持的左值");
         self.builder
             .build_store(lhs_ptr, rhs)
@@ -519,18 +550,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .map(|e| self.compile_expr(e))
             .expect("二元右值缺失");
 
-        let op_token = expr
-            .op()
-            .and_then(|o| {
-                o.syntax()
-                    .children_with_tokens()
-                    .filter_map(|it| {
-                        it.into_token()
-                            .and_then(|x| x.kind().is_binary_op().then_some(x))
-                    })
-                    .next()
-            })
-            .expect("二元运算符缺失");
+        let op_token = expr.op().unwrap().op();
 
         match (lhs, rhs) {
             (BasicValueEnum::IntValue(l), BasicValueEnum::IntValue(r)) => {
@@ -540,32 +560,76 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     SyntaxKind::STAR => self.builder.build_int_mul(l, r, "mul").unwrap(),
                     SyntaxKind::SLASH => self.builder.build_int_signed_div(l, r, "div").unwrap(),
                     SyntaxKind::PERCENT => self.builder.build_int_signed_rem(l, r, "rem").unwrap(),
-                    SyntaxKind::LT => self
-                        .builder
-                        .build_int_compare(IntPredicate::SLT, l, r, "lt")
-                        .unwrap(),
-                    SyntaxKind::GT => self
-                        .builder
-                        .build_int_compare(IntPredicate::SGT, l, r, "gt")
-                        .unwrap(),
-                    SyntaxKind::LTEQ => self
-                        .builder
-                        .build_int_compare(IntPredicate::SLE, l, r, "le")
-                        .unwrap(),
-                    SyntaxKind::GTEQ => self
-                        .builder
-                        .build_int_compare(IntPredicate::SGE, l, r, "ge")
-                        .unwrap(),
-                    SyntaxKind::EQEQ => self
-                        .builder
-                        .build_int_compare(IntPredicate::EQ, l, r, "eq")
-                        .unwrap(),
-                    SyntaxKind::NEQ => self
-                        .builder
-                        .build_int_compare(IntPredicate::NE, l, r, "ne")
-                        .unwrap(),
-                    SyntaxKind::AMPAMP => self.builder.build_and(l, r, "and").unwrap(),
-                    SyntaxKind::PIPEPIPE => self.builder.build_or(l, r, "or").unwrap(),
+                    SyntaxKind::LT => {
+                        let cmp = self
+                            .builder
+                            .build_int_compare(IntPredicate::SLT, l, r, "lt")
+                            .unwrap();
+                        self.builder
+                            .build_int_z_extend(cmp, self.context.i32_type(), "lt.ext")
+                            .unwrap()
+                    }
+                    SyntaxKind::GT => {
+                        let cmp = self
+                            .builder
+                            .build_int_compare(IntPredicate::SGT, l, r, "gt")
+                            .unwrap();
+                        self.builder
+                            .build_int_z_extend(cmp, self.context.i32_type(), "gt.ext")
+                            .unwrap()
+                    }
+                    SyntaxKind::LTEQ => {
+                        let cmp = self
+                            .builder
+                            .build_int_compare(IntPredicate::SLE, l, r, "le")
+                            .unwrap();
+                        self.builder
+                            .build_int_z_extend(cmp, self.context.i32_type(), "le.ext")
+                            .unwrap()
+                    }
+                    SyntaxKind::GTEQ => {
+                        let cmp = self
+                            .builder
+                            .build_int_compare(IntPredicate::SGE, l, r, "ge")
+                            .unwrap();
+                        self.builder
+                            .build_int_z_extend(cmp, self.context.i32_type(), "ge.ext")
+                            .unwrap()
+                    }
+                    SyntaxKind::EQEQ => {
+                        let cmp = self
+                            .builder
+                            .build_int_compare(IntPredicate::EQ, l, r, "eq")
+                            .unwrap();
+                        self.builder
+                            .build_int_z_extend(cmp, self.context.i32_type(), "eq.ext")
+                            .unwrap()
+                    }
+                    SyntaxKind::NEQ => {
+                        let cmp = self
+                            .builder
+                            .build_int_compare(IntPredicate::NE, l, r, "ne")
+                            .unwrap();
+                        self.builder
+                            .build_int_z_extend(cmp, self.context.i32_type(), "ne.ext")
+                            .unwrap()
+                    }
+                    SyntaxKind::AMPAMP => {
+                        let lb = as_bool(self.builder, self.context, l.into());
+                        let rb = as_bool(self.builder, self.context, r.into());
+                        let res = self.builder.build_and(lb, rb, "and").unwrap();
+                        self.builder
+                            .build_int_z_extend(res, self.context.i32_type(), "and.ext")
+                            .unwrap()
+                    }
+                    SyntaxKind::PIPEPIPE => {
+                        let lb = as_bool(self.builder, self.context, l.into());
+                        let rb = as_bool(self.builder, self.context, r.into());
+                        let res = self.builder.build_or(lb, rb, "or").unwrap();
+                        self.builder
+                            .build_int_z_extend(res, self.context.i32_type(), "or.ext")
+                            .unwrap()
+                    }
                     _ => panic!("未支持的整型二元操作 {op_token:?}"),
                 };
                 res.into()
@@ -613,15 +677,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     fn compile_unary_expr(&mut self, expr: UnaryExpr) -> BasicValueEnum<'ctx> {
-        let op_token = expr
-            .op()
-            .and_then(|o| {
-                o.syntax()
-                    .children_with_tokens()
-                    .filter_map(|it| it.into_token())
-                    .next()
-            })
-            .expect("一元运算符缺失");
+        let op_token = expr.op().unwrap().op();
         let val = expr
             .expr()
             .map(|e| self.compile_expr(e))
@@ -631,7 +687,15 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             BasicValueEnum::IntValue(i) => match op_token.kind() {
                 SyntaxKind::PLUS => i.into(),
                 SyntaxKind::MINUS => self.builder.build_int_neg(i, "ineg").unwrap().into(),
-                SyntaxKind::BANG => self.builder.build_not(i, "inot").unwrap().into(),
+                SyntaxKind::BANG => {
+                    let b = as_bool(self.builder, self.context, val);
+                    let nb = self.builder.build_not(b, "lnot").unwrap();
+                    // i1 扩展到 i32
+                    self.builder
+                        .build_int_z_extend(nb, self.context.i32_type(), "lnot.ext")
+                        .unwrap()
+                        .into()
+                }
                 _ => panic!("未支持的整型一元操作"),
             },
             BasicValueEnum::FloatValue(f) => match op_token.kind() {
@@ -720,28 +784,29 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
     fn compile_literal(&mut self, expr: Literal) -> BasicValueEnum<'ctx> {
         if let Some(int_token) = expr.int_token() {
-            let text = int_token.text().to_string();
-            let v: i64 = text.parse().unwrap_or(0);
+            let s = int_token.text().to_string();
+            let (num_str, radix) = match s.chars().next() {
+                Some('0') => match s.chars().nth(1) {
+                    Some('x') | Some('X') => (&s[2..], 16),
+                    Some(_) => (&s[1..], 8),
+                    None => (&s[..], 10),
+                },
+                _ => (&s[..], 10),
+            };
+            let v = i32::from_str_radix(num_str, radix).unwrap();
             return self.context.i32_type().const_int(v as u64, true).into();
         }
         if let Some(float_token) = expr.float_token() {
-            let text = float_token.text().to_string();
-            let v: f64 = text.parse().unwrap_or(0.0);
-            return self.context.f32_type().const_float(v).into();
+            let s = float_token.text().to_string();
+            let v: f32 = s.parse().unwrap();
+            return self.context.f32_type().const_float(v as f64).into();
         }
         panic!("未知字面量");
     }
 
     fn compile_const_expr(&mut self, expr: ConstExpr) -> BasicValueEnum<'ctx> {
-        // 仅支持字面量/常量二元表达式，复杂情况后续扩展
-        if let Some(inner) = expr.expr() {
-            match inner {
-                Expr::Literal(lit) => self.compile_literal(lit),
-                _ => self.context.i32_type().const_int(0, false).into(),
-            }
-        } else {
-            self.context.i32_type().const_int(0, false).into()
-        }
+        let inner = expr.expr().unwrap();
+        self.compile_expr(inner)
     }
 
     fn _compile_const_index_val(&mut self, _val: ConstIndexVal) {
