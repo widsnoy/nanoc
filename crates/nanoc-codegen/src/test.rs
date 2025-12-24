@@ -29,8 +29,6 @@ fn try_it(code: &str) -> String {
 
     program.compile_comp_unit(comp_unit);
 
-    dbg!(program.module.get_globals().collect::<Vec<_>>());
-
     program.module.print_to_string().to_string()
 }
 
@@ -107,6 +105,15 @@ fn test_complex_program() {
         solve(n, 1, 2, 3);
         return 0;
     }
+    "#;
+    insta::assert_snapshot!(try_it(code));
+}
+
+#[test]
+fn test_oct() {
+    let code = r#"
+    const int y = 10;
+    const int z = y + 1;
     "#;
     insta::assert_snapshot!(try_it(code));
 }

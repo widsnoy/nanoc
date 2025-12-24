@@ -1,0 +1,32 @@
+---
+source: crates/nanoc-codegen/src/test.rs
+assertion_line: 126
+expression: try_it(code)
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+@x = global i32 0
+@y = constant i32 10
+@init = global i32 1
+
+declare i32 @getint()
+
+declare i32 @getch()
+
+declare i32 @getarray(ptr)
+
+declare void @putint(i32)
+
+declare void @putch(i32)
+
+declare void @putarray(i32, ptr)
+
+declare void @starttime()
+
+declare void @stoptime()
+
+define i32 @main() {
+entry:
+  ret i32 0
+}

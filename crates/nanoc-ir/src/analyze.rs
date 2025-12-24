@@ -239,7 +239,7 @@ impl Visitor for Module {
         let lhs = node.lhs().unwrap();
         let rhs = node.rhs().unwrap();
         let op = node.op().unwrap();
-        let op_str = op.op();
+        let op_str = op.op_str();
         if self.is_constant(lhs.syntax().text_range())
             && self.is_constant(rhs.syntax().text_range())
         {
@@ -256,7 +256,7 @@ impl Visitor for Module {
     fn leave_unary_expr(&mut self, node: UnaryExpr) {
         let expr = node.expr().unwrap();
         let op = node.op().unwrap();
-        let op_str = op.op();
+        let op_str = op.op_str();
 
         if self.is_constant(expr.syntax().text_range()) {
             let val = self
@@ -350,7 +350,15 @@ impl Visitor for Module {
         } else {
             let n = node.int_token().unwrap();
             let s = n.text();
-            Value::Int(s.parse::<i32>().unwrap())
+            let (num_str, radix) = match s.chars().next() {
+                Some('0') => match s.chars().nth(1) {
+                    Some('x') | Some('X') => (&s[2..], 16),
+                    Some(_) => (&s[1..], 8),
+                    None => (&s[..], 10),
+                },
+                _ => (&s[..], 10),
+            };
+            Value::Int(i32::from_str_radix(num_str, radix).unwrap())
         };
         self.value_table.insert(node.syntax().text_range(), v);
     }

@@ -282,12 +282,14 @@ ast_node!(
 ast_node!(BinaryOp ~ BINARY_OP {});
 
 impl BinaryOp {
-    pub fn op(&self) -> String {
-        let token = self
-            .syntax
+    pub fn op(&self) -> SyntaxToken {
+        self.syntax
             .children_with_tokens()
             .find_map(|t| t.into_token().filter(|t| !t.kind().is_trivia()))
-            .expect("impossible");
+            .expect("impossible")
+    }
+    pub fn op_str(&self) -> String {
+        let token = self.op();
         token.text().to_string()
     }
 }
@@ -295,12 +297,14 @@ impl BinaryOp {
 ast_node!(UnaryOp ~ UNARY_OP {});
 
 impl UnaryOp {
-    pub fn op(&self) -> String {
-        let token = self
-            .syntax
+    pub fn op(&self) -> SyntaxToken {
+        self.syntax
             .children_with_tokens()
             .find_map(|t| t.into_token().filter(|t| !t.kind().is_trivia()))
-            .expect("impossible");
+            .expect("impossible")
+    }
+    pub fn op_str(&self) -> String {
+        let token = self.op();
         token.text().to_string()
     }
 }

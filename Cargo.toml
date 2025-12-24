@@ -25,7 +25,6 @@ thunderdome = "0.6.1"
 
 nanoc-parser = { path = "crates/nanoc-parser" }
 nanoc-codegen = { path = "crates/nanoc-codegen" }
-
 [dependencies]
 nanoc-parser.workspace = true
 nanoc-codegen.workspace = true
