@@ -6,6 +6,7 @@ runtime_lib="../target/debug/libnanoc_runtime.a"
 PLAY_GROUND="../playground"
 RESULT_FILE="$PLAY_GROUND/result.txt"
 
+mkdir -p "$PLAY_GROUND/ll"
 rm -f $RESULT_FILE
 touch $RESULT_FILE
 

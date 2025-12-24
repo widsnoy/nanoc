@@ -16,6 +16,8 @@ jobs:
       image: ghcr.io/widsnoy/rust-llvm19:latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Cargo fmt
         run: cargo fmt --all -- --check
       - name: Cargo clippy
