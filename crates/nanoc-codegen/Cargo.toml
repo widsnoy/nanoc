@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 nanoc-parser.workspace = true
+nanoc-ir.workspace = true
+
 inkwell.workspace = true
 rowan.workspace = true
 insta.workspace = true

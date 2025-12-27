@@ -167,6 +167,7 @@ version = "0.1.0"
 dependencies = [
  "inkwell",
  "insta",
+ "nanoc-ir",
  "nanoc-parser",
  "rowan",
 ]
@@ -177,6 +178,7 @@ version = "0.1.0"
 dependencies = [
  "inkwell",
  "nanoc-codegen",
+ "nanoc-ir",
  "nanoc-parser",
 ]
 

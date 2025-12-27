@@ -3,18 +3,20 @@ use std::collections::HashMap;
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum};
 use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, FunctionValue, PointerValue};
-use inkwell::{builder::Builder, context::Context, module::Module};
+use inkwell::{builder::Builder, context::Context};
 use nanoc_parser::ast::*;
 use nanoc_parser::syntax_kind::SyntaxKind;
 
 use crate::utils::{
-    apply_pointer, as_bool, const_index_dims, const_name, name_text, wrap_array_dims,
+    apply_pointer, as_bool, const_index_dims, const_name, convert_value, name_text, wrap_array_dims,
 };
 
 pub struct Program<'a, 'ctx> {
     pub context: &'ctx Context,
     pub builder: &'a Builder<'ctx>,
-    pub module: &'a Module<'ctx>,
+    pub module: &'a inkwell::module::Module<'ctx>,
+
+    pub analyzer: &'a nanoc_ir::module::Module,
 
     /// 函数/变量环境
     pub current_function: Option<FunctionValue<'ctx>>,
@@ -176,6 +178,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         }
     }
 
+    /// 保证能用 analyzer 求出值
     fn compile_const_init_val(
         &mut self,
         init: ConstInitVal,
@@ -805,8 +808,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     fn compile_const_expr(&mut self, expr: ConstExpr) -> BasicValueEnum<'ctx> {
-        let inner = expr.expr().unwrap();
-        self.compile_expr(inner)
+        let value = self
+            .analyzer
+            .get_value(&expr.syntax().text_range())
+            .cloned()
+            .unwrap();
+        convert_value(self.context, value)
     }
 
     fn _compile_const_index_val(&mut self, _val: ConstIndexVal) {
