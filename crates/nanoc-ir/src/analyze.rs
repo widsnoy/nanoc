@@ -45,7 +45,7 @@ impl Visitor for Module {
 
         let Some(init_val_node) = const_def.init() else {
             self.analyzing.errors.push(SemanticError::ExpectInitialVal {
-                name: name,
+                name,
                 range: name_range,
             });
             return;
@@ -57,8 +57,6 @@ impl Visitor for Module {
             .cloned()
         {
             self.value_table.insert(name_range, v);
-        } else {
-            unreachable!();
         }
         let _ = scope.new_variable(
             &mut self.variables,

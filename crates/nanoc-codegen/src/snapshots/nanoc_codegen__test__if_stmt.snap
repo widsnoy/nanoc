@@ -27,15 +27,15 @@ entry:
   store i32 0, ptr %x, align 4
   %x1 = load i32, ptr %x, align 4
   %gt = icmp sgt i32 %x1, 1
-  %gt.ext = zext i1 %gt to i32
-  %inttobool = icmp ne i32 %gt.ext, 0
+  %bool_ext = zext i1 %gt to i32
+  %inttobool = icmp ne i32 %bool_ext, 0
   br i1 %inttobool, label %then, label %else
 
 then:                                             ; preds = %entry
   %x2 = load i32, ptr %x, align 4
   %gt3 = icmp sgt i32 %x2, 2
-  %gt.ext4 = zext i1 %gt3 to i32
-  %inttobool8 = icmp ne i32 %gt.ext4, 0
+  %bool_ext4 = zext i1 %gt3 to i32
+  %inttobool8 = icmp ne i32 %bool_ext4, 0
   br i1 %inttobool8, label %then5, label %else6
 
 else:                                             ; preds = %entry
@@ -52,8 +52,8 @@ then5:                                            ; preds = %then
 else6:                                            ; preds = %then
   %x9 = load i32, ptr %x, align 4
   %gt10 = icmp sgt i32 %x9, 3
-  %gt.ext11 = zext i1 %gt10 to i32
-  %inttobool15 = icmp ne i32 %gt.ext11, 0
+  %bool_ext11 = zext i1 %gt10 to i32
+  %inttobool15 = icmp ne i32 %bool_ext11, 0
   br i1 %inttobool15, label %then12, label %else13
 
 merge7:                                           ; preds = %merge14, %then5

@@ -67,11 +67,7 @@ pub fn wrap_array_dims<'ctx>(base: BasicTypeEnum<'ctx>, dims: &[u32]) -> BasicTy
 }
 
 /// 将任意值转为 i1 布尔
-pub fn as_bool<'ctx>(
-    builder: &Builder<'ctx>,
-    _context: &'ctx Context,
-    val: BasicValueEnum<'ctx>,
-) -> IntValue<'ctx> {
+pub fn as_bool<'ctx>(builder: &Builder<'ctx>, val: BasicValueEnum<'ctx>) -> IntValue<'ctx> {
     match val {
         BasicValueEnum::IntValue(i) => {
             if i.get_type().get_bit_width() == 1 {
@@ -108,4 +104,15 @@ pub fn convert_value<'ctx>(context: &'ctx Context, value: Value) -> BasicValueEn
         Value::Struct(_) => todo!(),
         Value::Symbol(_, _) => todo!(),
     }
+}
+
+/// 将 i1 无符号扩展为 i32
+pub fn bool_to_i32<'ctx>(
+    builder: &Builder<'ctx>,
+    context: &'ctx Context,
+    val: IntValue<'ctx>,
+) -> IntValue<'ctx> {
+    builder
+        .build_int_z_extend(val, context.i32_type(), "bool_ext")
+        .unwrap()
 }

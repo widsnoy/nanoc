@@ -96,4 +96,8 @@ fn main() {
         .module
         .print_to_file(&output_path)
         .expect("Failed to write LLVM IR");
+
+    if let Err(e) = module.verify() {
+        panic!("{}", e.to_string_lossy());
+    }
 }

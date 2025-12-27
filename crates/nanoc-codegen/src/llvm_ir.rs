@@ -8,7 +8,8 @@ use nanoc_parser::ast::*;
 use nanoc_parser::syntax_kind::SyntaxKind;
 
 use crate::utils::{
-    apply_pointer, as_bool, const_index_dims, const_name, convert_value, name_text, wrap_array_dims,
+    apply_pointer, as_bool, bool_to_i32, const_index_dims, const_name, convert_value, name_text,
+    wrap_array_dims,
 };
 
 pub struct Program<'a, 'ctx> {
@@ -367,9 +368,23 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     fn compile_block(&mut self, block: Block) {
         self.push_scope();
         for item in block.items() {
+            let is_terminal = if let BlockItem::Stmt(ref stmt) = item
+                && matches!(
+                    stmt,
+                    Stmt::BreakStmt(_) | Stmt::ContinueStmt(_) | Stmt::ReturnStmt(_)
+                ) {
+                true
+            } else {
+                false
+            };
             match item {
                 BlockItem::Decl(decl) => self.compile_local_decl(decl),
                 BlockItem::Stmt(stmt) => self.compile_stmt(stmt),
+            }
+
+            // 如果有跳转或者终止指令，后面的扔掉
+            if is_terminal {
+                break;
             }
         }
         self.pop_scope();
@@ -423,7 +438,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let else_bb = self.context.append_basic_block(func, "else");
         let merge_bb = self.context.append_basic_block(func, "merge");
 
-        let bool_val = as_bool(self.builder, self.context, cond_val);
+        let bool_val = as_bool(self.builder, cond_val);
         self.builder
             .build_conditional_branch(bool_val, then_bb, else_bb)
             .expect("if 跳转失败");
@@ -484,7 +499,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .condition()
             .map(|e| self.compile_expr(e))
             .expect("while 条件缺失");
-        let bool_val = as_bool(self.builder, self.context, cond_val);
+        let bool_val = as_bool(self.builder, cond_val);
         self.builder
             .build_conditional_branch(bool_val, body_bb, end_bb)
             .expect("while 条件跳转失败");
@@ -544,16 +559,62 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         use inkwell::FloatPredicate;
         use inkwell::IntPredicate;
 
+        let op_token = expr.op().unwrap().op();
+
+        if let Some(func) = self.current_function
+            && matches!(op_token.kind(), SyntaxKind::AMPAMP | SyntaxKind::PIPEPIPE)
+        {
+            let i32_zero = self.context.i32_type().const_zero();
+
+            let rhs_bb = self.context.append_basic_block(func, "land.rhs");
+            let merge_bb = self.context.append_basic_block(func, "land.phi");
+
+            let lhs = expr.lhs().map(|e| self.compile_expr(e)).unwrap();
+            let lhs = lhs.into_int_value();
+
+            let lhs_bb = self.builder.get_insert_block().unwrap();
+            let eq_zero = self
+                .builder
+                .build_int_compare(IntPredicate::EQ, lhs, i32_zero, "land.i32_eq_0")
+                .unwrap();
+            let short_circuit_val = if op_token.kind() == SyntaxKind::AMPAMP {
+                let _ = self
+                    .builder
+                    .build_conditional_branch(eq_zero, merge_bb, rhs_bb);
+                i32_zero
+            } else {
+                let _ = self
+                    .builder
+                    .build_conditional_branch(eq_zero, rhs_bb, merge_bb);
+                self.context.i32_type().const_int(1, false)
+            };
+
+            self.builder.position_at_end(rhs_bb);
+            let rhs = expr.rhs().map(|e| self.compile_expr(e)).unwrap();
+            let rhs_val = as_bool(self.builder, rhs);
+            let rhs_val = bool_to_i32(self.builder, self.context, rhs_val);
+            let rhs_end_bb = self.builder.get_insert_block().unwrap();
+            let _ = self.builder.build_unconditional_branch(merge_bb);
+
+            self.builder.position_at_end(merge_bb);
+            let merge = self
+                .builder
+                .build_phi(self.context.i32_type(), "land.phi")
+                .unwrap();
+
+            merge.add_incoming(&[(&short_circuit_val, lhs_bb), (&rhs_val, rhs_end_bb)]);
+            return merge.as_basic_value();
+        }
+
         let lhs = expr
             .lhs()
             .map(|e| self.compile_expr(e))
             .expect("二元左值缺失");
+
         let rhs = expr
             .rhs()
             .map(|e| self.compile_expr(e))
             .expect("二元右值缺失");
-
-        let op_token = expr.op().unwrap().op();
 
         match (lhs, rhs) {
             (BasicValueEnum::IntValue(l), BasicValueEnum::IntValue(r)) => {
@@ -568,70 +629,54 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .builder
                             .build_int_compare(IntPredicate::SLT, l, r, "lt")
                             .unwrap();
-                        self.builder
-                            .build_int_z_extend(cmp, self.context.i32_type(), "lt.ext")
-                            .unwrap()
+                        bool_to_i32(self.builder, self.context, cmp)
                     }
                     SyntaxKind::GT => {
                         let cmp = self
                             .builder
                             .build_int_compare(IntPredicate::SGT, l, r, "gt")
                             .unwrap();
-                        self.builder
-                            .build_int_z_extend(cmp, self.context.i32_type(), "gt.ext")
-                            .unwrap()
+                        bool_to_i32(self.builder, self.context, cmp)
                     }
                     SyntaxKind::LTEQ => {
                         let cmp = self
                             .builder
                             .build_int_compare(IntPredicate::SLE, l, r, "le")
                             .unwrap();
-                        self.builder
-                            .build_int_z_extend(cmp, self.context.i32_type(), "le.ext")
-                            .unwrap()
+                        bool_to_i32(self.builder, self.context, cmp)
                     }
                     SyntaxKind::GTEQ => {
                         let cmp = self
                             .builder
                             .build_int_compare(IntPredicate::SGE, l, r, "ge")
                             .unwrap();
-                        self.builder
-                            .build_int_z_extend(cmp, self.context.i32_type(), "ge.ext")
-                            .unwrap()
+                        bool_to_i32(self.builder, self.context, cmp)
                     }
                     SyntaxKind::EQEQ => {
                         let cmp = self
                             .builder
                             .build_int_compare(IntPredicate::EQ, l, r, "eq")
                             .unwrap();
-                        self.builder
-                            .build_int_z_extend(cmp, self.context.i32_type(), "eq.ext")
-                            .unwrap()
+                        bool_to_i32(self.builder, self.context, cmp)
                     }
                     SyntaxKind::NEQ => {
                         let cmp = self
                             .builder
                             .build_int_compare(IntPredicate::NE, l, r, "ne")
                             .unwrap();
-                        self.builder
-                            .build_int_z_extend(cmp, self.context.i32_type(), "ne.ext")
-                            .unwrap()
+                        bool_to_i32(self.builder, self.context, cmp)
                     }
                     SyntaxKind::AMPAMP => {
-                        let lb = as_bool(self.builder, self.context, l.into());
-                        let rb = as_bool(self.builder, self.context, r.into());
+                        let lb = as_bool(self.builder, l.into());
+                        let rb = as_bool(self.builder, r.into());
                         let res = self.builder.build_and(lb, rb, "and").unwrap();
-                        self.builder
-                            .build_int_z_extend(res, self.context.i32_type(), "and.ext")
-                            .unwrap()
+                        bool_to_i32(self.builder, self.context, res)
                     }
                     SyntaxKind::PIPEPIPE => {
-                        let lb = as_bool(self.builder, self.context, l.into());
-                        let rb = as_bool(self.builder, self.context, r.into());
+                        let lb = as_bool(self.builder, l.into());
+                        let rb = as_bool(self.builder, r.into());
                         let res = self.builder.build_or(lb, rb, "or").unwrap();
-                        self.builder
-                            .build_int_z_extend(res, self.context.i32_type(), "or.ext")
-                            .unwrap()
+                        bool_to_i32(self.builder, self.context, res)
                     }
                     _ => panic!("未支持的整型二元操作 {op_token:?}"),
                 };
@@ -691,13 +736,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 SyntaxKind::PLUS => i.into(),
                 SyntaxKind::MINUS => self.builder.build_int_neg(i, "ineg").unwrap().into(),
                 SyntaxKind::BANG => {
-                    let b = as_bool(self.builder, self.context, val);
+                    let b = as_bool(self.builder, val);
                     let nb = self.builder.build_not(b, "lnot").unwrap();
-                    // i1 扩展到 i32
-                    self.builder
-                        .build_int_z_extend(nb, self.context.i32_type(), "lnot.ext")
-                        .unwrap()
-                        .into()
+                    bool_to_i32(self.builder, self.context, nb).into()
                 }
                 _ => panic!("未支持的整型一元操作"),
             },
@@ -812,7 +853,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .analyzer
             .get_value(&expr.syntax().text_range())
             .cloned()
-            .expect(expr.syntax().text().to_string().as_str());
+            .unwrap_or_else(|| panic!("{}", expr.syntax().text().to_string()));
         convert_value(self.context, value)
     }
 

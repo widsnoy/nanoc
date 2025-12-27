@@ -115,3 +115,16 @@ fn test_complex_program() {
     "#;
     insta::assert_snapshot!(try_it(code));
 }
+
+#[test]
+fn test_return_stmt() {
+    let code = r#"
+    int main() {
+        int x = 233;
+        int y = 1 + 2 * 3;
+        return x + y;
+        return 0;
+    }
+    "#;
+    insta::assert_snapshot!(try_it(code));
+}

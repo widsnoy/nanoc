@@ -33,8 +33,8 @@ entry:
   store i32 %c, ptr %c4, align 4
   %n5 = load i32, ptr %n1, align 4
   %eq = icmp eq i32 %n5, 1
-  %eq.ext = zext i1 %eq to i32
-  %inttobool = icmp ne i32 %eq.ext, 0
+  %bool_ext = zext i1 %eq to i32
+  %inttobool = icmp ne i32 %bool_ext, 0
   br i1 %inttobool, label %then, label %else
 
 then:                                             ; preds = %entry
