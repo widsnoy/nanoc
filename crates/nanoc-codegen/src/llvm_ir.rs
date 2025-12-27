@@ -812,7 +812,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .analyzer
             .get_value(&expr.syntax().text_range())
             .cloned()
-            .unwrap();
+            .expect(expr.syntax().text().to_string().as_str());
         convert_value(self.context, value)
     }
 

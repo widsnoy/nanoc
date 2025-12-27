@@ -22,8 +22,7 @@ fn analyze(source: &str) -> Module {
 fn test_variable_declaration() {
     let source = r#"
     int main() {
-        int a;
-        float b;
+        const int x = 1, y = x + 1;
     }
     "#;
     let module = analyze(source);
@@ -159,7 +158,7 @@ fn test_function_definition() {
     int add(int a, int b) {
         int result;
     }
-    
+
     int main() {
     }
     "#;
@@ -269,11 +268,11 @@ fn test_multiple_functions() {
     void func1() {
         int a;
     }
-    
+
     int func2(int x) {
         int b;
     }
-    
+
     float func3(float a, int b) {
         float c;
     }

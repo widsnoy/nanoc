@@ -15,20 +15,21 @@ pub struct Module {
     pub scopes: Arena<Scope>,
 
     pub global_scope: ScopeID,
-    // 检查是否是编译期可计算的常量节点
+    /// 检查是否是编译期可计算的常量节点
     pub constant_nodes: HashSet<TextRange>,
 
-    // const
+    /// 只存常量
     pub value_table: HashMap<TextRange, Value>,
 
-    // 分析的时候上下文，使用后清除
-    pub(super) analyzing: AnalyzeContext,
+    /// 分析的时候上下文，使用后清除
+    pub analyzing: AnalyzeContext,
 }
 
 #[derive(Debug, Default)]
-pub(super) struct AnalyzeContext {
-    pub(super) current_scope: ScopeID,
-    pub(super) errors: Vec<SemanticError>,
+pub struct AnalyzeContext {
+    pub current_scope: ScopeID,
+    pub errors: Vec<SemanticError>,
+    pub current_base_type: Option<NType>,
 }
 
 #[derive(Debug)]
@@ -50,6 +51,10 @@ pub enum SemanticError {
         range: TextRange,
     },
     VariableUndefined {
+        name: String,
+        range: TextRange,
+    },
+    ExpectInitialVal {
         name: String,
         range: TextRange,
     },
@@ -126,6 +131,12 @@ pub enum VariableTag {
     Define,
     Write,
     Read,
+}
+
+impl Variable {
+    pub fn is_const(&self) -> bool {
+        matches!(self.ty, NType::Const(_))
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

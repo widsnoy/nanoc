@@ -45,6 +45,10 @@ fn main() {
     let mut analyzer = nanoc_ir::module::Module::default();
     analyzer.walk(&root);
 
+    if !analyzer.analyzing.errors.is_empty() {
+        panic!("{:?}", analyzer.analyzing.errors);
+    }
+
     let mut program = Program {
         context: &context,
         builder: &builder,
