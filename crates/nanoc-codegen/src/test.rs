@@ -1,5 +1,6 @@
 use inkwell::context::Context;
 use nanoc_parser::ast::{AstNode, CompUnit};
+use nanoc_parser::visitor::Visitor as _;
 
 use crate::llvm_ir;
 
@@ -9,6 +10,10 @@ fn try_it(code: &str) -> String {
     assert!(errors.is_empty(), "Parser errors: {:?}", errors);
 
     let root = nanoc_parser::parser::Parser::new_root(green_node);
+
+    let mut analyzer = nanoc_ir::module::Module::default();
+    analyzer.walk(&root);
+
     // dbg!(&root);
     let comp_unit = CompUnit::cast(root).unwrap();
 
@@ -20,6 +25,7 @@ fn try_it(code: &str) -> String {
         context: &context,
         builder: &builder,
         module: &module,
+        analyzer: &analyzer,
         current_function: None,
         scopes: Vec::new(),
         functions: Default::default(),
@@ -36,6 +42,7 @@ fn try_it(code: &str) -> String {
 fn test_const_init() {
     let code = r#"
     const int x = 233;
+    const int y = x + 1;
     "#;
     insta::assert_snapshot!(try_it(code));
 }

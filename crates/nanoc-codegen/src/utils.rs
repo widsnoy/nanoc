@@ -3,6 +3,7 @@ use core::panic;
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, IntValue};
 use inkwell::{builder::Builder, context::Context};
+use nanoc_ir::ntype::Value;
 use nanoc_parser::ast::{AstNode, ConstIndexVal, Name, Pointer};
 use nanoc_parser::syntax_kind::SyntaxKind;
 
@@ -95,5 +96,16 @@ pub fn as_bool<'ctx>(
             )
             .unwrap(),
         _ => panic!("无法转换为布尔"),
+    }
+}
+
+/// convert `Value` to `BasicValueEnum`
+pub fn convert_value<'ctx>(context: &'ctx Context, value: Value) -> BasicValueEnum<'ctx> {
+    match value {
+        Value::Int(x) => context.i32_type().const_int(x as u64, false).into(),
+        Value::Float(x) => context.f32_type().const_float(x.into()).into(),
+        Value::Array(_) => todo!(),
+        Value::Struct(_) => todo!(),
+        Value::Symbol(_, _) => todo!(),
     }
 }

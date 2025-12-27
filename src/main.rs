@@ -7,6 +7,7 @@ use inkwell::context::Context;
 use inkwell::targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetTriple};
 use nanoc_codegen::llvm_ir::Program;
 use nanoc_parser::ast::{AstNode, CompUnit};
+use nanoc_parser::visitor::Visitor as _;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -29,9 +30,6 @@ fn main() {
         std::process::exit(1);
     }
 
-    let root = nanoc_parser::parser::Parser::new_root(green_node);
-    let comp_unit = CompUnit::cast(root).expect("Root node is not CompUnit");
-
     // 2. Codegen (LLVM IR)
     let context = Context::create();
     // Use filename as module name
@@ -42,10 +40,16 @@ fn main() {
     let module = context.create_module(module_name);
     let builder = context.create_builder();
 
+    // analyzer
+    let root = nanoc_parser::parser::Parser::new_root(green_node);
+    let mut analyzer = nanoc_ir::module::Module::default();
+    analyzer.walk(&root);
+
     let mut program = Program {
         context: &context,
         builder: &builder,
         module: &module,
+        analyzer: &analyzer,
         current_function: None,
         scopes: Vec::new(),
         functions: Default::default(),
@@ -53,6 +57,7 @@ fn main() {
         loop_stack: Vec::new(),
     };
 
+    let comp_unit = CompUnit::cast(root).expect("Root node is not CompUnit");
     program.compile_comp_unit(comp_unit);
 
     Target::initialize_all(&InitializationConfig::default());

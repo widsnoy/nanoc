@@ -180,60 +180,31 @@ impl Visitor for Module {
     }
 
     fn enter_assign_stmt(&mut self, _node: AssignStmt) {
-        todo!("检查类型是否匹配")
+        // todo!("检查类型是否匹配")
     }
 
     fn leave_assign_stmt(&mut self, _node: AssignStmt) {
-        todo!()
-    }
-
-    fn enter_expr_stmt(&mut self, _node: ExprStmt) {
-        todo!()
-    }
-
-    fn leave_expr_stmt(&mut self, _node: ExprStmt) {
-        todo!()
-    }
-
-    fn enter_if_stmt(&mut self, _node: IfStmt) {
-        todo!()
-    }
-
-    fn leave_if_stmt(&mut self, _node: IfStmt) {
-        todo!()
-    }
-
-    fn enter_while_stmt(&mut self, _node: WhileStmt) {
-        todo!()
-    }
-
-    fn leave_while_stmt(&mut self, _node: WhileStmt) {
-        todo!()
+        // todo!()
     }
 
     fn enter_break_stmt(&mut self, _node: BreakStmt) {
-        todo!()
+        // todo!()
     }
 
     fn leave_break_stmt(&mut self, _node: BreakStmt) {
-        todo!()
+        // todo!()
     }
 
     fn enter_continue_stmt(&mut self, _node: ContinueStmt) {
-        todo!()
+        // todo!()
     }
 
     fn leave_continue_stmt(&mut self, _node: ContinueStmt) {
-        todo!()
+        // todo!()
     }
 
-    fn enter_return_stmt(&mut self, _node: ReturnStmt) {
-        todo!()
-    }
-
-    fn leave_return_stmt(&mut self, _node: ReturnStmt) {
-        todo!()
-    }
+    // 检查返回类型
+    fn leave_return_stmt(&mut self, _node: ReturnStmt) {}
 
     fn leave_binary_expr(&mut self, node: BinaryExpr) {
         let lhs = node.lhs().unwrap();

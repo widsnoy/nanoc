@@ -22,10 +22,12 @@ inkwell = { version = "0.7.1", features = ["llvm19-1"] }
 thunderdome = "0.6.1"
 # smol_str = "0.3.4"
 
-
 nanoc-parser = { path = "crates/nanoc-parser" }
 nanoc-codegen = { path = "crates/nanoc-codegen" }
+nanoc-ir = { path = "crates/nanoc-ir" }
+
 [dependencies]
 nanoc-parser.workspace = true
 nanoc-codegen.workspace = true
+nanoc-ir.workspace = true
 inkwell.workspace = true

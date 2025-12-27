@@ -10,6 +10,8 @@ mkdir -p "$PLAY_GROUND/ll"
 rm -f $RESULT_FILE
 touch $RESULT_FILE
 
+cargo build
+
 for i in "$@"; do
     for i in "$testdir/lv$i"/*.c; do
         name=$(basename "${i%.c}")
@@ -54,7 +56,7 @@ for i in "$@"; do
         if [ $diff_result -eq 0 ]; then
             echo -e "\033[32m$name: Passed\033[0m"
         else
-            echo -e "\033[31m$name: Failed\033[0m"
+            echo -e "\033[31m$name: Failed\033[0m - $i"
             echo "$name:" >> $RESULT_FILE
             cat $PLAY_GROUND/diff.txt >> $RESULT_FILE
         fi

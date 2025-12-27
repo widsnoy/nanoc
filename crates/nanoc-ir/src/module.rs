@@ -64,6 +64,10 @@ impl Module {
         self.constant_nodes.contains(&range)
     }
 
+    pub fn get_value(&self, range: &TextRange) -> Option<&Value> {
+        self.value_table.get(range)
+    }
+
     pub fn new_scope(&mut self, parent: Option<ScopeID>) -> ScopeID {
         let scope = Scope {
             parent,
