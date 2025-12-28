@@ -7,6 +7,8 @@ use nanoc_ir::ntype::Value;
 use nanoc_parser::ast::{AstNode, ConstIndexVal, Name, Pointer};
 use nanoc_parser::syntax_kind::SyntaxKind;
 
+use crate::llvm_ir::Program;
+
 /// 统计指针星号数量
 pub fn pointer_depth(ptr: &Pointer) -> usize {
     ptr.syntax()
@@ -66,53 +68,52 @@ pub fn wrap_array_dims<'ctx>(base: BasicTypeEnum<'ctx>, dims: &[u32]) -> BasicTy
         .fold(base, |ty, d| ty.array_type(*d).into())
 }
 
-/// 将任意值转为 i1 布尔
-pub fn as_bool<'ctx>(builder: &Builder<'ctx>, val: BasicValueEnum<'ctx>) -> IntValue<'ctx> {
-    match val {
-        BasicValueEnum::IntValue(i) => {
-            if i.get_type().get_bit_width() == 1 {
-                i
-            } else {
-                builder
-                    .build_int_compare(
-                        inkwell::IntPredicate::NE,
-                        i,
-                        i.get_type().const_int(0, false),
-                        "inttobool",
-                    )
-                    .unwrap()
+impl<'a, 'ctx> Program<'a, 'ctx> {
+    /// 将任意值转为 i1 布尔
+    pub fn as_bool(&self, val: BasicValueEnum<'ctx>) -> IntValue<'ctx> {
+        match val {
+            BasicValueEnum::IntValue(i) => {
+                if i.get_type().get_bit_width() == 1 {
+                    i
+                } else {
+                    self.builder
+                        .build_int_compare(
+                            inkwell::IntPredicate::NE,
+                            i,
+                            i.get_type().const_int(0, false),
+                            "inttobool",
+                        )
+                        .unwrap()
+                }
             }
+            BasicValueEnum::FloatValue(f) => self
+                .builder
+                .build_float_compare(
+                    inkwell::FloatPredicate::ONE,
+                    f,
+                    f.get_type().const_float(0.0),
+                    "floattoboolf",
+                )
+                .unwrap(),
+            _ => panic!("无法转换为布尔"),
         }
-        BasicValueEnum::FloatValue(f) => builder
-            .build_float_compare(
-                inkwell::FloatPredicate::ONE,
-                f,
-                f.get_type().const_float(0.0),
-                "floattoboolf",
-            )
-            .unwrap(),
-        _ => panic!("无法转换为布尔"),
     }
-}
 
-/// convert `Value` to `BasicValueEnum`
-pub fn convert_value<'ctx>(context: &'ctx Context, value: Value) -> BasicValueEnum<'ctx> {
-    match value {
-        Value::Int(x) => context.i32_type().const_int(x as u64, false).into(),
-        Value::Float(x) => context.f32_type().const_float(x.into()).into(),
-        Value::Array(_) => todo!(),
-        Value::Struct(_) => todo!(),
-        Value::Symbol(_, _) => todo!(),
+    /// convert `Value` to `BasicValueEnum`
+    pub fn convert_value(&self, value: Value) -> BasicValueEnum<'ctx> {
+        match value {
+            Value::Int(x) => self.context.i32_type().const_int(x as u64, false).into(),
+            Value::Float(x) => self.context.f32_type().const_float(x.into()).into(),
+            Value::Array(_) => todo!(),
+            Value::Struct(_) => todo!(),
+            Value::Symbol(_, _) => todo!(),
+        }
     }
-}
 
-/// 将 i1 无符号扩展为 i32
-pub fn bool_to_i32<'ctx>(
-    builder: &Builder<'ctx>,
-    context: &'ctx Context,
-    val: IntValue<'ctx>,
-) -> IntValue<'ctx> {
-    builder
-        .build_int_z_extend(val, context.i32_type(), "bool_ext")
-        .unwrap()
+    /// 将 i1 无符号扩展为 i32
+    pub fn bool_to_i32(&self, val: IntValue<'ctx>) -> IntValue<'ctx> {
+        self.builder
+            .build_int_z_extend(val, self.context.i32_type(), "bool_ext")
+            .unwrap()
+    }
 }

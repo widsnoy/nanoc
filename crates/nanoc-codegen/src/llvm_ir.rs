@@ -7,10 +7,7 @@ use inkwell::{builder::Builder, context::Context};
 use nanoc_parser::ast::*;
 use nanoc_parser::syntax_kind::SyntaxKind;
 
-use crate::utils::{
-    apply_pointer, as_bool, bool_to_i32, const_index_dims, const_name, convert_value, name_text,
-    wrap_array_dims,
-};
+use crate::utils::{apply_pointer, const_index_dims, const_name, name_text, wrap_array_dims};
 
 pub struct Program<'a, 'ctx> {
     pub context: &'ctx Context,
@@ -438,7 +435,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let else_bb = self.context.append_basic_block(func, "else");
         let merge_bb = self.context.append_basic_block(func, "merge");
 
-        let bool_val = as_bool(self.builder, cond_val);
+        let bool_val = self.as_bool(cond_val);
         self.builder
             .build_conditional_branch(bool_val, then_bb, else_bb)
             .expect("if 跳转失败");
@@ -499,7 +496,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .condition()
             .map(|e| self.compile_expr(e))
             .expect("while 条件缺失");
-        let bool_val = as_bool(self.builder, cond_val);
+        let bool_val = self.as_bool(cond_val);
         self.builder
             .build_conditional_branch(bool_val, body_bb, end_bb)
             .expect("while 条件跳转失败");
@@ -591,8 +588,8 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
             self.builder.position_at_end(rhs_bb);
             let rhs = expr.rhs().map(|e| self.compile_expr(e)).unwrap();
-            let rhs_val = as_bool(self.builder, rhs);
-            let rhs_val = bool_to_i32(self.builder, self.context, rhs_val);
+            let rhs_val = self.as_bool(rhs);
+            let rhs_val = self.bool_to_i32(rhs_val);
             let rhs_end_bb = self.builder.get_insert_block().unwrap();
             let _ = self.builder.build_unconditional_branch(merge_bb);
 
@@ -629,54 +626,54 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .builder
                             .build_int_compare(IntPredicate::SLT, l, r, "lt")
                             .unwrap();
-                        bool_to_i32(self.builder, self.context, cmp)
+                        self.bool_to_i32(cmp)
                     }
                     SyntaxKind::GT => {
                         let cmp = self
                             .builder
                             .build_int_compare(IntPredicate::SGT, l, r, "gt")
                             .unwrap();
-                        bool_to_i32(self.builder, self.context, cmp)
+                        self.bool_to_i32(cmp)
                     }
                     SyntaxKind::LTEQ => {
                         let cmp = self
                             .builder
                             .build_int_compare(IntPredicate::SLE, l, r, "le")
                             .unwrap();
-                        bool_to_i32(self.builder, self.context, cmp)
+                        self.bool_to_i32(cmp)
                     }
                     SyntaxKind::GTEQ => {
                         let cmp = self
                             .builder
                             .build_int_compare(IntPredicate::SGE, l, r, "ge")
                             .unwrap();
-                        bool_to_i32(self.builder, self.context, cmp)
+                        self.bool_to_i32(cmp)
                     }
                     SyntaxKind::EQEQ => {
                         let cmp = self
                             .builder
                             .build_int_compare(IntPredicate::EQ, l, r, "eq")
                             .unwrap();
-                        bool_to_i32(self.builder, self.context, cmp)
+                        self.bool_to_i32(cmp)
                     }
                     SyntaxKind::NEQ => {
                         let cmp = self
                             .builder
                             .build_int_compare(IntPredicate::NE, l, r, "ne")
                             .unwrap();
-                        bool_to_i32(self.builder, self.context, cmp)
+                        self.bool_to_i32(cmp)
                     }
                     SyntaxKind::AMPAMP => {
-                        let lb = as_bool(self.builder, l.into());
-                        let rb = as_bool(self.builder, r.into());
+                        let lb = self.as_bool(l.into());
+                        let rb = self.as_bool(r.into());
                         let res = self.builder.build_and(lb, rb, "and").unwrap();
-                        bool_to_i32(self.builder, self.context, res)
+                        self.bool_to_i32(res)
                     }
                     SyntaxKind::PIPEPIPE => {
-                        let lb = as_bool(self.builder, l.into());
-                        let rb = as_bool(self.builder, r.into());
+                        let lb = self.as_bool(l.into());
+                        let rb = self.as_bool(r.into());
                         let res = self.builder.build_or(lb, rb, "or").unwrap();
-                        bool_to_i32(self.builder, self.context, res)
+                        self.bool_to_i32(res)
                     }
                     _ => panic!("未支持的整型二元操作 {op_token:?}"),
                 };
@@ -736,9 +733,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 SyntaxKind::PLUS => i.into(),
                 SyntaxKind::MINUS => self.builder.build_int_neg(i, "ineg").unwrap().into(),
                 SyntaxKind::BANG => {
-                    let b = as_bool(self.builder, val);
+                    let b = self.as_bool(val);
                     let nb = self.builder.build_not(b, "lnot").unwrap();
-                    bool_to_i32(self.builder, self.context, nb).into()
+                    self.bool_to_i32(nb).into()
                 }
                 _ => panic!("未支持的整型一元操作"),
             },
@@ -854,7 +851,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .get_value(&expr.syntax().text_range())
             .cloned()
             .unwrap_or_else(|| panic!("{}", expr.syntax().text().to_string()));
-        convert_value(self.context, value)
+        self.convert_value(value)
     }
 
     fn _compile_const_index_val(&mut self, _val: ConstIndexVal) {

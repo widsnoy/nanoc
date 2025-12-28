@@ -33,21 +33,19 @@ impl Visitor for Module {
 
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
-        let name_range = name_node.ident().unwrap().text_range();
+        let range = name_node.ident().unwrap().text_range();
 
         if scope.have_variable(&name) {
-            self.analyzing.errors.push(SemanticError::VariableDefined {
-                name,
-                range: name_range,
-            });
+            self.analyzing
+                .errors
+                .push(SemanticError::VariableDefined { name, range });
             return;
         }
 
         let Some(init_val_node) = const_def.init() else {
-            self.analyzing.errors.push(SemanticError::ExpectInitialVal {
-                name,
-                range: name_range,
-            });
+            self.analyzing
+                .errors
+                .push(SemanticError::ExpectInitialVal { name, range });
             return;
         };
 
@@ -56,13 +54,13 @@ impl Visitor for Module {
             .get(&init_val_node.syntax().text_range())
             .cloned()
         {
-            self.value_table.insert(name_range, v);
+            self.value_table.insert(range, v);
         }
         let _ = scope.new_variable(
             &mut self.variables,
             name,
             var_type,
-            name_range,
+            range,
             VariableTag::Define,
         );
     }
@@ -87,18 +85,15 @@ impl Visitor for Module {
 
         let index_val_node = def.const_index_val().unwrap();
 
-        // todo 这里需要先把常数下标算出来
-
         let name_node = index_val_node.name().unwrap();
         let name = Self::eval_name(&name_node);
-
+        let range = name_node.ident().unwrap().text_range();
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
         if scope.have_variable(&name) {
-            self.analyzing.errors.push(SemanticError::VariableDefined {
-                name,
-                range: name_node.syntax().text_range(),
-            });
+            self.analyzing
+                .errors
+                .push(SemanticError::VariableDefined { name, range });
             return;
         }
 
@@ -106,7 +101,7 @@ impl Visitor for Module {
             &mut self.variables,
             name,
             var_type,
-            name_node.ident().unwrap().text_range(),
+            range,
             VariableTag::Define,
         );
 
@@ -156,14 +151,13 @@ impl Visitor for Module {
 
         let name_node = node.name().unwrap();
         let name = Self::eval_name(&name_node);
-
+        let range = name_node.ident().unwrap().text_range();
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
         if scope.have_variable(&name) {
-            self.analyzing.errors.push(SemanticError::VariableDefined {
-                name,
-                range: name_node.syntax().text_range(),
-            });
+            self.analyzing
+                .errors
+                .push(SemanticError::VariableDefined { name, range });
             return;
         }
 
@@ -171,7 +165,7 @@ impl Visitor for Module {
             &mut self.variables,
             name,
             param_type,
-            name_node.ident().unwrap().text_range(),
+            range,
             VariableTag::Define,
         );
     }
@@ -279,6 +273,7 @@ impl Visitor for Module {
 
     fn leave_index_val(&mut self, node: IndexVal) {
         let ident_token = node.name().unwrap().ident().unwrap();
+        let var_range = ident_token.text_range();
         let var_name = ident_token.text();
         let scope = self.scopes.get(*self.analyzing.current_scope).unwrap();
         let Some(vid) = scope.look_up(self, var_name, VariableTag::Define) else {
@@ -286,7 +281,7 @@ impl Visitor for Module {
                 .errors
                 .push(SemanticError::VariableUndefined {
                     name: var_name.to_string(),
-                    range: ident_token.text_range(),
+                    range: var_range,
                 });
             return;
         };
@@ -296,6 +291,7 @@ impl Visitor for Module {
         }
         let value = self.value_table.get(&v.range).unwrap();
         // todo: array...
+        // 因为 trivia，所以需要把整个节点的值存入
         let range = node.syntax().text_range();
         self.value_table.insert(range, value.clone());
         self.mark_constant(range);
@@ -366,7 +362,7 @@ impl Module {
         }
         ty
     }
-
+    /// 从 Name 节点提取变量名
     fn eval_name(node: &Name) -> String {
         node.ident()
             .map(|t| t.text().to_string())
