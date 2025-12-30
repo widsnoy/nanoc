@@ -2,7 +2,8 @@ use nanoc_parser::ast::*;
 use nanoc_parser::visitor::Visitor;
 
 use crate::module::{Function, Module, SemanticError, VariableTag};
-use crate::ntype::{NType, Value};
+use crate::r#type::NType;
+use crate::value::Value;
 
 impl Visitor for Module {
     fn enter_comp_unit(&mut self, _node: CompUnit) {
@@ -65,11 +66,7 @@ impl Visitor for Module {
         );
     }
 
-    fn leave_const_init_val(&mut self, node: ConstInitVal) {
-        if node.expr().is_none() {
-            todo!("{:?}", node.syntax().text());
-        }
-    }
+    fn leave_const_init_val(&mut self, _node: ConstInitVal) {}
 
     fn enter_var_decl(&mut self, node: VarDecl) {
         self.analyzing.current_base_type = Some(Self::eval_type_node(&node.ty().unwrap()));

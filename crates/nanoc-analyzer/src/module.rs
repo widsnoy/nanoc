@@ -6,7 +6,7 @@ use std::{
 use text_size::TextRange;
 use thunderdome::Arena;
 
-use crate::ntype::{NType, Value};
+use crate::{r#type::NType, value::Value};
 
 #[derive(Debug, Default)]
 pub struct Module {

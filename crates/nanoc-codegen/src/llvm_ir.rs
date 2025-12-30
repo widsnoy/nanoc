@@ -14,7 +14,7 @@ pub struct Program<'a, 'ctx> {
     pub builder: &'a Builder<'ctx>,
     pub module: &'a inkwell::module::Module<'ctx>,
 
-    pub analyzer: &'a nanoc_ir::module::Module,
+    pub analyzer: &'a nanoc_analyzer::module::Module,
 
     /// 函数/变量环境
     pub current_function: Option<FunctionValue<'ctx>>,
@@ -176,7 +176,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         }
     }
 
-    /// 保证能用 analyzer 求出值
     fn compile_const_init_val(
         &mut self,
         init: ConstInitVal,

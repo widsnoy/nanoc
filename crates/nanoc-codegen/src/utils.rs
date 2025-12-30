@@ -2,8 +2,7 @@ use core::panic;
 
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, IntValue};
-use inkwell::{builder::Builder, context::Context};
-use nanoc_ir::ntype::Value;
+use nanoc_analyzer::value::Value;
 use nanoc_parser::ast::{AstNode, ConstIndexVal, Name, Pointer};
 use nanoc_parser::syntax_kind::SyntaxKind;
 
