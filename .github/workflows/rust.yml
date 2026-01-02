@@ -19,7 +19,7 @@ jobs:
         with:
           submodules: recursive
       - name: Log
-        run: cargo -V
+        run: whoami
       - name: Cargo fmt
         run: cargo fmt --all -- --check
       - name: Cargo clippy
