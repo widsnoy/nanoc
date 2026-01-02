@@ -13,7 +13,7 @@ jobs:
     name: Rust-Check
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/widsnoy/rust-llvm19:latest
+      image: ghcr.io/widsnoy/rust-llvm21:latest
     steps:
       - uses: actions/checkout@v4
         with:
