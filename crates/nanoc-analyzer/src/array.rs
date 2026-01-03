@@ -189,7 +189,7 @@ impl ArrayTree {
                 }
                 Ok(ArrayTree::Children(children_vec))
             }
-            NType::Const(inner) => Self::build(&inner, cursor),
+            NType::Const(inner) => Self::build(inner, cursor),
             _ => unreachable!(),
         }
     }
