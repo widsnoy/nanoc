@@ -42,7 +42,7 @@ fn main() {
 
     // analyzer
     let root = nanoc_parser::parser::Parser::new_root(green_node);
-    let mut analyzer = nanoc_ir::module::Module::default();
+    let mut analyzer = nanoc_analyzer::module::Module::default();
     analyzer.walk(&root);
 
     if !analyzer.analyzing.errors.is_empty() {

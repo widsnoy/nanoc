@@ -6,7 +6,7 @@ edition = "2024"
 [workspace]
 members = [
     "crates/nanoc-codegen",
-    "crates/nanoc-ir",
+    "crates/nanoc-analyzer",
     "crates/nanoc-parser",
     "crates/nanoc-runtime",
 ]
@@ -24,10 +24,10 @@ thunderdome = "0.6.1"
 
 nanoc-parser = { path = "crates/nanoc-parser" }
 nanoc-codegen = { path = "crates/nanoc-codegen" }
-nanoc-ir = { path = "crates/nanoc-ir" }
+nanoc-analyzer = { path = "crates/nanoc-analyzer" }
 
 [dependencies]
 nanoc-parser.workspace = true
 nanoc-codegen.workspace = true
-nanoc-ir.workspace = true
+nanoc-analyzer.workspace = true
 inkwell.workspace = true

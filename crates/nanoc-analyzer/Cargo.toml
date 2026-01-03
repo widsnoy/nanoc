@@ -1,12 +1,11 @@
 [package]
-name = "nanoc-codegen"
+name = "nanoc-analyzer"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 nanoc-parser.workspace = true
-nanoc-analyzer.workspace = true
 
-inkwell.workspace = true
-rowan.workspace = true
+thunderdome.workspace = true
+text-size.workspace = true
 insta.workspace = true

@@ -11,7 +11,7 @@ fn try_it(code: &str) -> String {
 
     let root = nanoc_parser::parser::Parser::new_root(green_node);
 
-    let mut analyzer = nanoc_ir::module::Module::default();
+    let mut analyzer = nanoc_analyzer::module::Module::default();
     analyzer.walk(&root);
 
     // dbg!(&root);

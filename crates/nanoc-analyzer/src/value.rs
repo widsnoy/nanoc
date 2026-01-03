@@ -1,21 +1,12 @@
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NType {
-    Int,
-    Float,
-    Void,
-    Array(Box<NType>, usize),
-    Pointer(Box<NType>),
-    Struct(String),
-    Const(Box<NType>),
-}
+use crate::array::ArrayTree;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Int(i32),
     Float(f32),
-    Array(Vec<Value>),
+    Array(ArrayTree),
     Struct(BTreeMap<String, Value>),
     Symbol(String, i32),
 }
@@ -120,21 +111,4 @@ impl Value {
             _ => Err(EvalError::TypeMismatch),
         }
     }
-
-    // /// 获取多维数组的元素
-    // pub fn get(&self, indices: &[usize]) -> Option<&Value> {
-    //     let mut cur = self;
-    //     for &idx in indices {
-    //         match cur {
-    //             Value::Array(vec) => {
-    //                 let Some(nxt) = vec.get(idx) else {
-    //                     return None;
-    //                 };
-    //                 cur = nxt;
-    //             }
-    //             _ => return None,
-    //         }
-    //     }
-    //     Some(cur)
-    // }
 }

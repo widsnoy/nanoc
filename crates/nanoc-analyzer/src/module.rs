@@ -6,7 +6,7 @@ use std::{
 use text_size::TextRange;
 use thunderdome::Arena;
 
-use crate::ntype::{NType, Value};
+use crate::{array::ArrayTree, r#type::NType, value::Value};
 
 #[derive(Debug, Default)]
 pub struct Module {
@@ -20,6 +20,9 @@ pub struct Module {
 
     /// 只存常量
     pub value_table: HashMap<TextRange, Value>,
+
+    /// 存展开后的数组
+    pub expand_array: HashMap<TextRange, ArrayTree>,
 
     /// 分析的时候上下文，使用后清除
     pub analyzing: AnalyzeContext,

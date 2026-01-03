@@ -108,6 +108,7 @@ fn test_const_unary_operations() {
     }
     "#;
     let module = analyze(source);
+    dbg!(&module.analyzing.errors);
     assert!(module.analyzing.errors.is_empty());
 }
 

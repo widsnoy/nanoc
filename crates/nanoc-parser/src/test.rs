@@ -74,7 +74,7 @@ fn test_complex_mix() {
     let source = r#"
     const int MAX = 100;
     struct Point p;
-    
+
     int main(int argc, int *argv[]) {
         int a = 1;
         int *ptr = &a;
@@ -168,6 +168,15 @@ fn test_comments() {
     /****/
     /**/
     int a = 1;
+    "#;
+    insta::assert_debug_snapshot!(try_it(source));
+}
+
+#[test]
+fn test_array_init() {
+    let source = r#"
+    const int a[3] = {1, 2, 3};
+    const int a[2][3] = {{1, 2, 3}, {4, 5}};
     "#;
     insta::assert_debug_snapshot!(try_it(source));
 }
