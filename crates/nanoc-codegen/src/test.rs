@@ -128,3 +128,12 @@ fn test_return_stmt() {
     "#;
     insta::assert_snapshot!(try_it(code));
 }
+
+#[test]
+fn test_const_array() {
+    let code = r#"
+    const int a[3] = {};
+    const int b[2][3][4] = {1, 2, 3, 4, {5}, {6}, {7, 8}};
+    "#;
+    insta::assert_snapshot!(try_it(code));
+}

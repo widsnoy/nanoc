@@ -7,7 +7,7 @@ use inkwell::{builder::Builder, context::Context};
 use nanoc_parser::ast::*;
 use nanoc_parser::syntax_kind::SyntaxKind;
 
-use crate::utils::{apply_pointer, const_index_dims, const_name, name_text, wrap_array_dims};
+use crate::utils::{get_ident_node, name_text};
 
 pub struct Program<'a, 'ctx> {
     pub context: &'ctx Context,
@@ -141,69 +141,70 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     fn compile_const_decl(&mut self, decl: ConstDecl) {
-        let base_ty = decl
-            .ty()
-            .map(|t| self.compile_type(t))
-            .expect("const 没有类型");
-
         for def in decl.const_defs() {
-            let name_node = def.const_index_val().expect("const 缺名字");
-            let name = const_name(&name_node);
-            let dims = const_index_dims(&name_node).unwrap_or_default();
-            let arr_ty = wrap_array_dims(base_ty, &dims);
-            let full_ty = apply_pointer(arr_ty, def.pointer());
-            let init = def.init();
-            let value = init
-                .and_then(|i| self.compile_const_init_val(i, full_ty))
-                .unwrap();
+            self.compile_const_def(def);
+        }
+    }
 
-            if self.current_function.is_none() {
-                // global 常量
-                let global = self.module.add_global(full_ty, None, &name);
-                global.set_initializer(&value);
-                global.set_constant(true);
-                self.globals
-                    .insert(name.clone(), (global.as_pointer_value(), full_ty));
-            } else {
-                // local 变量
-                let func = self.current_function.unwrap();
-                let alloca = self.create_entry_alloca(func, full_ty, &name);
-                self.builder
-                    .build_store(alloca, value)
-                    .expect("存储 const 失败");
-                self.insert_var(name, alloca, full_ty);
-            }
+    fn compile_const_def(&mut self, def: ConstDef) {
+        let name_token = get_ident_node(&def.const_index_val().unwrap());
+        let name = name_token.text();
+
+        let var = self.analyzer.get_varaible(name_token.text_range()).unwrap();
+
+        let full_ty = self.convert_ntype_to_type(&var.ty);
+
+        let init_node = def.init().unwrap();
+        let value = self.compile_const_init_val(init_node, full_ty);
+
+        if self.current_function.is_none() {
+            // global 常量
+            let global = self.module.add_global(full_ty, None, name);
+            global.set_initializer(&value);
+            global.set_constant(true);
+            self.globals
+                .insert(name.to_string(), (global.as_pointer_value(), full_ty));
+        } else {
+            // local 变量
+            let func = self.current_function.unwrap();
+            let alloca = self.create_entry_alloca(func, full_ty, name);
+            self.builder
+                .build_store(alloca, value)
+                .expect("存储 const 失败");
+            self.insert_var(name.to_string(), alloca, full_ty);
         }
     }
 
     fn compile_const_init_val(
         &mut self,
         init: ConstInitVal,
-        _ty: BasicTypeEnum<'ctx>,
-    ) -> Option<BasicValueEnum<'ctx>> {
+        ty: BasicTypeEnum<'ctx>,
+    ) -> BasicValueEnum<'ctx> {
         if let Some(expr) = init.expr() {
-            return Some(self.compile_const_expr(expr));
+            return self.compile_const_expr(expr);
         }
-        todo!();
+        let range = init.syntax().text_range();
+        let array_tree = self
+            .analyzer
+            .expand_array
+            .get(&range)
+            .expect("array type, must have an array tree");
+        self.convert_array_tree_to_const_value(array_tree, ty)
     }
 
     fn compile_var_decl(&mut self, decl: VarDecl) {
-        let base_ty = decl
-            .ty()
-            .map(|t| self.compile_type(t))
-            .expect("var 没有类型");
-
         for def in decl.var_defs() {
-            self.compile_var_def(def, base_ty);
+            self.compile_var_def(def);
         }
     }
 
-    fn compile_var_def(&mut self, def: VarDef, base_ty: BasicTypeEnum<'ctx>) {
-        let name = const_name(&def.const_index_val().expect("var 没有名字"));
-        let dims =
-            const_index_dims(&def.const_index_val().expect("var 没有名字")).unwrap_or_default();
-        let arr_ty = wrap_array_dims(base_ty, &dims);
-        let full_ty = apply_pointer(arr_ty, def.pointer());
+    fn compile_var_def(&mut self, def: VarDef) {
+        let name_token = get_ident_node(&def.const_index_val().unwrap());
+
+        let var = self.analyzer.get_varaible(name_token.text_range()).unwrap();
+        let name = name_token.text();
+        let full_ty = self.convert_ntype_to_type(&var.ty);
+
         let init = def.init();
 
         let init_val = if self.current_function.is_none() {
@@ -215,18 +216,18 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         if self.current_function.is_none() {
             // 全局变量
-            let global = self.module.add_global(full_ty, None, &name);
+            let global = self.module.add_global(full_ty, None, name);
             global.set_initializer(&init_val);
             self.globals
-                .insert(name.clone(), (global.as_pointer_value(), full_ty));
+                .insert(name.to_string(), (global.as_pointer_value(), full_ty));
         } else {
             // 局部变量
             let func = self.current_function.unwrap();
-            let alloca = self.create_entry_alloca(func, full_ty, &name);
+            let alloca = self.create_entry_alloca(func, full_ty, name);
             self.builder
                 .build_store(alloca, init_val)
                 .expect("局部初始化失败");
-            self.insert_var(name, alloca, full_ty);
+            self.insert_var(name.to_string(), alloca, full_ty);
         }
     }
 
@@ -342,22 +343,22 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .ty()
             .map(|t| self.compile_type(t))
             .expect("函数返回缺类型");
-        let full = apply_pointer(base, ty.pointer());
-        (full, false)
+        // let full = apply_pointer(base, ty.pointer());
+        (base, false)
     }
 
-    #[allow(deprecated)]
     fn compile_func_f_param_type(&mut self, param: FuncFParam) -> BasicMetadataTypeEnum<'ctx> {
         let base = param
             .ty()
             .map(|t| self.compile_type(t))
             .expect("参数缺类型");
-        let full = apply_pointer(base, param.pointer());
-        // 形参写成 a[] 等价指针
-        if param.l_brack_token().is_some() {
-            todo!("暂不支持数组形参");
-        }
-        full.into()
+        base.into()
+        // let full = apply_pointer(base, param.pointer());
+        // // 形参写成 a[] 等价指针
+        // if param.l_brack_token().is_some() {
+        //     todo!("暂不支持数组形参");
+        // }
+        // full.into()
     }
 
     // 4. Block & Statements
@@ -545,7 +546,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             Expr::UnaryExpr(e) => self.compile_unary_expr(e),
             Expr::CallExpr(e) => self.compile_call_expr(e),
             Expr::ParenExpr(e) => self.compile_paren_expr(e),
-            Expr::DerefExpr(e) => self.compile_deref_expr(e),
+            Expr::DerefExpr(_e) => todo!(),
             Expr::IndexVal(e) => self.compile_index_val(e),
             Expr::Literal(e) => self.compile_literal(e),
         }
@@ -777,17 +778,17 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .expect("括号表达式为空")
     }
 
-    fn compile_deref_expr(&mut self, expr: DerefExpr) -> BasicValueEnum<'ctx> {
-        let ptr_val = expr
-            .expr()
-            .map(|e| self.compile_expr(e))
-            .expect("解引用缺操作数");
-        let ptr = ptr_val.into_pointer_value();
-        let elem_ty: BasicTypeEnum<'ctx> = self.context.i32_type().into();
-        self.builder
-            .build_load(elem_ty, ptr, "deref")
-            .expect("解引用失败")
-    }
+    // fn compile_deref_expr(&mut self, expr: DerefExpr) -> BasicValueEnum<'ctx> {
+    //     let ptr_val = expr
+    //         .expr()
+    //         .map(|e| self.compile_expr(e))
+    //         .expect("解引用缺操作数");
+    //     let ptr = ptr_val.into_pointer_value();
+    //     let elem_ty: BasicTypeEnum<'ctx> = self.context.i32_type().into();
+    //     self.builder
+    //         .build_load(elem_ty, ptr, "deref")
+    //         .expect("解引用失败")
+    // }
 
     fn compile_index_val(&mut self, expr: IndexVal) -> BasicValueEnum<'ctx> {
         let name = name_text(&expr.name().expect("变量缺名"));
@@ -847,7 +848,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     fn compile_const_expr(&mut self, expr: ConstExpr) -> BasicValueEnum<'ctx> {
         let value = self
             .analyzer
-            .get_value(&expr.syntax().text_range())
+            .get_value(expr.syntax().text_range())
             .cloned()
             .unwrap_or_else(|| panic!("{}", expr.syntax().text().to_string()));
         self.convert_value(value)

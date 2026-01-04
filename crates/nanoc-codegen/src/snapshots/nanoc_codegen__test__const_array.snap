@@ -1,0 +1,25 @@
+---
+source: crates/nanoc-codegen/src/test.rs
+expression: try_it(code)
+---
+; ModuleID = 'main'
+source_filename = "main"
+
+@a = constant [3 x i32] zeroinitializer
+@b = constant [2 x [3 x [4 x i32]]] [[3 x [4 x i32]] [[4 x i32] [i32 1, i32 2, i32 3, i32 4], [4 x i32] [i32 5, i32 0, i32 0, i32 0], [4 x i32] [i32 6, i32 0, i32 0, i32 0]], [3 x [4 x i32]] [[4 x i32] [i32 7, i32 8, i32 0, i32 0], [4 x i32] zeroinitializer, [4 x i32] zeroinitializer]]
+
+declare i32 @getint()
+
+declare i32 @getch()
+
+declare i32 @getarray(ptr)
+
+declare void @putint(i32)
+
+declare void @putch(i32)
+
+declare void @putarray(i32, ptr)
+
+declare void @starttime()
+
+declare void @stoptime()

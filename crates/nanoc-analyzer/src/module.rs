@@ -24,6 +24,9 @@ pub struct Module {
     /// 存展开后的数组
     pub expand_array: HashMap<TextRange, ArrayTree>,
 
+    /// 存变量的索引，TextRange -> VariableID
+    pub variable_map: HashMap<TextRange, VariableID>,
+
     /// 分析的时候上下文，使用后清除
     pub analyzing: AnalyzeContext,
 }
@@ -72,8 +75,8 @@ impl Module {
         self.constant_nodes.contains(&range)
     }
 
-    pub fn get_value(&self, range: &TextRange) -> Option<&Value> {
-        self.value_table.get(range)
+    pub fn get_value(&self, range: TextRange) -> Option<&Value> {
+        self.value_table.get(&range)
     }
 
     pub fn new_scope(&mut self, parent: Option<ScopeID>) -> ScopeID {
@@ -98,6 +101,12 @@ impl Module {
         };
         let id = self.functions.insert(function);
         FunctionID(id)
+    }
+
+    pub fn get_varaible(&self, range: TextRange) -> Option<&Variable> {
+        self.variable_map
+            .get(&range)
+            .and_then(|f| self.variables.get(**f))
     }
 }
 
@@ -132,8 +141,8 @@ pub struct Variable {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VariableTag {
     Define,
-    Write,
-    Read,
+    Write, // todo
+    Read,  // todo
 }
 
 impl Variable {
@@ -208,6 +217,7 @@ impl Scope {
     pub fn new_variable(
         &mut self,
         variables: &mut Arena<Variable>,
+        variable_map: &mut HashMap<TextRange, VariableID>,
         name: String,
         ty: NType,
         range: TextRange,
@@ -222,6 +232,7 @@ impl Scope {
         let var_id = VariableID(idx);
         let entry = self.variables.entry(name).or_default();
         entry.insert(var_id);
+        variable_map.insert(range, var_id);
         var_id
     }
 

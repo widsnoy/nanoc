@@ -16,4 +16,10 @@ impl NType {
     pub fn is_const(&self) -> bool {
         matches!(self, Self::Const(_))
     }
+    pub fn unwrap_const(&self) -> &Self {
+        match self {
+            Self::Const(inner) => inner,
+            _ => self,
+        }
+    }
 }

@@ -78,6 +78,7 @@ impl Visitor for Module {
 
         let _ = scope.new_variable(
             &mut self.variables,
+            &mut self.variable_map,
             name,
             var_type,
             range,
@@ -123,6 +124,7 @@ impl Visitor for Module {
 
         let _ = scope.new_variable(
             &mut self.variables,
+            &mut self.variable_map,
             name,
             var_type,
             range,
@@ -183,6 +185,7 @@ impl Visitor for Module {
 
         scope.new_variable(
             &mut self.variables,
+            &mut self.variable_map,
             name,
             param_type,
             range,
@@ -404,7 +407,7 @@ impl Module {
         let mut indices_rev = node.indices().collect::<Vec<ConstExpr>>();
         indices_rev.reverse();
         for expr in indices_rev {
-            let x = self.get_value(&expr.syntax().text_range()).cloned()?;
+            let x = self.get_value(expr.syntax().text_range()).cloned()?;
             let Value::Int(y) = x else {
                 return None;
             };
