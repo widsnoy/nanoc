@@ -7,7 +7,9 @@ source_filename = "main"
 
 @a = constant [3 x i32] zeroinitializer
 @b = constant [2 x [3 x [4 x i32]]] [[3 x [4 x i32]] [[4 x i32] [i32 1, i32 2, i32 3, i32 4], [4 x i32] [i32 5, i32 0, i32 0, i32 0], [4 x i32] [i32 6, i32 0, i32 0, i32 0]], [3 x [4 x i32]] [[4 x i32] [i32 7, i32 8, i32 0, i32 0], [4 x i32] zeroinitializer, [4 x i32] zeroinitializer]]
-@c = global i32 0
+@c = global i32 8
+@d = constant [2 x float] [float 0x3FF1C28F60000000, float 0.000000e+00]
+@e = global float 0x3FF1C28F60000000
 
 declare i32 @getint()
 

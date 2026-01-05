@@ -1,7 +1,7 @@
 use nanoc_parser::ast::*;
 use nanoc_parser::visitor::Visitor;
 
-use crate::array::ArrayTree;
+use crate::array::{ArrayTree, ArrayTreeValue};
 use crate::module::{Function, Module, SemanticError, VariableTag};
 use crate::r#type::NType;
 use crate::value::Value;
@@ -86,6 +86,20 @@ impl Visitor for Module {
         );
     }
 
+    fn leave_const_init_val(&mut self, node: ConstInitVal) {
+        if let Some(expr) = node.expr()
+            && !self.is_constant(expr.syntax().text_range())
+        {
+            return;
+        }
+        for child in node.inits() {
+            if !self.is_constant(child.syntax().text_range()) {
+                return;
+            }
+        }
+        self.mark_constant(node.syntax().text_range());
+    }
+
     fn enter_var_decl(&mut self, node: VarDecl) {
         self.analyzing.current_base_type = Some(Self::build_basic_type(&node.ty().unwrap()));
     }
@@ -114,12 +128,25 @@ impl Visitor for Module {
             return;
         }
 
-        if let Some(init_val_node) = def.init()
-            && var_type.is_array()
-        {
-            let array_tree = ArrayTree::new(&var_type, init_val_node).unwrap();
-            self.expand_array
-                .insert(const_index_val_node.syntax().text_range(), array_tree);
+        if let Some(init_val_node) = def.init() {
+            if self.global_scope == self.analyzing.current_scope
+                && !self
+                    .constant_nodes
+                    .contains(&init_val_node.syntax().text_range())
+            {
+                self.analyzing
+                    .errors
+                    .push(SemanticError::ConstantExprExpected {
+                        range: init_val_node.syntax().text_range(),
+                    });
+                return;
+            }
+
+            if var_type.is_array() {
+                let array_tree = ArrayTree::new(&var_type, init_val_node).unwrap();
+                self.expand_array
+                    .insert(const_index_val_node.syntax().text_range(), array_tree);
+            }
         }
 
         let _ = scope.new_variable(
@@ -130,6 +157,20 @@ impl Visitor for Module {
             range,
             VariableTag::Define,
         );
+    }
+
+    fn leave_init_val(&mut self, node: InitVal) {
+        if let Some(expr) = node.expr()
+            && !self.is_constant(expr.syntax().text_range())
+        {
+            return;
+        }
+        for child in node.inits() {
+            if !self.is_constant(child.syntax().text_range()) {
+                return;
+            }
+        }
+        self.mark_constant(node.syntax().text_range());
     }
 
     fn enter_func_def(&mut self, _node: FuncDef) {
@@ -308,13 +349,49 @@ impl Visitor for Module {
                 });
             return;
         };
-        let v = self.variables.get(*vid).unwrap();
-        if !v.is_const() {
+        let var = self.variables.get(*vid).unwrap();
+        if !var.is_const() {
             return;
         }
-        let value = self.value_table.get(&v.range).unwrap();
-        // todo: array...
-        // 因为 trivia，所以需要把整个节点的值存入
+        let mut value = self.value_table.get(&var.range).unwrap();
+        let const_zero = var.ty.const_zero();
+
+        if let Value::Array(tree) = value {
+            let mut indices = Vec::new();
+            for indice in node.indices() {
+                let range = indice.syntax().text_range();
+                let Some(v) = self.get_value(range) else {
+                    return;
+                };
+                // todo: 如果是非常量，应该做类型检查
+                let Value::Int(index) = v else {
+                    self.analyzing.errors.push(SemanticError::TypeMismatch {
+                        expected: NType::Int,
+                        found: NType::Float,
+                        range,
+                    });
+                    return;
+                };
+                indices.push(*index);
+            }
+            let leaf = match tree.get_leaf(&indices) {
+                Ok(s) => s,
+                Err(e) => {
+                    self.analyzing.errors.push(SemanticError::ArrayError {
+                        message: e,
+                        range: node.syntax().text_range(),
+                    });
+                    return;
+                }
+            };
+            value = match leaf {
+                ArrayTreeValue::ConstExpr(expr) => {
+                    self.value_table.get(&expr.syntax().text_range()).unwrap()
+                }
+                ArrayTreeValue::Empty => &const_zero,
+                _ => unreachable!(),
+            };
+        }
         let range = node.syntax().text_range();
         self.value_table.insert(range, value.clone());
         self.mark_constant(range);
@@ -349,70 +426,5 @@ impl Visitor for Module {
             Value::Int(i32::from_str_radix(num_str, radix).unwrap())
         };
         self.value_table.insert(node.syntax().text_range(), v);
-    }
-}
-
-impl Module {
-    pub(crate) fn build_basic_type(node: &Type) -> NType {
-        if node.int_token().is_some() {
-            NType::Int
-        } else if node.float_token().is_some() {
-            NType::Float
-        } else if node.struct_token().is_some() {
-            let name = Self::extract_name(&node.name().unwrap());
-            NType::Struct(name)
-        } else {
-            unreachable!("未知类型节点")
-        }
-    }
-
-    pub(crate) fn build_pointer_type(node: &Pointer, base_type: NType) -> NType {
-        let res = node.stars();
-        let mut ty = base_type;
-        for b in res {
-            ty = NType::Pointer(Box::new(ty));
-            if !b {
-                ty = NType::Const(Box::new(ty));
-            }
-        }
-        ty
-    }
-    /// 从 Name 节点提取变量名
-    pub(crate) fn extract_name(node: &Name) -> String {
-        node.ident()
-            .map(|t| t.text().to_string())
-            .expect("获取标识符失败")
-    }
-
-    pub(crate) fn build_func_type(node: &FuncType) -> NType {
-        if node.void_token().is_some() {
-            NType::Void
-        } else {
-            let base_type = Self::build_basic_type(&node.ty().unwrap());
-
-            if let Some(pointer_node) = node.pointer() {
-                Self::build_pointer_type(&pointer_node, base_type)
-            } else {
-                base_type
-            }
-        }
-    }
-
-    pub(crate) fn build_array_type(
-        &self,
-        basic_type: NType,
-        node: &ConstIndexVal,
-    ) -> Option<NType> {
-        let mut ty = basic_type;
-        let mut indices_rev = node.indices().collect::<Vec<ConstExpr>>();
-        indices_rev.reverse();
-        for expr in indices_rev {
-            let x = self.get_value(expr.syntax().text_range()).cloned()?;
-            let Value::Int(y) = x else {
-                return None;
-            };
-            ty = NType::Array(Box::new(ty), y);
-        }
-        Some(ty)
     }
 }

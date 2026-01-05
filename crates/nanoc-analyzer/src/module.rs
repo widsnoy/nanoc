@@ -6,7 +6,11 @@ use std::{
 use text_size::TextRange;
 use thunderdome::Arena;
 
-use crate::{array::ArrayTree, r#type::NType, value::Value};
+use crate::{
+    array::{ArrayInitError, ArrayTree},
+    r#type::NType,
+    value::Value,
+};
 
 #[derive(Debug, Default)]
 pub struct Module {
@@ -62,6 +66,10 @@ pub enum SemanticError {
     },
     ExpectInitialVal {
         name: String,
+        range: TextRange,
+    },
+    ArrayError {
+        message: ArrayInitError,
         range: TextRange,
     },
 }
@@ -147,7 +155,7 @@ pub enum VariableTag {
 
 impl Variable {
     pub fn is_const(&self) -> bool {
-        matches!(self.ty, NType::Const(_))
+        self.ty.is_const()
     }
 }
 

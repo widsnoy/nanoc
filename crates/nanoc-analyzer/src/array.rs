@@ -205,6 +205,9 @@ impl ArrayTree {
                     };
                     child
                 }
+                ArrayTree::Val(ArrayTreeValue::Empty) => {
+                    return Ok(ArrayTreeValue::Empty);
+                }
                 _ => return Err(ArrayInitError::MisMatchIndexAndType),
             };
         }

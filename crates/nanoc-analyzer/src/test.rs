@@ -297,6 +297,8 @@ fn test_const_modulo_operation() {
 #[test]
 fn test_const_expression_expected_error() {
     let source = r#"
+    int b[2] = {1};
+    int d = b[1];
     int main() {
         int x;
         const int a = x + 1;
@@ -304,5 +306,5 @@ fn test_const_expression_expected_error() {
     "#;
     let module = analyze(source);
     // 应该报错：非常量表达式在 const 初始化中
-    assert!(!module.analyzing.errors.is_empty());
+    assert!(module.analyzing.errors.len() == 3);
 }

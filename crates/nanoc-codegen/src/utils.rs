@@ -5,7 +5,7 @@ use inkwell::values::{BasicValueEnum, IntValue};
 use nanoc_analyzer::array::ArrayTree;
 use nanoc_analyzer::r#type::NType;
 use nanoc_analyzer::value::Value;
-use nanoc_parser::ast::{AstNode as _, ConstExpr, ConstIndexVal, Name, SyntaxToken};
+use nanoc_parser::ast::{AstNode, ConstIndexVal, Name, SyntaxToken};
 
 use crate::llvm_ir::Program;
 
@@ -58,7 +58,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         }
     }
 
-    /// convert `array_tree` to `BasicValueEnum`
+    /// convert `array_tree` to `BasicValueEnum`, 用于全局变量初始化
     pub fn convert_array_tree_to_const_value(
         &self,
         tree: &ArrayTree,
@@ -112,18 +112,17 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 nanoc_analyzer::array::ArrayTreeValue::ConstExpr(const_expr) => {
                     self.get_const_var_value(const_expr)
                 }
-                nanoc_analyzer::array::ArrayTreeValue::Expr(_expr) => todo!(),
+                nanoc_analyzer::array::ArrayTreeValue::Expr(expr) => self.get_const_var_value(expr),
                 nanoc_analyzer::array::ArrayTreeValue::Empty => ty.const_zero(),
             },
         }
     }
 
     /// 从 analyzer 获取常量的值
-    pub fn get_const_var_value(&self, expr: &ConstExpr) -> BasicValueEnum<'ctx> {
+    pub fn get_const_var_value(&self, expr: &impl AstNode) -> BasicValueEnum<'ctx> {
         let value = self
             .analyzer
             .get_value(expr.syntax().text_range())
-            .cloned()
             .unwrap_or_else(|| panic!("{}", expr.syntax().text().to_string()));
         self.convert_value(value)
     }
@@ -159,10 +158,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     /// convert `Value` to `BasicValueEnum`
-    pub fn convert_value(&self, value: Value) -> BasicValueEnum<'ctx> {
+    pub fn convert_value(&self, value: &Value) -> BasicValueEnum<'ctx> {
         match value {
-            Value::Int(x) => self.context.i32_type().const_int(x as u64, false).into(),
-            Value::Float(x) => self.context.f32_type().const_float(x.into()).into(),
+            Value::Int(x) => self.context.i32_type().const_int(*x as u64, false).into(),
+            Value::Float(x) => self.context.f32_type().const_float(*x as f64).into(),
             Value::Array(_) => todo!(),
             Value::Struct(_) => todo!(),
             Value::Symbol(_, _) => todo!(),

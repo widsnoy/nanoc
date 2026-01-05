@@ -181,7 +181,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         ty: BasicTypeEnum<'ctx>,
     ) -> BasicValueEnum<'ctx> {
         if let Some(expr) = init.expr() {
-            return self.compile_const_expr(expr);
+            return self.get_const_var_value(&expr);
         }
         let range = init.syntax().text_range();
         let array_tree = self
@@ -203,31 +203,33 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         let var = self.analyzer.get_varaible(name_token.text_range()).unwrap();
         let name = name_token.text();
-        let full_ty = self.convert_ntype_to_type(&var.ty);
+        let var_ty = self.convert_ntype_to_type(&var.ty);
 
         let init = def.init();
 
-        let init_val = if self.current_function.is_none() {
-            self.const_init_or_zero(init, full_ty)
+        let is_global_var = self.current_function.is_none();
+
+        let init_val = if is_global_var {
+            self.const_init_or_zero(init, var_ty)
         } else {
             init.and_then(|i| self.compile_init_val(i))
-                .unwrap_or_else(|| full_ty.const_zero())
+                .unwrap_or_else(|| var_ty.const_zero())
         };
 
-        if self.current_function.is_none() {
+        if is_global_var {
             // 全局变量
-            let global = self.module.add_global(full_ty, None, name);
+            let global = self.module.add_global(var_ty, None, name);
             global.set_initializer(&init_val);
             self.globals
-                .insert(name.to_string(), (global.as_pointer_value(), full_ty));
+                .insert(name.to_string(), (global.as_pointer_value(), var_ty));
         } else {
             // 局部变量
             let func = self.current_function.unwrap();
-            let alloca = self.create_entry_alloca(func, full_ty, name);
+            let alloca = self.create_entry_alloca(func, var_ty, name);
             self.builder
                 .build_store(alloca, init_val)
                 .expect("局部初始化失败");
-            self.insert_var(name.to_string(), alloca, full_ty);
+            self.insert_var(name.to_string(), alloca, var_ty);
         }
     }
 
@@ -237,17 +239,15 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         init: Option<InitVal>,
         ty: BasicTypeEnum<'ctx>,
     ) -> BasicValueEnum<'ctx> {
+        // 没有初始化节点
         let Some(init) = init else {
             return ty.const_zero();
         };
-
-        if let Some(expr) = init.expr()
-            && let Expr::Literal(lit) = expr
-        {
-            return self.compile_literal(lit);
+        let range = init.syntax().text_range();
+        if let Some(value) = self.analyzer.get_value(range) {
+            return self.convert_value(value);
         }
-
-        todo!();
+        panic!("add check in analyzer");
     }
 
     fn compile_init_val(&mut self, init: InitVal) -> Option<BasicValueEnum<'ctx>> {
@@ -843,15 +843,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             return self.context.f32_type().const_float(v as f64).into();
         }
         panic!("未知字面量");
-    }
-
-    fn compile_const_expr(&mut self, expr: ConstExpr) -> BasicValueEnum<'ctx> {
-        let value = self
-            .analyzer
-            .get_value(expr.syntax().text_range())
-            .cloned()
-            .unwrap_or_else(|| panic!("{}", expr.syntax().text().to_string()));
-        self.convert_value(value)
     }
 
     fn _compile_const_index_val(&mut self, _val: ConstIndexVal) {

@@ -14,6 +14,12 @@ fn try_it(code: &str) -> String {
     let mut analyzer = nanoc_analyzer::module::Module::default();
     analyzer.walk(&root);
 
+    assert!(
+        analyzer.analyzing.errors.is_empty(),
+        "Analyzer erros: {:?}",
+        analyzer.analyzing.errors
+    );
+
     // dbg!(&root);
     let comp_unit = CompUnit::cast(root).unwrap();
 
@@ -130,10 +136,14 @@ fn test_return_stmt() {
 }
 
 #[test]
-fn test_const_array() {
+fn test_array_initialize() {
     let code = r#"
     const int a[3] = {};
     const int b[2][3][4] = {1, 2, 3, 4, {5}, {6}, {7, 8}};
+    int c = b[1][0][1];
+    
+    const float d[2] = {1.11};
+    float e = d[0];
     "#;
     insta::assert_snapshot!(try_it(code));
 }
