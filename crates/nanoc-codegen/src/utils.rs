@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use inkwell::AddressSpace;
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
@@ -151,7 +152,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let inner = self.convert_ntype_to_type(ntype);
                 inner.array_type(*count as u32).into()
             }
-            NType::Pointer(_ntype) => todo!(),
+            NType::Pointer(inner) => self
+                .convert_ntype_to_type(inner)
+                .ptr_type(AddressSpace::default())
+                .into(),
             NType::Struct(_) => todo!(),
             NType::Const(ntype) => self.convert_ntype_to_type(ntype),
         }
@@ -220,17 +224,17 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     /// 从 IndexVal 获取变量的 (type, ptr)
     pub(crate) fn get_element_ptr_by_index_val(
         &mut self,
-        index_val: &IndexVal,
+        index_val: &IndexVal, // fixme: 可能有解引用
     ) -> (BasicTypeEnum<'ctx>, PointerValue<'ctx>, String) {
         let name = name_text(&index_val.name().expect("变量缺名"));
         let (ptr, elem_ty) = self.lookup_var(&name).expect("变量未定义");
 
-        if !elem_ty.is_array_type() {
+        if !elem_ty.is_array_type() && !elem_ty.is_pointer_type() {
             return (elem_ty, ptr, name);
         }
 
-        let zero = std::iter::once(self.context.i32_type().const_zero());
         let indices = zero
+            .into_iter()
             .chain(
                 index_val
                     .indices()

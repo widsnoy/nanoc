@@ -1,4 +1,4 @@
-use nanoc_parser::ast::{AstNode as _, ConstExpr, ConstIndexVal, FuncType, Name, Pointer, Type};
+use nanoc_parser::ast::{AstNode as _, ConstExpr, FuncType, Name, Pointer, Type};
 
 use crate::{module::Module, r#type::NType, value::Value};
 
@@ -50,13 +50,11 @@ impl Module {
 
     pub(crate) fn build_array_type(
         &self,
-        basic_type: NType,
-        node: &ConstIndexVal,
+        mut ty: NType,
+        indices_iter: impl Iterator<Item = ConstExpr>,
     ) -> Option<NType> {
-        let mut ty = basic_type;
-        let mut indices_rev = node.indices().collect::<Vec<ConstExpr>>();
-        indices_rev.reverse();
-        for expr in indices_rev {
+        let indices = indices_iter.collect::<Vec<ConstExpr>>();
+        for expr in indices.iter().rev() {
             let x = self.get_value(expr.syntax().text_range()).cloned()?;
             let Value::Int(y) = x else {
                 return None;

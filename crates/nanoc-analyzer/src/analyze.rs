@@ -27,7 +27,9 @@ impl Visitor for Module {
         };
 
         let index_val_node = const_def.const_index_val().unwrap();
-        let var_type = self.build_array_type(var_type, &index_val_node).unwrap();
+        let var_type = self
+            .build_array_type(var_type, index_val_node.indices())
+            .unwrap();
         let name_node = index_val_node.name().unwrap();
         let name = Self::extract_name(&name_node);
 
@@ -115,7 +117,7 @@ impl Visitor for Module {
 
         let const_index_val_node = def.const_index_val().unwrap();
         let var_type = self
-            .build_array_type(var_type, &const_index_val_node)
+            .build_array_type(var_type, const_index_val_node.indices())
             .unwrap();
         let name_node = const_index_val_node.name().unwrap();
         let name = Self::extract_name(&name_node);
@@ -201,13 +203,14 @@ impl Visitor for Module {
     }
 
     fn leave_func_f_param(&mut self, node: FuncFParam) {
-        let param_base_type = Self::build_basic_type(&node.ty().unwrap());
+        let mut param_type = Self::build_basic_type(&node.ty().unwrap());
 
-        let param_type = if let Some(pointer_node) = node.pointer() {
-            Self::build_pointer_type(&pointer_node, param_base_type)
-        } else {
-            param_base_type
-        };
+        if node.is_array() {
+            let Some(ty) = self.build_array_type(param_type, node.indices()) else {
+                return;
+            };
+            param_type = NType::Pointer(Box::new(ty));
+        }
 
         let name_node = node.name().unwrap();
         let name = Self::extract_name(&name_node);

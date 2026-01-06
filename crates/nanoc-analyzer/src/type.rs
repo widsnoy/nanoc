@@ -19,7 +19,8 @@ impl NType {
         match self {
             Self::Const(_) => true,
             Self::Array(inner, _) => inner.is_const(),
-            Self::Pointer(_) | Self::Struct(_) => todo!(),
+            Self::Pointer(_) => false,
+            Self::Struct(_) => todo!(),
             _ => false,
         }
     }

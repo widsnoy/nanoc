@@ -264,7 +264,9 @@ mod test {
         let ty = module
             .build_array_type(
                 basic_ty,
-                &ConstIndexVal::cast(get_const_index_node(&root)).unwrap(),
+                ConstIndexVal::cast(get_const_index_node(&root))
+                    .unwrap()
+                    .indices(),
             )
             .unwrap();
         dbg!(&ty);

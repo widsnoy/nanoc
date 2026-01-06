@@ -227,11 +227,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         let params: Vec<BasicMetadataTypeEnum<'ctx>> = func
             .params()
-            .map(|ps| {
-                ps.params()
-                    .map(|p| self.compile_func_f_param_type(p))
-                    .collect()
-            })
+            .map(|ps| ps.params().map(|p| self.compile_func_f_param(p)).collect())
             .unwrap_or_default();
 
         let fn_type = if is_void {
@@ -298,18 +294,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         (base, false)
     }
 
-    fn compile_func_f_param_type(&mut self, param: FuncFParam) -> BasicMetadataTypeEnum<'ctx> {
-        let base = param
-            .ty()
-            .map(|t| self.compile_type(t))
-            .expect("参数缺类型");
-        base.into()
-        // let full = apply_pointer(base, param.pointer());
-        // // 形参写成 a[] 等价指针
-        // if param.l_brack_token().is_some() {
-        //     todo!("暂不支持数组形参");
-        // }
-        // full.into()
+    fn compile_func_f_param(&mut self, param: FuncFParam) -> BasicMetadataTypeEnum<'ctx> {
+        let name_token = param.name().and_then(|x| x.ident()).unwrap();
+        let variable = self.analyzer.get_varaible(name_token.text_range()).unwrap();
+        self.convert_ntype_to_type(&variable.ty).into()
     }
 
     // 4. Block & Statements
@@ -494,7 +482,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
     fn compile_return_stmt(&mut self, stmt: ReturnStmt) {
         if let Some(expr) = stmt.expr() {
-            let val = self.compile_expr(expr).into_int_value();
+            let val = self.compile_expr(expr).into_int_value(); // fixme
             self.builder.build_return(Some(&val)).ok();
         } else {
             self.builder.build_return(None).ok();
@@ -678,7 +666,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .into(),
                 _ => panic!("未支持的浮点二元操作"),
             },
-            _ => panic!("类型不匹配的二元运算"),
+            _ => panic!("类型不匹配的二元运算 lhs: {lhs:?} rhs: {rhs:?}"),
         }
     }
 
@@ -782,7 +770,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         todo!();
     }
 
-    // 6. Basic Elements
+    /// int, float or struct
     fn compile_type(&mut self, ty: Type) -> BasicTypeEnum<'ctx> {
         if ty.int_token().is_some() {
             return self.context.i32_type().into();
