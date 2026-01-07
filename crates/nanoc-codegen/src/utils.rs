@@ -9,7 +9,7 @@ use nanoc_analyzer::r#type::NType;
 use nanoc_analyzer::value::Value;
 use nanoc_parser::ast::{AstNode, ConstIndexVal, IndexVal, Name, SyntaxToken};
 
-use crate::llvm_ir::{LoopContext, Program};
+use crate::llvm_ir::{LoopContext, Program, Symbol};
 
 // /// 统计指针星号数量
 // pub(crate) fn pointer_depth(ptr: &Pointer) -> usize {
@@ -63,22 +63,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     /// 插入局部变量
-    pub(crate) fn insert_var(
-        &mut self,
-        name: String,
-        ptr: PointerValue<'ctx>,
-        ty: BasicTypeEnum<'ctx>,
-    ) {
+    pub(crate) fn insert_var(&mut self, name: String, ptr: PointerValue<'ctx>, ty: &'a NType) {
         if let Some(scope) = self.scopes.last_mut() {
-            scope.insert(name, (ptr, ty));
+            scope.insert(name, Symbol::new(ptr, ty));
         }
     }
 
     /// 查找变量（从内到外）
-    pub(crate) fn lookup_var(
-        &self,
-        name: &str,
-    ) -> Option<(PointerValue<'ctx>, BasicTypeEnum<'ctx>)> {
+    pub(crate) fn lookup_var(&self, name: &str) -> Option<Symbol<'a, 'ctx>> {
         for scope in self.scopes.iter().rev() {
             if let Some(p) = scope.get(name) {
                 return Some(*p);
@@ -152,10 +144,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let inner = self.convert_ntype_to_type(ntype);
                 inner.array_type(*count as u32).into()
             }
-            NType::Pointer(inner) => self
-                .convert_ntype_to_type(inner)
-                .ptr_type(AddressSpace::default())
-                .into(),
+            NType::Pointer(_) => self.context.ptr_type(AddressSpace::default()).into(),
             NType::Struct(_) => todo!(),
             NType::Const(ntype) => self.convert_ntype_to_type(ntype),
         }
@@ -227,11 +216,22 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         index_val: &IndexVal, // fixme: 可能有解引用
     ) -> (BasicTypeEnum<'ctx>, PointerValue<'ctx>, String) {
         let name = name_text(&index_val.name().expect("变量缺名"));
-        let (ptr, elem_ty) = self.lookup_var(&name).expect("变量未定义");
-
-        if !elem_ty.is_array_type() && !elem_ty.is_pointer_type() {
-            return (elem_ty, ptr, name);
+        let symbol = self.lookup_var(&name).expect("变量未定义");
+        let (ptr, elem_ty) = (symbol.ptr, symbol.ty);
+        let basic_type = self.convert_ntype_to_type(elem_ty);
+        if !elem_ty.is_array() && !elem_ty.is_pointer() {
+            return (basic_type, ptr, name);
         }
+
+        // todo：后续多级指针需要多次 load, 先只处理函数形参的数组
+        let (basic_type, zero) = if elem_ty.is_array() {
+            (basic_type, Some(self.context.i32_type().const_zero()))
+        } else {
+            let NType::Pointer(inner) = elem_ty else {
+                panic!();
+            };
+            (self.convert_ntype_to_type(inner), None)
+        };
 
         let indices = zero
             .into_iter()
@@ -244,11 +244,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         let gep = unsafe {
             self.builder
-                .build_gep(elem_ty, ptr, &indices, "idx.gep")
-                .expect("数组 GEP 失败")
+                .build_gep(basic_type, ptr, &indices, "idx.gep")
+                .expect("gep failed")
         };
 
-        let mut final_ty = elem_ty;
+        let mut final_ty = basic_type;
+        if indices.is_empty() {
+            panic!("zako zako {index_val:?}");
+        }
         for _ in 0..indices.len() - 1 {
             final_ty = final_ty.into_array_type().get_element_type();
         }
@@ -301,7 +304,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             Value::Float(x) => self.context.f32_type().const_float(*x as f64).into(),
             Value::Array(_) => todo!(),
             Value::Struct(_) => todo!(),
-            Value::Symbol(_, _) => todo!(),
+            Value::Pointee(_, _) => todo!(),
         }
     }
 

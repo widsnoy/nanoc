@@ -15,6 +15,10 @@ impl NType {
     pub fn is_array(&self) -> bool {
         matches!(self, Self::Array(_, _))
     }
+
+    pub fn is_pointer(&self) -> bool {
+        matches!(self, Self::Pointer(_))
+    }
     pub fn is_const(&self) -> bool {
         match self {
             Self::Const(_) => true,
