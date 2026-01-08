@@ -1,6 +1,6 @@
-use inkwell::context::Context;
 use airyc_parser::ast::{AstNode, CompUnit};
 use airyc_parser::visitor::Visitor as _;
+use inkwell::context::Context;
 
 use crate::llvm_ir;
 

@@ -1,14 +1,14 @@
 use core::panic;
 use std::collections::HashMap;
 
-use inkwell::AddressSpace;
-use inkwell::basic_block::BasicBlock;
-use inkwell::types::{BasicType, BasicTypeEnum};
-use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
 use airyc_analyzer::array::ArrayTree;
 use airyc_analyzer::r#type::NType;
 use airyc_analyzer::value::Value;
 use airyc_parser::ast::{AstNode, ConstIndexVal, IndexVal, Name, SyntaxToken};
+use inkwell::AddressSpace;
+use inkwell::basic_block::BasicBlock;
+use inkwell::types::{BasicType, BasicTypeEnum};
+use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
 
 use crate::llvm_ir::{LoopContext, Program, Symbol};
 

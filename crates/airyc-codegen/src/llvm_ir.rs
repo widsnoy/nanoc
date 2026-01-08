@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
+use airyc_analyzer::array::{ArrayTree, ArrayTreeValue};
+use airyc_analyzer::r#type::NType;
+use airyc_parser::ast::*;
+use airyc_parser::syntax_kind::SyntaxKind;
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{
     BasicMetadataValueEnum, BasicValueEnum, FunctionValue, IntValue, PointerValue,
 };
 use inkwell::{builder::Builder, context::Context};
-use airyc_analyzer::array::{ArrayTree, ArrayTreeValue};
-use airyc_analyzer::r#type::NType;
-use airyc_parser::ast::*;
-use airyc_parser::syntax_kind::SyntaxKind;
 
 use crate::utils::*;
 

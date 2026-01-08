@@ -2,12 +2,12 @@ use std::env;
 use std::fs;
 use std::path::Path;
 
-use inkwell::OptimizationLevel;
-use inkwell::context::Context;
-use inkwell::targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetTriple};
 use airyc_codegen::llvm_ir::Program;
 use airyc_parser::ast::{AstNode, CompUnit};
 use airyc_parser::visitor::Visitor as _;
+use inkwell::OptimizationLevel;
+use inkwell::context::Context;
+use inkwell::targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetTriple};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
