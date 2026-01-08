@@ -1,0 +1,109 @@
+---
+source: crates/airyc-parser/src/test.rs
+expression: try_it(source)
+---
+COMP_UNIT@0..119
+  NEWLINE@0..1 "\n"
+  WHITESPACE@1..5 "    "
+  FUNC_DEF@5..20
+    FUNC_TYPE@5..9
+      VOID_KW@5..9 "void"
+    NAME@9..15
+      WHITESPACE@9..10 " "
+      IDENT@10..15 "func1"
+    L_PAREN@15..16 "("
+    R_PAREN@16..17 ")"
+    BLOCK@17..20
+      WHITESPACE@17..18 " "
+      L_BRACE@18..19 "{"
+      R_BRACE@19..20 "}"
+  NEWLINE@20..21 "\n"
+  WHITESPACE@21..25 "    "
+  FUNC_DEF@25..44
+    FUNC_TYPE@25..28
+      TYPE@25..28
+        INT_KW@25..28 "int"
+    NAME@28..34
+      WHITESPACE@28..29 " "
+      IDENT@29..34 "func2"
+    L_PAREN@34..35 "("
+    FUNC_F_PARAMS@35..40
+      FUNC_F_PARAM@35..40
+        TYPE@35..38
+          INT_KW@35..38 "int"
+        NAME@38..40
+          WHITESPACE@38..39 " "
+          IDENT@39..40 "a"
+    R_PAREN@40..41 ")"
+    BLOCK@41..44
+      WHITESPACE@41..42 " "
+      L_BRACE@42..43 "{"
+      R_BRACE@43..44 "}"
+  NEWLINE@44..45 "\n"
+  WHITESPACE@45..49 "    "
+  FUNC_DEF@49..77
+    FUNC_TYPE@49..52
+      TYPE@49..52
+        INT_KW@49..52 "int"
+    NAME@52..58
+      WHITESPACE@52..53 " "
+      IDENT@53..58 "func3"
+    L_PAREN@58..59 "("
+    FUNC_F_PARAMS@59..73
+      FUNC_F_PARAM@59..64
+        TYPE@59..62
+          INT_KW@59..62 "int"
+        NAME@62..64
+          WHITESPACE@62..63 " "
+          IDENT@63..64 "a"
+      COMMA@64..65 ","
+      FUNC_F_PARAM@65..73
+        TYPE@65..71
+          WHITESPACE@65..66 " "
+          FLOAT_KW@66..71 "float"
+        NAME@71..73
+          WHITESPACE@71..72 " "
+          IDENT@72..73 "b"
+    R_PAREN@73..74 ")"
+    BLOCK@74..77
+      WHITESPACE@74..75 " "
+      L_BRACE@75..76 "{"
+      R_BRACE@76..77 "}"
+  NEWLINE@77..78 "\n"
+  WHITESPACE@78..82 "    "
+  FUNC_DEF@82..114
+    FUNC_TYPE@82..87
+      TYPE@82..85
+        INT_KW@82..85 "int"
+      POINTER@85..87
+        WHITESPACE@85..86 " "
+        STAR@86..87 "*"
+    NAME@87..92
+      IDENT@87..92 "func4"
+    L_PAREN@92..93 "("
+    FUNC_F_PARAMS@93..110
+      FUNC_F_PARAM@93..99
+        TYPE@93..96
+          INT_KW@93..96 "int"
+        POINTER@96..98
+          WHITESPACE@96..97 " "
+          STAR@97..98 "*"
+        NAME@98..99
+          IDENT@98..99 "p"
+      COMMA@99..100 ","
+      FUNC_F_PARAM@100..110
+        TYPE@100..104
+          WHITESPACE@100..101 " "
+          INT_KW@101..104 "int"
+        NAME@104..108
+          WHITESPACE@104..105 " "
+          IDENT@105..108 "arr"
+        L_BRACK@108..109 "["
+        R_BRACK@109..110 "]"
+    R_PAREN@110..111 ")"
+    BLOCK@111..114
+      WHITESPACE@111..112 " "
+      L_BRACE@112..113 "{"
+      R_BRACE@113..114 "}"
+  NEWLINE@114..115 "\n"
+  WHITESPACE@115..119 "    "

@@ -1,7 +1,7 @@
 #!/bin/bash
 testdir="./compiler-dev-test-cases/testcases"
-my_compiler="../target/debug/nanoc-compiler"
-runtime_lib="../target/debug/libnanoc_runtime.a"
+my_compiler="../target/debug/airyc-compiler"
+runtime_lib="../target/debug/libairyc_runtime.a"
 
 PLAY_GROUND="../playground"
 RESULT_FILE="$PLAY_GROUND/result.txt"
@@ -10,10 +10,10 @@ mkdir -p "$PLAY_GROUND/ll"
 rm -f $RESULT_FILE
 touch $RESULT_FILE
 
-cargo build
+cargo make build
 
 for i in "$@"; do
-    for i in "$testdir/lv$i"/*.c; do
+    for i in "$testdir/$i"/*.c; do
         name=$(basename "${i%.c}")
         clang -Wno-implicit-function-declaration $i $runtime_lib -o $PLAY_GROUND/std.out &> /dev/null
         

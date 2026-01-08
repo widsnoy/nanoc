@@ -1,0 +1,152 @@
+---
+source: crates/airyc-parser/src/test.rs
+expression: try_it(source)
+---
+COMP_UNIT@0..162
+  NEWLINE@0..1 "\n"
+  WHITESPACE@1..5 "    "
+  CONST_DECL@5..21
+    CONST_KW@5..10 "const"
+    TYPE@10..14
+      WHITESPACE@10..11 " "
+      INT_KW@11..14 "int"
+    CONST_DEF@14..20
+      CONST_INDEX_VAL@14..16
+        NAME@14..16
+          WHITESPACE@14..15 " "
+          IDENT@15..16 "A"
+      WHITESPACE@16..17 " "
+      EQ@17..18 "="
+      CONST_INIT_VAL@18..20
+        CONST_EXPR@18..20
+          LITERAL@18..20
+            WHITESPACE@18..19 " "
+            INT_LITERAL@19..20 "1"
+    SEMI@20..21 ";"
+  NEWLINE@21..22 "\n"
+  WHITESPACE@22..26 "    "
+  CONST_DECL@26..55
+    CONST_KW@26..31 "const"
+    TYPE@31..37
+      WHITESPACE@31..32 " "
+      FLOAT_KW@32..37 "float"
+    CONST_DEF@37..45
+      CONST_INDEX_VAL@37..39
+        NAME@37..39
+          WHITESPACE@37..38 " "
+          IDENT@38..39 "B"
+      WHITESPACE@39..40 " "
+      EQ@40..41 "="
+      CONST_INIT_VAL@41..45
+        CONST_EXPR@41..45
+          LITERAL@41..45
+            WHITESPACE@41..42 " "
+            FLOAT_LITERAL@42..45 "2.0"
+    COMMA@45..46 ","
+    CONST_DEF@46..54
+      CONST_INDEX_VAL@46..48
+        NAME@46..48
+          WHITESPACE@46..47 " "
+          IDENT@47..48 "C"
+      WHITESPACE@48..49 " "
+      EQ@49..50 "="
+      CONST_INIT_VAL@50..54
+        CONST_EXPR@50..54
+          LITERAL@50..54
+            WHITESPACE@50..51 " "
+            FLOAT_LITERAL@51..54 "3.0"
+    SEMI@54..55 ";"
+  NEWLINE@55..56 "\n"
+  WHITESPACE@56..60 "    "
+  VAR_DECL@60..66
+    TYPE@60..63
+      INT_KW@60..63 "int"
+    VAR_DEF@63..65
+      CONST_INDEX_VAL@63..65
+        NAME@63..65
+          WHITESPACE@63..64 " "
+          IDENT@64..65 "a"
+    SEMI@65..66 ";"
+  NEWLINE@66..67 "\n"
+  WHITESPACE@67..71 "    "
+  VAR_DECL@71..85
+    TYPE@71..76
+      FLOAT_KW@71..76 "float"
+    VAR_DEF@76..84
+      CONST_INDEX_VAL@76..78
+        NAME@76..78
+          WHITESPACE@76..77 " "
+          IDENT@77..78 "b"
+      WHITESPACE@78..79 " "
+      EQ@79..80 "="
+      INIT_VAL@80..84
+        LITERAL@80..84
+          WHITESPACE@80..81 " "
+          FLOAT_LITERAL@81..84 "1.0"
+    SEMI@84..85 ";"
+  NEWLINE@85..86 "\n"
+  WHITESPACE@86..90 "    "
+  VAR_DECL@90..108
+    TYPE@90..105
+      STRUCT_KW@90..96 "struct"
+      NAME@96..105
+        WHITESPACE@96..97 " "
+        IDENT@97..105 "MyStruct"
+    VAR_DEF@105..107
+      CONST_INDEX_VAL@105..107
+        NAME@105..107
+          WHITESPACE@105..106 " "
+          IDENT@106..107 "s"
+    SEMI@107..108 ";"
+  NEWLINE@108..109 "\n"
+  WHITESPACE@109..113 "    "
+  VAR_DECL@113..120
+    TYPE@113..116
+      INT_KW@113..116 "int"
+    VAR_DEF@116..119
+      POINTER@116..118
+        WHITESPACE@116..117 " "
+        STAR@117..118 "*"
+      CONST_INDEX_VAL@118..119
+        NAME@118..119
+          IDENT@118..119 "p"
+    SEMI@119..120 ";"
+  NEWLINE@120..121 "\n"
+  WHITESPACE@121..125 "    "
+  VAR_DECL@125..137
+    TYPE@125..128
+      INT_KW@125..128 "int"
+    VAR_DEF@128..136
+      CONST_INDEX_VAL@128..136
+        NAME@128..132
+          WHITESPACE@128..129 " "
+          IDENT@129..132 "arr"
+        L_BRACK@132..133 "["
+        CONST_EXPR@133..135
+          LITERAL@133..135
+            INT_LITERAL@133..135 "10"
+        R_BRACK@135..136 "]"
+    SEMI@136..137 ";"
+  NEWLINE@137..138 "\n"
+  WHITESPACE@138..142 "    "
+  VAR_DECL@142..157
+    TYPE@142..145
+      INT_KW@142..145 "int"
+    VAR_DEF@145..156
+      CONST_INDEX_VAL@145..156
+        NAME@145..150
+          WHITESPACE@145..146 " "
+          IDENT@146..150 "arr2"
+        L_BRACK@150..151 "["
+        CONST_EXPR@151..152
+          LITERAL@151..152
+            INT_LITERAL@151..152 "2"
+        R_BRACK@152..153 "]"
+        L_BRACK@153..154 "["
+        CONST_EXPR@154..155
+          LITERAL@154..155
+            INT_LITERAL@154..155 "3"
+        R_BRACK@155..156 "]"
+    SEMI@156..157 ";"
+  NEWLINE@157..158 "\n"
+  WHITESPACE@158..162 "    "

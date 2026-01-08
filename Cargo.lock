@@ -3,6 +3,55 @@
 version = 4
 
 [[package]]
+name = "airyc-analyzer"
+version = "0.1.0"
+dependencies = [
+ "airyc-parser",
+ "insta",
+ "text-size",
+ "thunderdome",
+]
+
+[[package]]
+name = "airyc-codegen"
+version = "0.1.0"
+dependencies = [
+ "airyc-analyzer",
+ "airyc-parser",
+ "inkwell",
+ "insta",
+ "rowan",
+]
+
+[[package]]
+name = "airyc-compiler"
+version = "0.1.0"
+dependencies = [
+ "airyc-analyzer",
+ "airyc-codegen",
+ "airyc-parser",
+ "inkwell",
+]
+
+[[package]]
+name = "airyc-parser"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "logos",
+ "rowan",
+ "text-size",
+ "thiserror",
+]
+
+[[package]]
+name = "airyc-runtime"
+version = "0.1.0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -159,55 +208,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "605d9697bcd5ef3a42d38efc51541aa3d6a4a25f7ab6d1ed0da5ac632a26b470"
 dependencies = [
  "logos-codegen",
-]
-
-[[package]]
-name = "nanoc-analyzer"
-version = "0.1.0"
-dependencies = [
- "insta",
- "nanoc-parser",
- "text-size",
- "thunderdome",
-]
-
-[[package]]
-name = "nanoc-codegen"
-version = "0.1.0"
-dependencies = [
- "inkwell",
- "insta",
- "nanoc-analyzer",
- "nanoc-parser",
- "rowan",
-]
-
-[[package]]
-name = "nanoc-compiler"
-version = "0.1.0"
-dependencies = [
- "inkwell",
- "nanoc-analyzer",
- "nanoc-codegen",
- "nanoc-parser",
-]
-
-[[package]]
-name = "nanoc-parser"
-version = "0.1.0"
-dependencies = [
- "insta",
- "logos",
- "rowan",
- "text-size",
- "thiserror",
-]
-
-[[package]]
-name = "nanoc-runtime"
-version = "0.1.0"
-dependencies = [
- "cc",
 ]
 
 [[package]]
