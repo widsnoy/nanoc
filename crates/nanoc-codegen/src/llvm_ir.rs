@@ -787,9 +787,13 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     //         .expect("解引用失败")
     // }
 
-    fn compile_index_val(&mut self, expr: IndexVal, r_param: bool) -> BasicValueEnum<'ctx> {
+    fn compile_index_val(
+        &mut self,
+        expr: IndexVal,
+        func_call_r_param: bool,
+    ) -> BasicValueEnum<'ctx> {
         let (ty, ptr, name) = self.get_element_ptr_by_index_val(&expr);
-        if !r_param || !ty.is_array_type() {
+        if !func_call_r_param || (!ty.is_array_type() && !ty.is_pointer_type()) {
             self.builder.build_load(ty, ptr, &name).unwrap()
         } else {
             ptr.into()

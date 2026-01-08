@@ -34,11 +34,11 @@ entry:
   %a = alloca [3 x i32], align 4
   store [3 x i32] [i32 1, i32 2, i32 3], ptr %a, align 4
   store [2 x i32] zeroinitializer, ptr %b, align 4
-  %idx.gep = getelementptr ptr, ptr %b, i32 0
+  %idx.gep = getelementptr [2 x i32], ptr %b, i32 0, i32 0
   store i32 1, ptr %idx.gep, align 4
-  %idx.gep1 = getelementptr ptr, ptr %a, i32 1
-  %idx.load = load [3 x i32], ptr %idx.gep1, align 4
-  %idx.gep2 = getelementptr ptr, ptr %b, i32 1
-  store [3 x i32] %idx.load, ptr %idx.gep2, align 4
+  %idx.gep1 = getelementptr [3 x i32], ptr %a, i32 0, i32 1
+  %a2 = load i32, ptr %idx.gep1, align 4
+  %idx.gep3 = getelementptr [2 x i32], ptr %b, i32 0, i32 1
+  store i32 %a2, ptr %idx.gep3, align 4
   ret i32 0
 }

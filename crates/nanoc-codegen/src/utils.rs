@@ -1,3 +1,4 @@
+use core::panic;
 use std::collections::HashMap;
 
 use inkwell::AddressSpace;
@@ -249,11 +250,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         };
 
         let mut final_ty = basic_type;
+
+        // 比如调用函数 func(int a[]), 保存的是指针类型，前面已经拆了一层
         if indices.is_empty() {
-            panic!("zako zako {index_val:?}");
-        }
-        for _ in 0..indices.len() - 1 {
-            final_ty = final_ty.into_array_type().get_element_type();
+            final_ty = self.context.ptr_type(AddressSpace::default()).into();
+        } else {
+            for _ in 0..indices.len() - 1 {
+                final_ty = final_ty.into_array_type().get_element_type();
+            }
         }
         (final_ty, gep, name)
     }

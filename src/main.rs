@@ -42,7 +42,6 @@ fn main() {
 
     // analyzer
     let root = nanoc_parser::parser::Parser::new_root(green_node);
-    dbg!(&root);
     let mut analyzer = nanoc_analyzer::module::Module::default();
     analyzer.walk(&root);
 
