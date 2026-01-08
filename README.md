@@ -1,4 +1,4 @@
-# nanoc
+# airyc
 
 Based on SysY language, added structure and pointer support
 

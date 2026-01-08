@@ -5,9 +5,9 @@ use std::path::Path;
 use inkwell::OptimizationLevel;
 use inkwell::context::Context;
 use inkwell::targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetTriple};
-use nanoc_codegen::llvm_ir::Program;
-use nanoc_parser::ast::{AstNode, CompUnit};
-use nanoc_parser::visitor::Visitor as _;
+use airyc_codegen::llvm_ir::Program;
+use airyc_parser::ast::{AstNode, CompUnit};
+use airyc_parser::visitor::Visitor as _;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -20,7 +20,7 @@ fn main() {
     let input = fs::read_to_string(input_path).expect("Failed to read input file");
 
     // 1. Parse
-    let parser = nanoc_parser::parser::Parser::new(&input);
+    let parser = airyc_parser::parser::Parser::new(&input);
     let (green_node, errors) = parser.parse();
     if !errors.is_empty() {
         eprintln!("Parser errors:");
@@ -41,8 +41,8 @@ fn main() {
     let builder = context.create_builder();
 
     // analyzer
-    let root = nanoc_parser::parser::Parser::new_root(green_node);
-    let mut analyzer = nanoc_analyzer::module::Module::default();
+    let root = airyc_parser::parser::Parser::new_root(green_node);
+    let mut analyzer = airyc_analyzer::module::Module::default();
     analyzer.walk(&root);
 
     if !analyzer.analyzing.errors.is_empty() {

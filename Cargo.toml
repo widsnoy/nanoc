@@ -1,14 +1,14 @@
 [package]
-name = "nanoc-compiler"
+name = "airyc-compiler"
 version = "0.1.0"
 edition = "2024"
 
 [workspace]
 members = [
-    "crates/nanoc-codegen",
-    "crates/nanoc-analyzer",
-    "crates/nanoc-parser",
-    "crates/nanoc-runtime",
+    "crates/airyc-codegen",
+    "crates/airyc-analyzer",
+    "crates/airyc-parser",
+    "crates/airyc-runtime",
 ]
 resolver = "2"
 
@@ -22,12 +22,12 @@ inkwell = { version = "0.7.1", features = ["llvm21-1"] }
 thunderdome = "0.6.1"
 # smol_str = "0.3.4"
 
-nanoc-parser = { path = "crates/nanoc-parser" }
-nanoc-codegen = { path = "crates/nanoc-codegen" }
-nanoc-analyzer = { path = "crates/nanoc-analyzer" }
+airyc-parser = { path = "crates/airyc-parser" }
+airyc-codegen = { path = "crates/airyc-codegen" }
+airyc-analyzer = { path = "crates/airyc-analyzer" }
 
 [dependencies]
-nanoc-parser.workspace = true
-nanoc-codegen.workspace = true
-nanoc-analyzer.workspace = true
+airyc-parser.workspace = true
+airyc-codegen.workspace = true
+airyc-analyzer.workspace = true
 inkwell.workspace = true

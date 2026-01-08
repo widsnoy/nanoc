@@ -1,0 +1,7 @@
+---
+source: crates/airyc-analyzer/src/array.rs
+expression: tree
+---
+Mama
+├── Val(1)
+└── Val(2)

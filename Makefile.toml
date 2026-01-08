@@ -9,11 +9,11 @@ dependencies = ["build-compiler", "build-runtime"]
 
 [tasks.build-compiler]
 command = "cargo"
-args = ["build", "--release", "--bin", "nanoc-compiler"]
+args = ["build", "--release", "--bin", "airyc-compiler"]
 
 [tasks.build-runtime]
 command = "cargo"
-args = ["build", "--release", "-p", "nanoc-runtime"]
+args = ["build", "--release", "-p", "airyc-runtime"]
 
 [tasks.compile]
 script_runner = "@shell"
@@ -26,9 +26,9 @@ fi
 NAME=$(basename "$1" .c)
 LL=$NAME.ll
 # gen .ll
-./target/release/nanoc-compiler $1 -o playground/$LL
+./target/release/airyc-compiler $1 -o playground/$LL
 
 # link .ll and .a
 clang -x ir playground/$LL -c -o playground/$NAME.o
-clang playground/$NAME.o target/release/libnanoc_runtime.a -o playground/$NAME
+clang playground/$NAME.o target/release/libairyc_runtime.a -o playground/$NAME
 '''
