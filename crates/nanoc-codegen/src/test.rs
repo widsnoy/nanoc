@@ -11,8 +11,14 @@ fn try_it(code: &str) -> String {
 
     let root = nanoc_parser::parser::Parser::new_root(green_node);
 
-    let mut analyzer = nanoc_ir::module::Module::default();
+    let mut analyzer = nanoc_analyzer::module::Module::default();
     analyzer.walk(&root);
+
+    assert!(
+        analyzer.analyzing.errors.is_empty(),
+        "Analyzer erros: {:?}",
+        analyzer.analyzing.errors
+    );
 
     // dbg!(&root);
     let comp_unit = CompUnit::cast(root).unwrap();
@@ -124,6 +130,26 @@ fn test_return_stmt() {
         int y = 1 + 2 * 3;
         return x + y;
         return 0;
+    }
+    "#;
+    insta::assert_snapshot!(try_it(code));
+}
+
+#[test]
+fn test_array_initialize() {
+    let code = r#"
+    const int a[3] = {};
+    const int b[2][3][4] = {1, 2, 3, 4, {5}, {6}, {7, 8}};
+    int c = b[1][0][1];
+    
+    const float d[2] = {1.11};
+    float e = d[0];
+
+    int g[2] = {1, 2};
+
+    int main() {
+        int a[3] = {1, 2, 3};
+        int b[2] = {1, a[1]};
     }
     "#;
     insta::assert_snapshot!(try_it(code));

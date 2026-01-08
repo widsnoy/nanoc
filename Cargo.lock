@@ -162,12 +162,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanoc-analyzer"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "nanoc-parser",
+ "text-size",
+ "thunderdome",
+]
+
+[[package]]
 name = "nanoc-codegen"
 version = "0.1.0"
 dependencies = [
  "inkwell",
  "insta",
- "nanoc-ir",
+ "nanoc-analyzer",
  "nanoc-parser",
  "rowan",
 ]
@@ -177,18 +187,9 @@ name = "nanoc-compiler"
 version = "0.1.0"
 dependencies = [
  "inkwell",
+ "nanoc-analyzer",
  "nanoc-codegen",
- "nanoc-ir",
  "nanoc-parser",
-]
-
-[[package]]
-name = "nanoc-ir"
-version = "0.1.0"
-dependencies = [
- "nanoc-parser",
- "text-size",
- "thunderdome",
 ]
 
 [[package]]

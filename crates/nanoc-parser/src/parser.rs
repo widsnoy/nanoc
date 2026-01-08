@@ -31,19 +31,19 @@ impl<'a> Parser<'a> {
         rowan::SyntaxNode::new_root(green_node)
     }
 
-    pub fn checkpoint(&self) -> Checkpoint {
+    pub(crate) fn checkpoint(&self) -> Checkpoint {
         self.builder.checkpoint()
     }
 
-    pub fn start_node(&mut self, kind: SyntaxKind) {
+    pub(crate) fn start_node(&mut self, kind: SyntaxKind) {
         self.builder.start_node(kind.into());
     }
 
-    pub fn start_node_at(&mut self, checkpoint: Checkpoint, kind: SyntaxKind) {
+    pub(crate) fn start_node_at(&mut self, checkpoint: Checkpoint, kind: SyntaxKind) {
         self.builder.start_node_at(checkpoint, kind.into());
     }
 
-    pub fn finish_node(&mut self) {
+    pub(crate) fn finish_node(&mut self) {
         self.builder.finish_node();
     }
 
