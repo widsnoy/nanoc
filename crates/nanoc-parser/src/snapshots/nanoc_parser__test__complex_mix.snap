@@ -2,7 +2,7 @@
 source: crates/nanoc-parser/src/test.rs
 expression: try_it(source)
 ---
-COMP_UNIT@0..168
+COMP_UNIT@0..164
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
   CONST_DECL@5..25
@@ -38,103 +38,102 @@ COMP_UNIT@0..168
           IDENT@43..44 "p"
     SEMI@44..45 ";"
   NEWLINE@45..46 "\n"
-  WHITESPACE@46..50 "    "
-  NEWLINE@50..51 "\n"
-  WHITESPACE@51..55 "    "
-  FUNC_DEF@55..163
-    FUNC_TYPE@55..58
-      TYPE@55..58
-        INT_KW@55..58 "int"
-    NAME@58..63
-      WHITESPACE@58..59 " "
-      IDENT@59..63 "main"
-    L_PAREN@63..64 "("
-    FUNC_F_PARAMS@64..85
-      FUNC_F_PARAM@64..72
-        TYPE@64..67
-          INT_KW@64..67 "int"
-        NAME@67..72
-          WHITESPACE@67..68 " "
-          IDENT@68..72 "argc"
-      COMMA@72..73 ","
-      FUNC_F_PARAM@73..85
-        TYPE@73..77
+  NEWLINE@46..47 "\n"
+  WHITESPACE@47..51 "    "
+  FUNC_DEF@51..159
+    FUNC_TYPE@51..54
+      TYPE@51..54
+        INT_KW@51..54 "int"
+    NAME@54..59
+      WHITESPACE@54..55 " "
+      IDENT@55..59 "main"
+    L_PAREN@59..60 "("
+    FUNC_F_PARAMS@60..81
+      FUNC_F_PARAM@60..68
+        TYPE@60..63
+          INT_KW@60..63 "int"
+        NAME@63..68
+          WHITESPACE@63..64 " "
+          IDENT@64..68 "argc"
+      COMMA@68..69 ","
+      FUNC_F_PARAM@69..81
+        TYPE@69..73
+          WHITESPACE@69..70 " "
+          INT_KW@70..73 "int"
+        POINTER@73..75
           WHITESPACE@73..74 " "
-          INT_KW@74..77 "int"
-        POINTER@77..79
-          WHITESPACE@77..78 " "
-          STAR@78..79 "*"
-        NAME@79..83
-          IDENT@79..83 "argv"
-        L_BRACK@83..84 "["
-        R_BRACK@84..85 "]"
-    R_PAREN@85..86 ")"
-    BLOCK@86..163
-      WHITESPACE@86..87 " "
-      L_BRACE@87..88 "{"
-      VAR_DECL@88..107
-        TYPE@88..100
-          NEWLINE@88..89 "\n"
-          WHITESPACE@89..97 "        "
-          INT_KW@97..100 "int"
-        VAR_DEF@100..106
-          CONST_INDEX_VAL@100..102
-            NAME@100..102
+          STAR@74..75 "*"
+        NAME@75..79
+          IDENT@75..79 "argv"
+        L_BRACK@79..80 "["
+        R_BRACK@80..81 "]"
+    R_PAREN@81..82 ")"
+    BLOCK@82..159
+      WHITESPACE@82..83 " "
+      L_BRACE@83..84 "{"
+      VAR_DECL@84..103
+        TYPE@84..96
+          NEWLINE@84..85 "\n"
+          WHITESPACE@85..93 "        "
+          INT_KW@93..96 "int"
+        VAR_DEF@96..102
+          CONST_INDEX_VAL@96..98
+            NAME@96..98
+              WHITESPACE@96..97 " "
+              IDENT@97..98 "a"
+          WHITESPACE@98..99 " "
+          EQ@99..100 "="
+          INIT_VAL@100..102
+            LITERAL@100..102
               WHITESPACE@100..101 " "
-              IDENT@101..102 "a"
-          WHITESPACE@102..103 " "
-          EQ@103..104 "="
-          INIT_VAL@104..106
-            LITERAL@104..106
-              WHITESPACE@104..105 " "
-              INT_LITERAL@105..106 "1"
-        SEMI@106..107 ";"
-      VAR_DECL@107..130
-        TYPE@107..119
-          NEWLINE@107..108 "\n"
-          WHITESPACE@108..116 "        "
-          INT_KW@116..119 "int"
-        VAR_DEF@119..129
-          POINTER@119..121
-            WHITESPACE@119..120 " "
-            STAR@120..121 "*"
-          CONST_INDEX_VAL@121..124
-            NAME@121..124
-              IDENT@121..124 "ptr"
-          WHITESPACE@124..125 " "
-          EQ@125..126 "="
-          INIT_VAL@126..129
-            UNARY_EXPR@126..129
-              UNARY_OP@126..128
-                WHITESPACE@126..127 " "
-                AMP@127..128 "&"
-              INDEX_VAL@128..129
-                NAME@128..129
-                  IDENT@128..129 "a"
-        SEMI@129..130 ";"
-      CONST_DECL@130..157
-        NEWLINE@130..131 "\n"
-        WHITESPACE@131..139 "        "
-        CONST_KW@139..144 "const"
-        TYPE@144..148
-          WHITESPACE@144..145 " "
-          INT_KW@145..148 "int"
-        CONST_DEF@148..156
-          CONST_INDEX_VAL@148..150
-            NAME@148..150
-              WHITESPACE@148..149 " "
-              IDENT@149..150 "b"
-          WHITESPACE@150..151 " "
-          EQ@151..152 "="
-          CONST_INIT_VAL@152..156
-            CONST_EXPR@152..156
-              INDEX_VAL@152..156
-                NAME@152..156
-                  WHITESPACE@152..153 " "
-                  IDENT@153..156 "MAX"
-        SEMI@156..157 ";"
-      NEWLINE@157..158 "\n"
-      WHITESPACE@158..162 "    "
-      R_BRACE@162..163 "}"
-  NEWLINE@163..164 "\n"
-  WHITESPACE@164..168 "    "
+              INT_LITERAL@101..102 "1"
+        SEMI@102..103 ";"
+      VAR_DECL@103..126
+        TYPE@103..115
+          NEWLINE@103..104 "\n"
+          WHITESPACE@104..112 "        "
+          INT_KW@112..115 "int"
+        VAR_DEF@115..125
+          POINTER@115..117
+            WHITESPACE@115..116 " "
+            STAR@116..117 "*"
+          CONST_INDEX_VAL@117..120
+            NAME@117..120
+              IDENT@117..120 "ptr"
+          WHITESPACE@120..121 " "
+          EQ@121..122 "="
+          INIT_VAL@122..125
+            UNARY_EXPR@122..125
+              UNARY_OP@122..124
+                WHITESPACE@122..123 " "
+                AMP@123..124 "&"
+              INDEX_VAL@124..125
+                NAME@124..125
+                  IDENT@124..125 "a"
+        SEMI@125..126 ";"
+      CONST_DECL@126..153
+        NEWLINE@126..127 "\n"
+        WHITESPACE@127..135 "        "
+        CONST_KW@135..140 "const"
+        TYPE@140..144
+          WHITESPACE@140..141 " "
+          INT_KW@141..144 "int"
+        CONST_DEF@144..152
+          CONST_INDEX_VAL@144..146
+            NAME@144..146
+              WHITESPACE@144..145 " "
+              IDENT@145..146 "b"
+          WHITESPACE@146..147 " "
+          EQ@147..148 "="
+          CONST_INIT_VAL@148..152
+            CONST_EXPR@148..152
+              INDEX_VAL@148..152
+                NAME@148..152
+                  WHITESPACE@148..149 " "
+                  IDENT@149..152 "MAX"
+        SEMI@152..153 ";"
+      NEWLINE@153..154 "\n"
+      WHITESPACE@154..158 "    "
+      R_BRACE@158..159 "}"
+  NEWLINE@159..160 "\n"
+  WHITESPACE@160..164 "    "

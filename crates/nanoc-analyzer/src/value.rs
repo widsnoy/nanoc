@@ -1,23 +1,14 @@
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NType {
-    Int,
-    Float,
-    Void,
-    Array(Box<NType>, usize),
-    Pointer(Box<NType>),
-    Struct(String),
-    Const(Box<NType>),
-}
+use crate::array::ArrayTree;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Int(i32),
     Float(f32),
-    Array(Vec<Value>),
+    Array(ArrayTree),
     Struct(BTreeMap<String, Value>),
-    Symbol(String, i32),
+    Pointee(String, i32),
 }
 
 pub enum EvalError {
@@ -75,18 +66,18 @@ impl Value {
                 _ => Err(EvalError::UnsupportedOperation(op.to_string())),
             },
             // 指针运算: Symbol + Int
-            (Value::Symbol(s, off), Value::Int(i)) => match op {
-                "+" => Ok(Value::Symbol(s.to_string(), off + i)),
-                "-" => Ok(Value::Symbol(s.to_string(), off - i)),
+            (Value::Pointee(s, off), Value::Int(i)) => match op {
+                "+" => Ok(Value::Pointee(s.to_string(), off + i)),
+                "-" => Ok(Value::Pointee(s.to_string(), off - i)),
                 _ => Err(EvalError::UnsupportedOperation(op.to_string())),
             },
             // 指针运算: Int + Symbol
-            (Value::Int(i), Value::Symbol(s, off)) => match op {
-                "+" => Ok(Value::Symbol(s.to_string(), off + i)),
+            (Value::Int(i), Value::Pointee(s, off)) => match op {
+                "+" => Ok(Value::Pointee(s.to_string(), off + i)),
                 _ => Err(EvalError::UnsupportedOperation(op.to_string())),
             },
             // 指针运算: Symbol - Symbol (计算偏移量差值，仅当指向同一符号时有效)
-            (Value::Symbol(s1, off1), Value::Symbol(s2, off2)) => match op {
+            (Value::Pointee(s1, off1), Value::Pointee(s2, off2)) => match op {
                 "-" => {
                     if s1 == s2 {
                         Ok(Value::Int(off1 - off2))
@@ -120,21 +111,4 @@ impl Value {
             _ => Err(EvalError::TypeMismatch),
         }
     }
-
-    // /// 获取多维数组的元素
-    // pub fn get(&self, indices: &[usize]) -> Option<&Value> {
-    //     let mut cur = self;
-    //     for &idx in indices {
-    //         match cur {
-    //             Value::Array(vec) => {
-    //                 let Some(nxt) = vec.get(idx) else {
-    //                     return None;
-    //                 };
-    //                 cur = nxt;
-    //             }
-    //             _ => return None,
-    //         }
-    //     }
-    //     Some(cur)
-    // }
 }

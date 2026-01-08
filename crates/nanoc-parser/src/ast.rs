@@ -150,6 +150,11 @@ ast_node!(
         inits: nodes(InitVal),
     }
 );
+impl InitVal {
+    pub fn is_list(&self) -> bool {
+        self.inits().next().is_some()
+    }
+}
 
 // 3. Functions
 ast_node!(
@@ -334,6 +339,7 @@ ast_node!(
     }
 );
 
+// 作为右值
 ast_node!(
     IndexVal ~ INDEX_VAL {
         name: node(Name),
@@ -363,8 +369,7 @@ ast_node!(
 
 // 6. Basic Elements
 ast_node!(
-    Type ~ TYPE {
-        int_token: token(INT_KW),
+    Type ~ TYPE { int_token: token(INT_KW),
         float_token: token(FLOAT_KW),
         struct_token: token(STRUCT_KW),
         name: node(Name),
