@@ -6,14 +6,16 @@ runtime_lib="../target/debug/libairyc_runtime.a"
 PLAY_GROUND="../playground"
 RESULT_FILE="$PLAY_GROUND/result.txt"
 
+cargo build --workspace
+
 mkdir -p "$PLAY_GROUND/ll"
 rm -f $RESULT_FILE
 touch $RESULT_FILE
 
 for i in "$@"; do
-    for i in "$testdir/$i"/*.c; do
+    for i in "$testdir/$i/*.c"; do
         name=$(basename "${i%.c}")
-        clang -Wno-implicit-function-declaration $i $runtime_lib -o $PLAY_GROUND/std.out > /dev/null 2>&1 
+        clang -Wno-implicit-function-declaration $i $runtime_lib -o $PLAY_GROUND/std.out 
         # 可能有 .in
         if [ -f "${i%.c}.in" ]; then
             cat "${i%.c}.in" | $PLAY_GROUND/std.out > $PLAY_GROUND/ans.txt
@@ -26,7 +28,7 @@ for i in "$@"; do
         
         rm $PLAY_GROUND/std.out
 
-        $my_compiler -i $i -o $PLAY_GROUND -r $runtime_lib -O o2
+        $my_compiler -i $i -o $PLAY_GROUND -r $runtime_lib -O o0
         mv $PLAY_GROUND/$name $PLAY_GROUND/my.out
         if [ $? -ne 0 ]; then
             exit 1
