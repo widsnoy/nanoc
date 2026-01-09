@@ -10,13 +10,10 @@ mkdir -p "$PLAY_GROUND/ll"
 rm -f $RESULT_FILE
 touch $RESULT_FILE
 
-cargo make build
-
 for i in "$@"; do
     for i in "$testdir/$i"/*.c; do
         name=$(basename "${i%.c}")
-        clang -Wno-implicit-function-declaration $i $runtime_lib -o $PLAY_GROUND/std.out &> /dev/null
-        
+        clang -Wno-implicit-function-declaration $i $runtime_lib -o $PLAY_GROUND/std.out > /dev/null 2>&1 
         # 可能有 .in
         if [ -f "${i%.c}.in" ]; then
             cat "${i%.c}.in" | $PLAY_GROUND/std.out > $PLAY_GROUND/ans.txt
@@ -29,14 +26,12 @@ for i in "$@"; do
         
         rm $PLAY_GROUND/std.out
 
-        $my_compiler $i -o $PLAY_GROUND/$name.ll
+        $my_compiler -i $i -o $PLAY_GROUND -r $runtime_lib -O o2
+        mv $PLAY_GROUND/$name $PLAY_GROUND/my.out
         if [ $? -ne 0 ]; then
             exit 1
         fi
 
-        clang -x ir $PLAY_GROUND/$name.ll -c -o $PLAY_GROUND/$name.o
-        clang $PLAY_GROUND/$name.o $runtime_lib -o $PLAY_GROUND/my.out
-        
         # 可能有 .in
         if [ -f "${i%.c}.in" ]; then
              cat "${i%.c}.in" | $PLAY_GROUND/my.out > $PLAY_GROUND/my.txt
@@ -48,7 +43,6 @@ for i in "$@"; do
         echo $my_return_value >> $PLAY_GROUND/my.txt
         rm $PLAY_GROUND/my.out
         rm $PLAY_GROUND/$name.o
-        mv $PLAY_GROUND/$name.ll $PLAY_GROUND/ll/$name.ll
 
         diff $PLAY_GROUND/ans.txt $PLAY_GROUND/my.txt > $PLAY_GROUND/diff.txt
         diff_result=$?

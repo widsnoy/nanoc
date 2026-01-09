@@ -15,20 +15,3 @@ args = ["build", "--release", "--bin", "airyc-compiler"]
 command = "cargo"
 args = ["build", "--release", "-p", "airyc-runtime"]
 
-[tasks.compile]
-script_runner = "@shell"
-dependencies = ["build"]
-script = '''
-if [ -z "$1" ]; then
-    echo "Usage: cargo make run <source_file>"
-    exit 1
-fi
-NAME=$(basename "$1" .c)
-LL=$NAME.ll
-# gen .ll
-./target/release/airyc-compiler $1 -o playground/$LL
-
-# link .ll and .a
-clang -x ir playground/$LL -c -o playground/$NAME.o
-clang playground/$NAME.o target/release/libairyc_runtime.a -o playground/$NAME
-'''
