@@ -339,7 +339,7 @@ ast_node!(
     }
 );
 
-// 作为右值
+// as rvalue
 ast_node!(
     IndexVal ~ INDEX_VAL {
         name: node(Name),
@@ -385,7 +385,7 @@ ast_node!(
 ast_node!(Pointer ~ POINTER {});
 
 impl Pointer {
-    /// true 表示可变指针，false 表示不可变指针
+    /// true for mutable pointer, false for immutable pointer
     pub fn stars(&self) -> Vec<bool> {
         let iter = self
             .syntax()

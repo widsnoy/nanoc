@@ -18,13 +18,13 @@ pub struct LexerError {
     pub span: Range<usize>,
 }
 
-/// 词法单元 (Tokens)
+/// Tokens
 #[derive(Logos, Debug, PartialEq, Clone)]
 #[logos(error = LexerErrorKind)]
 #[allow(clippy::upper_case_acronyms)]
 #[allow(non_camel_case_types)]
 pub enum Token {
-    // Trivia (空白与注释)
+    // Trivia (whitespace and comments)
     #[regex(r"[ \t]+")]
     WHITESPACE,
     #[regex(r"(\r\n|\n|\r)")]
@@ -186,7 +186,7 @@ impl From<Token> for SyntaxKind {
     }
 }
 
-/// 词法分析器
+/// Lexer
 pub struct Lexer<'a> {
     tokens: Vec<(SyntaxKind, &'a str)>,
     pos: usize,
@@ -218,7 +218,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// 获取从当前位置开始的第一个非 Trivia Token 的位置
+    /// Get first non-trivia token position from current
     fn get_next_non_trivia_pos(tokens: &[(SyntaxKind, &str)], start_pos: usize) -> usize {
         let mut pos = start_pos;
         while pos < tokens.len() {
@@ -231,7 +231,7 @@ impl<'a> Lexer<'a> {
         pos
     }
 
-    /// 返回当前 Token 的类型
+    /// Return current token type
     pub fn current(&self) -> SyntaxKind {
         self.tokens
             .get(self.pos)
@@ -239,12 +239,12 @@ impl<'a> Lexer<'a> {
             .unwrap_or(SyntaxKind::EOF)
     }
 
-    /// 返回当前 Token 的文本内容
+    /// Return current token text
     pub fn current_text(&self) -> &'a str {
         self.tokens.get(self.pos).map(|t| t.1).unwrap_or("")
     }
 
-    /// 返回当前非 Trivia Token 的类型
+    /// Return current non-trivia token type
     pub fn current_without_trivia(&self) -> SyntaxKind {
         self.tokens
             .get(self.pos_skip_trivia)
@@ -252,7 +252,7 @@ impl<'a> Lexer<'a> {
             .unwrap_or(SyntaxKind::EOF)
     }
 
-    /// 返回下一个非 Trivia Token 的类型
+    /// Return next non-trivia token type
     pub fn current_without_trivia_1(&self) -> SyntaxKind {
         self.tokens
             .get(self.pos_skip_trivia_1)
@@ -260,7 +260,7 @@ impl<'a> Lexer<'a> {
             .unwrap_or(SyntaxKind::EOF)
     }
 
-    /// 移动到下一个 Token
+    /// Move to next token
     pub fn bump(&mut self) {
         if self.pos < self.tokens.len() {
             self.pos += 1;
@@ -272,7 +272,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// 检查当前 Token 是否匹配 `kind`
+    /// Check if current token matches `kind`
     pub fn at(&self, kind: SyntaxKind) -> bool {
         self.current() == kind
     }

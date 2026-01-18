@@ -131,11 +131,11 @@ impl ArrayTreeTrait for InitVal {
 
 #[derive(Debug)]
 pub enum ArrayInitError {
-    /// 用数组初始化标量
+    /// Assign array to scalar
     AssignArrayToNumber,
-    /// 数组下标越界
+    /// Array index out of bounds
     IndexOutOfBound,
-    /// 下标和类型不匹配
+    /// Index and type mismatch
     MisMatchIndexAndType,
     Unkown,
 }
@@ -170,7 +170,7 @@ impl ArrayTree {
                     };
                     if u.is_subtree() {
                         let mut first_child = u.first_child();
-                        // 可能多了，直接忽略掉
+                        // May have extra elements, just ignore
                         let subtree = Self::build(inner, &mut first_child)?;
                         children_vec.push(subtree);
                         *cursor = u.next_sibling();
@@ -194,7 +194,7 @@ impl ArrayTree {
         }
     }
 
-    /// 获取叶子
+    /// Get leaf node
     pub fn get_leaf(&self, indices: &[i32]) -> Result<ArrayTreeValue, ArrayInitError> {
         let mut u = self;
         for i in indices {

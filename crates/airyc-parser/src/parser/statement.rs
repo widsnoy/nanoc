@@ -14,7 +14,7 @@ impl Parser<'_> {
                 self.bump(); // consume ';'
             }
             _ => {
-                // 等语义分析检查 Assign 左边是不是 Lval
+                // Let semantic analysis check if Assign lhs is Lval
                 let cp = self.checkpoint();
                 self.parse_exp();
                 if self.at(SyntaxKind::EQ) {

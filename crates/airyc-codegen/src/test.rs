@@ -39,7 +39,7 @@ fn try_it(code: &str) -> String {
         loop_stack: Vec::new(),
     };
 
-    program.compile_comp_unit(comp_unit);
+    program.compile_comp_unit(comp_unit).unwrap();
 
     program.module.print_to_string().to_string()
 }

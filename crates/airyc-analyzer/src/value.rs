@@ -65,18 +65,18 @@ impl Value {
                 ">=" => Ok(Value::Int((l >= r) as i32)),
                 _ => Err(EvalError::UnsupportedOperation(op.to_string())),
             },
-            // 指针运算: Symbol + Int
+            // Pointer arithmetic: Symbol + Int
             (Value::Pointee(s, off), Value::Int(i)) => match op {
                 "+" => Ok(Value::Pointee(s.to_string(), off + i)),
                 "-" => Ok(Value::Pointee(s.to_string(), off - i)),
                 _ => Err(EvalError::UnsupportedOperation(op.to_string())),
             },
-            // 指针运算: Int + Symbol
+            // Pointer arithmetic: Int + Symbol
             (Value::Int(i), Value::Pointee(s, off)) => match op {
                 "+" => Ok(Value::Pointee(s.to_string(), off + i)),
                 _ => Err(EvalError::UnsupportedOperation(op.to_string())),
             },
-            // 指针运算: Symbol - Symbol (计算偏移量差值，仅当指向同一符号时有效)
+            // Pointer arithmetic: Symbol - Symbol (offset diff, only valid for same symbol)
             (Value::Pointee(s1, off1), Value::Pointee(s2, off2)) => match op {
                 "-" => {
                     if s1 == s2 {

@@ -12,8 +12,8 @@ mkdir -p "$PLAY_GROUND/ll"
 rm -f $RESULT_FILE
 touch $RESULT_FILE
 
-for i in "$@"; do
-    for i in "$testdir/$i/*.c"; do
+for level in "$@"; do
+    for i in $testdir/$level/*.c; do
         name=$(basename "${i%.c}")
         clang -Wno-implicit-function-declaration $i $runtime_lib -o $PLAY_GROUND/std.out 
         # 可能有 .in

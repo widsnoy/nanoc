@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -6,9 +5,10 @@ use std::str::FromStr;
 use airyc_codegen::llvm_ir::Program;
 use airyc_parser::ast::{AstNode, CompUnit};
 use airyc_parser::visitor::Visitor as _;
+use anyhow::{Context, Result, bail};
 use clap::{Parser, ValueEnum};
 use inkwell::OptimizationLevel;
-use inkwell::context::Context;
+use inkwell::context::Context as LlvmContext;
 use inkwell::targets::TargetMachine;
 use inkwell::targets::{CodeModel, InitializationConfig, RelocMode, Target};
 
@@ -61,12 +61,11 @@ impl From<OptLevel> for OptimizationLevel {
     }
 }
 
-fn main() -> Result<(), Cow<'static, str>> {
+fn main() -> Result<()> {
     let args = Args::parse();
 
     let input_path = args.input_path;
-    let input =
-        fs::read_to_string(&input_path).map_err(|_| Cow::Borrowed("Failed to read input file"))?;
+    let input = fs::read_to_string(&input_path).context("failed to read input file")?;
 
     // 1. Parse
     let parser = airyc_parser::parser::Parser::new(&input);
@@ -80,8 +79,7 @@ fn main() -> Result<(), Cow<'static, str>> {
     }
 
     // 2. Codegen (LLVM IR)
-    let context = Context::create();
-    // Use filename as module name
+    let context = LlvmContext::create();
     let module_name = input_path
         .file_stem()
         .and_then(|s| s.to_str())
@@ -94,9 +92,12 @@ fn main() -> Result<(), Cow<'static, str>> {
     let mut analyzer = airyc_analyzer::module::Module::default();
     analyzer.walk(&root);
 
-    // todo: fixme
     if !analyzer.analyzing.errors.is_empty() {
-        panic!("{:?}", analyzer.analyzing.errors);
+        eprintln!("Semantic errors:");
+        for err in &analyzer.analyzing.errors {
+            eprintln!("- {:?}", err);
+        }
+        bail!("semantic analysis failed");
     }
 
     let mut program = Program {
@@ -111,13 +112,15 @@ fn main() -> Result<(), Cow<'static, str>> {
         loop_stack: Vec::new(),
     };
 
-    let comp_unit = CompUnit::cast(root).ok_or("Root node is not CompUnit")?;
-    program.compile_comp_unit(comp_unit);
+    let comp_unit = CompUnit::cast(root).context("Root node is not CompUnit")?;
+    program
+        .compile_comp_unit(comp_unit)
+        .context("codegen failed")?;
 
     let opt_level: OptimizationLevel = args.opt_level.into();
     Target::initialize_all(&InitializationConfig::default());
     let triple = TargetMachine::get_default_triple();
-    let target = Target::from_triple(&triple).map_err(|e| Cow::Owned(e.to_string()))?;
+    let target = Target::from_triple(&triple).map_err(|e| anyhow::anyhow!("{}", e))?;
     let cpu = "generic";
     let machine = target
         .create_target_machine(
@@ -128,42 +131,46 @@ fn main() -> Result<(), Cow<'static, str>> {
             RelocMode::Default,
             CodeModel::Default,
         )
-        .expect("Failed to create target machine");
+        .context("failed to create target machine")?;
 
     module.set_triple(&machine.get_triple());
     module.set_data_layout(&machine.get_target_data().get_data_layout());
 
-    // 3. Write LLVM IR to file
-    let mut file_name = PathBuf::from_str(module_name).map_err(|e| Cow::Owned(e.to_string()))?;
+    // 3. Verify before output
+    if let Err(e) = module.verify() {
+        bail!("LLVM verification failed: {}", e.to_string_lossy());
+    }
+
+    // 4. Write output
+    let mut file_name = PathBuf::from_str(module_name)?;
     match args.emit {
         EmitTarget::Ir => {
-            file_name.add_extension("ll");
-
+            file_name.set_extension("ll");
             let output_path = args.output_dir.join(file_name);
             program
                 .module
-                .print_to_file(output_path)
-                .expect("faild to write llvm ir");
+                .print_to_file(&output_path)
+                .map_err(|e| anyhow::anyhow!("failed to write LLVM IR: {}", e))?;
         }
         EmitTarget::Exe => {
             let output_path = args.output_dir.join(&file_name);
-            file_name.add_extension("o");
-            let object_path = args.output_dir.join(file_name);
+            file_name.set_extension("o");
+            let object_path = args.output_dir.join(&file_name);
             machine
                 .write_to_file(&module, inkwell::targets::FileType::Object, &object_path)
-                .map_err(|e| Cow::Owned(e.to_string()))?;
-            std::process::Command::new("clang")
-                .arg(object_path.as_os_str())
-                .arg(args.runtime.as_os_str())
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+            let status = std::process::Command::new("clang")
+                .arg(&object_path)
+                .arg(&args.runtime)
                 .arg("-o")
-                .arg(output_path.as_os_str())
+                .arg(&output_path)
                 .status()
-                .expect("link error");
+                .context("link failed")?;
+            if !status.success() {
+                bail!("linker returned non-zero status");
+            }
         }
     }
 
-    if let Err(e) = module.verify() {
-        panic!("{}", e.to_string_lossy());
-    }
     Ok(())
 }

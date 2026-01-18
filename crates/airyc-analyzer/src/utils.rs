@@ -12,7 +12,7 @@ impl Module {
             let name = Self::extract_name(&node.name().unwrap());
             NType::Struct(name)
         } else {
-            unreachable!("未知类型节点")
+            unreachable!("unknown type node")
         }
     }
 
@@ -27,11 +27,11 @@ impl Module {
         }
         ty
     }
-    /// 从 Name 节点提取变量名
+    /// Extract variable name from Name node
     pub(crate) fn extract_name(node: &Name) -> String {
         node.ident()
             .map(|t| t.text().to_string())
-            .expect("获取标识符失败")
+            .expect("failed to get identifier")
     }
 
     pub(crate) fn build_func_type(node: &FuncType) -> NType {

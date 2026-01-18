@@ -32,3 +32,4 @@ airyc-codegen.workspace = true
 airyc-analyzer.workspace = true
 inkwell.workspace = true
 clap = { version = "4.5.54", features = ["derive"] }
+anyhow = "1.0"

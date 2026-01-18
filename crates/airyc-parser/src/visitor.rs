@@ -4,14 +4,14 @@ use rowan::WalkEvent;
 
 macro_rules! def_visitor {
     ($($Node:ident, $Kind:ident, $enter:ident, $leave:ident);* $(;)?) => {
-        /// 语法树访问者 trait
+        /// Syntax tree visitor trait
         pub trait Visitor: Sized {
             $(
                 fn $enter(&mut self, _node: $Node) {}
                 fn $leave(&mut self, _node: $Node) {}
             )*
 
-            /// 遍历语法树
+            /// Walk syntax tree
             fn walk(&mut self, root: &SyntaxNode) {
                 for event in root.preorder() {
                     match event {

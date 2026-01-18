@@ -56,7 +56,7 @@ fn test_const_expression_calculation() {
     "#;
     let module = analyze(source);
     assert!(module.analyzing.errors.is_empty());
-    // 常量表达式 1 + 2 应该被计算
+    // Constant expression 1 + 2 should be evaluated
     assert!(!module.constant_nodes.is_empty());
 }
 
@@ -305,6 +305,6 @@ fn test_const_expression_expected_error() {
     }
     "#;
     let module = analyze(source);
-    // 应该报错：非常量表达式在 const 初始化中
+    // Should error: non-constant expression in const initialization
     assert!(module.analyzing.errors.len() == 3);
 }

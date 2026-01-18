@@ -14,24 +14,24 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub struct Module {
-    pub variables: Arena<Variable>, // 所有 scope 的都存在这里
+    pub variables: Arena<Variable>,
     pub functions: Arena<Function>,
     pub scopes: Arena<Scope>,
 
     pub global_scope: ScopeID,
-    /// 检查是否是编译期可计算的常量节点
+    /// Check if node is compile-time constant
     pub constant_nodes: HashSet<TextRange>,
 
-    /// 只存常量
+    /// Store constants only
     pub value_table: HashMap<TextRange, Value>,
 
-    /// 存展开后的数组
+    /// Store expanded arrays
     pub expand_array: HashMap<TextRange, ArrayTree>,
 
-    /// 存变量的索引，TextRange -> VariableID
+    /// Variable index: TextRange -> VariableID
     pub variable_map: HashMap<TextRange, VariableID>,
 
-    /// 分析的时候上下文，使用后清除
+    /// Analysis context, cleared after use
     pub analyzing: AnalyzeContext,
 }
 
@@ -149,8 +149,8 @@ pub struct Variable {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VariableTag {
     Define,
-    Write, // todo
-    Read,  // todo
+    Write,
+    Read,
 }
 
 impl Variable {
@@ -244,7 +244,7 @@ impl Scope {
         var_id
     }
 
-    /// 查找变量
+    /// Lookup variable
     pub fn look_up(&self, m: &Module, var_name: &str, var_tag: VariableTag) -> Option<VariableID> {
         let mut u_opt = Some(self);
         while let Some(u) = u_opt {
@@ -261,7 +261,7 @@ impl Scope {
         None
     }
 
-    /// 查找当前作用域的变量
+    /// Lookup variable in current scope only
     pub fn look_up_locally(
         &self,
         m: &Module,
@@ -280,7 +280,7 @@ impl Scope {
         }
     }
 
-    /// 当前作用域是否有变量
+    /// Check if variable exists in current scope
     pub fn have_variable(&self, var_name: &str) -> bool {
         self.variables.contains_key(var_name)
     }

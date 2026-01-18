@@ -29,7 +29,7 @@ impl NType {
         }
     }
 
-    /// 只返回标量, 比如 int / float
+    /// Returns scalar zero value (int / float)
     pub fn const_zero(&self) -> Value {
         match self {
             NType::Int => Value::Int(0),

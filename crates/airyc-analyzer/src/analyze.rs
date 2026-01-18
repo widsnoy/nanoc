@@ -51,11 +51,11 @@ impl Visitor for Module {
             return;
         };
 
-        // 处理初始化值
+        // Handle initialization value
         let init_value = match var_type {
             NType::Array(_, _) => {
                 let range = const_init_val_node.syntax().text_range();
-                let array_tree = ArrayTree::new(&var_type, const_init_val_node).unwrap(); // 错误处理之后做...
+                let array_tree = ArrayTree::new(&var_type, const_init_val_node).unwrap(); // Error handling TODO
                 self.expand_array.insert(range, array_tree.clone());
                 Value::Array(array_tree)
             }
@@ -76,7 +76,7 @@ impl Visitor for Module {
 
         self.value_table.insert(range, init_value);
 
-        // 检查初始值类型是否匹配
+        // Check if init value type matches
 
         let _ = scope.new_variable(
             &mut self.variables,
@@ -106,7 +106,7 @@ impl Visitor for Module {
         self.analyzing.current_base_type = Some(Self::build_basic_type(&node.ty().unwrap()));
     }
 
-    // todo: 先检查左右两边是不是对应的
+    // todo: First check if lhs and rhs match
     fn leave_var_def(&mut self, def: VarDef) {
         let base_type = self.analyzing.current_base_type.clone().unwrap();
         let var_type = if let Some(pointer_node) = def.pointer() {
@@ -186,7 +186,7 @@ impl Visitor for Module {
                 let name = name_node.ident().unwrap();
                 let Some(v) = scope.look_up(self, name.text(), VariableTag::Define) else {
                     return;
-                }; // 函数定义是一个 scope
+                }; // Function definition is a scope
                 param_list.push(v);
             }
         }
@@ -248,7 +248,7 @@ impl Visitor for Module {
     }
 
     fn enter_assign_stmt(&mut self, _node: AssignStmt) {
-        // todo!("检查类型是否匹配")
+        // todo!("Check if types match")
     }
 
     fn leave_assign_stmt(&mut self, _node: AssignStmt) {
@@ -271,7 +271,7 @@ impl Visitor for Module {
         // todo!()
     }
 
-    // 检查返回类型
+    // Check return type
     fn leave_return_stmt(&mut self, _node: ReturnStmt) {}
 
     fn leave_binary_expr(&mut self, node: BinaryExpr) {
@@ -363,7 +363,7 @@ impl Visitor for Module {
                 let Some(v) = self.get_value(range) else {
                     return;
                 };
-                // todo: 如果是非常量，应该做类型检查
+                // todo: If non-constant, should do type checking
                 let Value::Int(index) = v else {
                     self.analyzing.errors.push(SemanticError::TypeMismatch {
                         expected: NType::Int,
