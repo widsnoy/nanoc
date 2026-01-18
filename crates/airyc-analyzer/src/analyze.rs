@@ -89,17 +89,11 @@ impl Visitor for Module {
     }
 
     fn leave_const_init_val(&mut self, node: ConstInitVal) {
-        if let Some(expr) = node.expr()
-            && !self.is_constant(expr.syntax().text_range())
-        {
-            return;
-        }
-        for child in node.inits() {
-            if !self.is_constant(child.syntax().text_range()) {
-                return;
-            }
-        }
-        self.mark_constant(node.syntax().text_range());
+        self.check_and_mark_constant(
+            node.syntax().text_range(),
+            node.expr().map(|e| e.syntax().text_range()),
+            node.inits().map(|c| c.syntax().text_range()),
+        );
     }
 
     fn enter_var_decl(&mut self, node: VarDecl) {
@@ -159,17 +153,11 @@ impl Visitor for Module {
     }
 
     fn leave_init_val(&mut self, node: InitVal) {
-        if let Some(expr) = node.expr()
-            && !self.is_constant(expr.syntax().text_range())
-        {
-            return;
-        }
-        for child in node.inits() {
-            if !self.is_constant(child.syntax().text_range()) {
-                return;
-            }
-        }
-        self.mark_constant(node.syntax().text_range());
+        self.check_and_mark_constant(
+            node.syntax().text_range(),
+            node.expr().map(|e| e.syntax().text_range()),
+            node.inits().map(|c| c.syntax().text_range()),
+        );
     }
 
     fn enter_func_def(&mut self, _node: FuncDef) {

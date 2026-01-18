@@ -83,6 +83,26 @@ impl Module {
         self.constant_nodes.contains(&range)
     }
 
+    /// Check if all ranges are constant, and if so, mark the parent range as constant
+    pub fn check_and_mark_constant(
+        &mut self,
+        parent_range: TextRange,
+        expr_range: Option<TextRange>,
+        child_ranges: impl Iterator<Item = TextRange>,
+    ) {
+        if let Some(r) = expr_range
+            && !self.is_constant(r)
+        {
+            return;
+        }
+        for r in child_ranges {
+            if !self.is_constant(r) {
+                return;
+            }
+        }
+        self.mark_constant(parent_range);
+    }
+
     pub fn get_value(&self, range: TextRange) -> Option<&Value> {
         self.value_table.get(&range)
     }
@@ -118,23 +138,41 @@ impl Module {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct VariableID(pub thunderdome::Index);
-impl VariableID {
-    pub fn none() -> Self {
-        VariableID(thunderdome::Index::DANGLING)
-    }
-}
-impl From<thunderdome::Index> for VariableID {
-    fn from(index: thunderdome::Index) -> Self {
-        VariableID(index)
-    }
-}
-impl Deref for VariableID {
-    type Target = thunderdome::Index;
+/// Macro to define ID wrapper types for arena indices
+macro_rules! define_id_type {
+    ($name:ident) => {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+        pub struct $name(pub thunderdome::Index);
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
+        impl $name {
+            pub fn none() -> Self {
+                $name(thunderdome::Index::DANGLING)
+            }
+        }
+
+        impl From<thunderdome::Index> for $name {
+            fn from(index: thunderdome::Index) -> Self {
+                $name(index)
+            }
+        }
+
+        impl Deref for $name {
+            type Target = thunderdome::Index;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+    };
+}
+
+define_id_type!(VariableID);
+define_id_type!(FunctionID);
+define_id_type!(ScopeID);
+
+impl Default for ScopeID {
+    fn default() -> Self {
+        Self::none()
     }
 }
 
@@ -159,60 +197,11 @@ impl Variable {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct FunctionID(pub thunderdome::Index);
-impl FunctionID {
-    pub fn none() -> Self {
-        FunctionID(thunderdome::Index::DANGLING)
-    }
-}
-impl From<thunderdome::Index> for FunctionID {
-    fn from(index: thunderdome::Index) -> Self {
-        FunctionID(index)
-    }
-}
-impl Deref for FunctionID {
-    type Target = thunderdome::Index;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 #[derive(Debug)]
 pub struct Function {
     pub name: String,
     pub params: Vec<VariableID>,
     pub ret_type: NType,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ScopeID(pub thunderdome::Index);
-
-impl ScopeID {
-    pub fn none() -> Self {
-        ScopeID(thunderdome::Index::DANGLING)
-    }
-}
-
-impl Default for ScopeID {
-    fn default() -> Self {
-        Self::none()
-    }
-}
-
-impl From<thunderdome::Index> for ScopeID {
-    fn from(index: thunderdome::Index) -> Self {
-        ScopeID(index)
-    }
-}
-
-impl Deref for ScopeID {
-    type Target = thunderdome::Index;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
 }
 
 #[derive(Debug)]

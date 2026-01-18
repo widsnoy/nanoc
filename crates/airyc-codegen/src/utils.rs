@@ -4,10 +4,10 @@ use airyc_analyzer::array::ArrayTree;
 use airyc_analyzer::r#type::NType;
 use airyc_analyzer::value::Value;
 use airyc_parser::ast::{AstNode, ConstIndexVal, IndexVal, Name, SyntaxToken};
-use inkwell::AddressSpace;
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicType, BasicTypeEnum};
-use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
+use inkwell::values::{BasicValueEnum, FloatValue, FunctionValue, IntValue, PointerValue};
+use inkwell::{AddressSpace, FloatPredicate, IntPredicate};
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::{LoopContext, Program, Symbol};
@@ -291,5 +291,49 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         self.builder
             .build_int_z_extend(val, self.context.i32_type(), "bool_ext")
             .map_err(|_| CodegenError::LlvmBuild("bool extend failed"))
+    }
+
+    /// Build int compare and convert result to i32
+    pub(crate) fn build_int_cmp(
+        &self,
+        pred: IntPredicate,
+        l: IntValue<'ctx>,
+        r: IntValue<'ctx>,
+        name: &str,
+    ) -> Result<IntValue<'ctx>> {
+        let cmp = self
+            .builder
+            .build_int_compare(pred, l, r, name)
+            .map_err(|_| CodegenError::LlvmBuild("cmp"))?;
+        self.bool_to_i32(cmp)
+    }
+
+    /// Build float compare
+    pub(crate) fn build_float_cmp(
+        &self,
+        pred: FloatPredicate,
+        l: FloatValue<'ctx>,
+        r: FloatValue<'ctx>,
+        name: &str,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        self.builder
+            .build_float_compare(pred, l, r, name)
+            .map(|v| v.into())
+            .map_err(|_| CodegenError::LlvmBuild("fcmp"))
+    }
+
+    /// Build unconditional branch if current block has no terminator
+    pub(crate) fn branch_if_no_terminator(&self, target: BasicBlock<'ctx>) -> Result<()> {
+        if self
+            .builder
+            .get_insert_block()
+            .and_then(|bb| bb.get_terminator())
+            .is_none()
+        {
+            self.builder
+                .build_unconditional_branch(target)
+                .map_err(|_| CodegenError::LlvmBuild("branch failed"))?;
+        }
+        Ok(())
     }
 }

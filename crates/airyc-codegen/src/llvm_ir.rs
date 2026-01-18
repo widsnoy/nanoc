@@ -460,31 +460,13 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         if let Some(t) = stmt.then_branch() {
             self.compile_stmt(t)?;
         }
-        if self
-            .builder
-            .get_insert_block()
-            .and_then(|bb| bb.get_terminator())
-            .is_none()
-        {
-            self.builder
-                .build_unconditional_branch(merge_bb)
-                .map_err(|_| CodegenError::LlvmBuild("then branch failed"))?;
-        }
+        self.branch_if_no_terminator(merge_bb)?;
 
         self.builder.position_at_end(else_bb);
         if let Some(e) = stmt.else_branch() {
             self.compile_stmt(e)?;
         }
-        if self
-            .builder
-            .get_insert_block()
-            .and_then(|bb| bb.get_terminator())
-            .is_none()
-        {
-            self.builder
-                .build_unconditional_branch(merge_bb)
-                .map_err(|_| CodegenError::LlvmBuild("else branch failed"))?;
-        }
+        self.branch_if_no_terminator(merge_bb)?;
 
         self.builder.position_at_end(merge_bb);
         Ok(())
@@ -518,16 +500,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         if let Some(body) = stmt.body() {
             self.compile_stmt(body)?;
         }
-        if self
-            .builder
-            .get_insert_block()
-            .and_then(|bb| bb.get_terminator())
-            .is_none()
-        {
-            self.builder
-                .build_unconditional_branch(cond_bb)
-                .map_err(|_| CodegenError::LlvmBuild("while back branch failed"))?;
-        }
+        self.branch_if_no_terminator(cond_bb)?;
         self.pop_loop();
         self.builder.position_at_end(end_bb);
         Ok(())
@@ -568,25 +541,21 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     pub(crate) fn compile_expr(&mut self, expr: Expr) -> Result<BasicValueEnum<'ctx>> {
-        match expr {
-            Expr::BinaryExpr(e) => self.compile_binary_expr(e),
-            Expr::UnaryExpr(e) => self.compile_unary_expr(e),
-            Expr::CallExpr(e) => self.compile_call_expr(e),
-            Expr::ParenExpr(e) => self.compile_paren_expr(e),
-            Expr::DerefExpr(_e) => Err(CodegenError::NotImplemented("deref expression")),
-            Expr::IndexVal(e) => self.compile_index_val(e, false),
-            Expr::Literal(e) => self.compile_literal(e),
-        }
+        self.compile_expr_inner(expr, false)
     }
 
-    fn compile_expr_func_call(&mut self, expr: Expr) -> Result<BasicValueEnum<'ctx>> {
+    fn compile_expr_inner(
+        &mut self,
+        expr: Expr,
+        is_func_arg: bool,
+    ) -> Result<BasicValueEnum<'ctx>> {
         match expr {
             Expr::BinaryExpr(e) => self.compile_binary_expr(e),
             Expr::UnaryExpr(e) => self.compile_unary_expr(e),
             Expr::CallExpr(e) => self.compile_call_expr(e),
             Expr::ParenExpr(e) => self.compile_paren_expr(e),
             Expr::DerefExpr(_e) => Err(CodegenError::NotImplemented("deref expression")),
-            Expr::IndexVal(e) => self.compile_index_val(e, true),
+            Expr::IndexVal(e) => self.compile_index_val(e, is_func_arg),
             Expr::Literal(e) => self.compile_literal(e),
         }
     }
@@ -677,36 +646,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         .builder
                         .build_int_signed_rem(l, r, "rem")
                         .map_err(|_| CodegenError::LlvmBuild("int rem"))?,
-                    SyntaxKind::LT => self.bool_to_i32(
-                        self.builder
-                            .build_int_compare(IntPredicate::SLT, l, r, "lt")
-                            .map_err(|_| CodegenError::LlvmBuild("cmp"))?,
-                    )?,
-                    SyntaxKind::GT => self.bool_to_i32(
-                        self.builder
-                            .build_int_compare(IntPredicate::SGT, l, r, "gt")
-                            .map_err(|_| CodegenError::LlvmBuild("cmp"))?,
-                    )?,
-                    SyntaxKind::LTEQ => self.bool_to_i32(
-                        self.builder
-                            .build_int_compare(IntPredicate::SLE, l, r, "le")
-                            .map_err(|_| CodegenError::LlvmBuild("cmp"))?,
-                    )?,
-                    SyntaxKind::GTEQ => self.bool_to_i32(
-                        self.builder
-                            .build_int_compare(IntPredicate::SGE, l, r, "ge")
-                            .map_err(|_| CodegenError::LlvmBuild("cmp"))?,
-                    )?,
-                    SyntaxKind::EQEQ => self.bool_to_i32(
-                        self.builder
-                            .build_int_compare(IntPredicate::EQ, l, r, "eq")
-                            .map_err(|_| CodegenError::LlvmBuild("cmp"))?,
-                    )?,
-                    SyntaxKind::NEQ => self.bool_to_i32(
-                        self.builder
-                            .build_int_compare(IntPredicate::NE, l, r, "ne")
-                            .map_err(|_| CodegenError::LlvmBuild("cmp"))?,
-                    )?,
+                    SyntaxKind::LT => self.build_int_cmp(IntPredicate::SLT, l, r, "lt")?,
+                    SyntaxKind::GT => self.build_int_cmp(IntPredicate::SGT, l, r, "gt")?,
+                    SyntaxKind::LTEQ => self.build_int_cmp(IntPredicate::SLE, l, r, "le")?,
+                    SyntaxKind::GTEQ => self.build_int_cmp(IntPredicate::SGE, l, r, "ge")?,
+                    SyntaxKind::EQEQ => self.build_int_cmp(IntPredicate::EQ, l, r, "eq")?,
+                    SyntaxKind::NEQ => self.build_int_cmp(IntPredicate::NE, l, r, "ne")?,
                     SyntaxKind::AMPAMP => {
                         let lb = self.as_bool(l.into())?;
                         let rb = self.as_bool(r.into())?;
@@ -756,36 +701,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         .build_float_div(l, r, "fdiv")
                         .map_err(|_| CodegenError::LlvmBuild("fdiv"))?
                         .into(),
-                    SyntaxKind::LT => self
-                        .builder
-                        .build_float_compare(FloatPredicate::OLT, l, r, "flt")
-                        .map_err(|_| CodegenError::LlvmBuild("fcmp"))?
-                        .into(),
-                    SyntaxKind::GT => self
-                        .builder
-                        .build_float_compare(FloatPredicate::OGT, l, r, "fgt")
-                        .map_err(|_| CodegenError::LlvmBuild("fcmp"))?
-                        .into(),
-                    SyntaxKind::LTEQ => self
-                        .builder
-                        .build_float_compare(FloatPredicate::OLE, l, r, "fle")
-                        .map_err(|_| CodegenError::LlvmBuild("fcmp"))?
-                        .into(),
-                    SyntaxKind::GTEQ => self
-                        .builder
-                        .build_float_compare(FloatPredicate::OGE, l, r, "fge")
-                        .map_err(|_| CodegenError::LlvmBuild("fcmp"))?
-                        .into(),
-                    SyntaxKind::EQEQ => self
-                        .builder
-                        .build_float_compare(FloatPredicate::OEQ, l, r, "feq")
-                        .map_err(|_| CodegenError::LlvmBuild("fcmp"))?
-                        .into(),
-                    SyntaxKind::NEQ => self
-                        .builder
-                        .build_float_compare(FloatPredicate::ONE, l, r, "fne")
-                        .map_err(|_| CodegenError::LlvmBuild("fcmp"))?
-                        .into(),
+                    SyntaxKind::LT => self.build_float_cmp(FloatPredicate::OLT, l, r, "flt")?,
+                    SyntaxKind::GT => self.build_float_cmp(FloatPredicate::OGT, l, r, "fgt")?,
+                    SyntaxKind::LTEQ => self.build_float_cmp(FloatPredicate::OLE, l, r, "fle")?,
+                    SyntaxKind::GTEQ => self.build_float_cmp(FloatPredicate::OGE, l, r, "fge")?,
+                    SyntaxKind::EQEQ => self.build_float_cmp(FloatPredicate::OEQ, l, r, "feq")?,
+                    SyntaxKind::NEQ => self.build_float_cmp(FloatPredicate::ONE, l, r, "fne")?,
                     _ => return Err(CodegenError::Unsupported("float binary op".into())),
                 };
                 Ok(res)
@@ -848,7 +769,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .args()
             .map(|rps| {
                 rps.args()
-                    .map(|a| self.compile_expr_func_call(a).map(|v| v.into()))
+                    .map(|a| self.compile_expr_inner(a, true).map(|v| v.into()))
                     .collect::<Result<Vec<_>>>()
             })
             .transpose()?

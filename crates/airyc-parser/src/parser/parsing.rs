@@ -147,35 +147,35 @@ impl Parser<'_> {
     }
 
     fn parse_const_init_val(&mut self) {
-        self.start_node(SyntaxKind::CONST_INIT_VAL);
-        if self.at(SyntaxKind::L_BRACE) {
-            self.bump();
-            while !matches!(self.peek(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
-                self.parse_const_init_val();
-                if self.at(SyntaxKind::COMMA) {
-                    self.bump();
-                }
-            }
-            self.expect(SyntaxKind::R_BRACE);
-        } else {
-            self.parse_const_exp();
-        }
-        self.finish_node();
+        self.parse_init_val_generic(
+            SyntaxKind::CONST_INIT_VAL,
+            Self::parse_const_init_val,
+            Self::parse_const_exp,
+        );
     }
 
     fn parse_init_val(&mut self) {
-        self.start_node(SyntaxKind::INIT_VAL);
+        self.parse_init_val_generic(SyntaxKind::INIT_VAL, Self::parse_init_val, Self::parse_exp);
+    }
+
+    fn parse_init_val_generic(
+        &mut self,
+        kind: SyntaxKind,
+        parse_recursive: fn(&mut Self),
+        parse_expr: fn(&mut Self),
+    ) {
+        self.start_node(kind);
         if self.at(SyntaxKind::L_BRACE) {
             self.bump();
             while !matches!(self.peek(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
-                self.parse_init_val();
+                parse_recursive(self);
                 if self.at(SyntaxKind::COMMA) {
                     self.bump();
                 }
             }
             self.expect(SyntaxKind::R_BRACE);
         } else {
-            self.parse_exp();
+            parse_expr(self);
         }
         self.finish_node();
     }

@@ -1,30 +1,16 @@
 # Airyc Compiler - Issues & Improvements
 
-## 1. Duplicate Code Patterns
+## 1. Duplicate Code Patterns (RESOLVED)
 
-### codegen/llvm_ir.rs
-| Lines | Issue |
-|-------|-------|
-| 524-547 | `compile_expr` and `compile_expr_func_call` are nearly identical, differ only in one bool param |
-| 612-670 | Int binary ops have repetitive `build_int_compare(...).unwrap()` + `bool_to_i32(cmp)` pattern |
-| 681-710 | Float compare ops have repetitive `build_float_compare(...).unwrap().into()` pattern |
-| 429-456 | if stmt then/else branch terminator check code is duplicated |
+All duplicate code patterns have been refactored:
 
-### analyzer/analyze.rs
-| Lines | Issue |
-|-------|-------|
-| 91-103 vs 161-173 | `leave_const_init_val` and `leave_init_val` logic nearly identical |
-| 21-89 vs 110-159 | `leave_const_def` and `leave_var_def` have similar variable definition handling |
-
-### parser/parsing.rs
-| Lines | Issue |
-|-------|-------|
-| 149-164 vs 166-181 | `parse_const_init_val` and `parse_init_val` have identical structure |
-
-### analyzer/module.rs
-| Lines | Issue |
-|-------|-------|
-| 121-139, 162-180, 189-216 | Three ID types (VariableID, FunctionID, ScopeID) have repetitive boilerplate, could use macro |
+- [x] codegen/llvm_ir.rs: Merged `compile_expr` and `compile_expr_func_call` into `compile_expr_inner`
+- [x] codegen/llvm_ir.rs: Extracted `build_int_cmp` helper for int compare operations
+- [x] codegen/llvm_ir.rs: Extracted `build_float_cmp` helper for float compare operations
+- [x] codegen/llvm_ir.rs: Extracted `branch_if_no_terminator` helper for if/while stmt terminator checks
+- [x] analyzer/analyze.rs: Unified `leave_const_init_val` and `leave_init_val` via `check_and_mark_constant`
+- [x] parser/parsing.rs: Unified `parse_const_init_val` and `parse_init_val` via `parse_init_val_generic`
+- [x] analyzer/module.rs: Created `define_id_type!` macro for ID types boilerplate
 
 ## 2. Design Issues
 
