@@ -10,7 +10,7 @@ use inkwell::values::{BasicValueEnum, FloatValue, FunctionValue, IntValue, Point
 use inkwell::{AddressSpace, FloatPredicate, IntPredicate};
 
 use crate::error::{CodegenError, Result};
-use crate::llvm_ir::{LoopContext, Program, Symbol};
+use crate::llvm_ir::{LoopContext, Program, Symbol, SymbolTable};
 
 /// Extract ident token from variable definition
 pub(crate) fn get_ident_node(name: &ConstIndexVal) -> Option<SyntaxToken> {
@@ -22,7 +22,7 @@ pub(crate) fn name_text(name: &Name) -> Option<String> {
     name.ident().map(|t| t.text().to_string())
 }
 
-impl<'a, 'ctx> Program<'a, 'ctx> {
+impl<'a, 'ctx> SymbolTable<'a, 'ctx> {
     /// Push new scope
     pub(crate) fn push_scope(&mut self) {
         self.scopes.push(HashMap::new());
@@ -60,7 +60,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         }
         None
     }
+}
 
+impl<'a, 'ctx> Program<'a, 'ctx> {
     /// Allocate local variable in entry block
     pub(crate) fn create_entry_alloca(
         &self,
@@ -190,6 +192,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         )
         .ok_or(CodegenError::Missing("identifier"))?;
         let symbol = self
+            .symbols
             .lookup_var(&name)
             .ok_or_else(|| CodegenError::UndefinedVar(name.clone()))?;
         let (ptr, elem_ty) = (symbol.ptr, symbol.ty);

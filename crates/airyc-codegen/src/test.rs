@@ -32,11 +32,7 @@ fn try_it(code: &str) -> String {
         builder: &builder,
         module: &module,
         analyzer: &analyzer,
-        current_function: None,
-        scopes: Vec::new(),
-        functions: Default::default(),
-        globals: Default::default(),
-        loop_stack: Vec::new(),
+        symbols: Default::default(),
     };
 
     program.compile_comp_unit(comp_unit).unwrap();

@@ -75,6 +75,11 @@ pub enum SemanticError {
 }
 
 impl Module {
+    /// Clear analysis context after analysis is complete
+    pub fn finish_analysis(&mut self) {
+        self.analyzing = AnalyzeContext::default();
+    }
+
     pub fn mark_constant(&mut self, range: TextRange) {
         self.constant_nodes.insert(range);
     }

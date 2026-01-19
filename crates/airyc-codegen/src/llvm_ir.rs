@@ -14,20 +14,22 @@ use inkwell::{builder::Builder, context::Context};
 use crate::error::{CodegenError, Result};
 use crate::utils::*;
 
-pub struct Program<'a, 'ctx> {
-    pub context: &'ctx Context,
-    pub builder: &'a Builder<'ctx>,
-    pub module: &'a inkwell::module::Module<'ctx>,
-
-    pub analyzer: &'a airyc_analyzer::module::Module,
-
-    /// function/variable environment
+/// Symbol table for variables and functions
+#[derive(Default)]
+pub struct SymbolTable<'a, 'ctx> {
     pub current_function: Option<FunctionValue<'ctx>>,
     pub scopes: Vec<HashMap<String, Symbol<'a, 'ctx>>>,
     pub functions: HashMap<String, FunctionValue<'ctx>>,
     pub globals: HashMap<String, Symbol<'a, 'ctx>>,
-
     pub loop_stack: Vec<LoopContext<'ctx>>,
+}
+
+pub struct Program<'a, 'ctx> {
+    pub context: &'ctx Context,
+    pub builder: &'a Builder<'ctx>,
+    pub module: &'a inkwell::module::Module<'ctx>,
+    pub analyzer: &'a airyc_analyzer::module::Module,
+    pub symbols: SymbolTable<'a, 'ctx>,
 }
 
 #[derive(Clone, Copy)]
@@ -90,23 +92,24 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let init_node = def.init().ok_or(CodegenError::Missing("initial value"))?;
         let value = self.compile_const_init_val(init_node, basic_ty)?;
 
-        if self.current_function.is_none() {
+        if self.symbols.current_function.is_none() {
             let global = self.module.add_global(basic_ty, None, name);
             global.set_initializer(&value);
             global.set_constant(true);
-            self.globals.insert(
+            self.symbols.globals.insert(
                 name.to_string(),
                 Symbol::new(global.as_pointer_value(), &var.ty),
             );
         } else {
             let func = self
+                .symbols
                 .current_function
                 .ok_or(CodegenError::Missing("current function"))?;
             let alloca = self.create_entry_alloca(func, basic_ty, name)?;
             self.builder
                 .build_store(alloca, value)
                 .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
-            self.insert_var(name.to_string(), alloca, var_ty);
+            self.symbols.insert_var(name.to_string(), alloca, var_ty);
         }
         Ok(())
     }
@@ -150,12 +153,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let var_ty = &var.ty;
         let basic_ty = self.convert_ntype_to_type(var_ty)?;
 
-        let is_global_var = self.current_function.is_none();
+        let is_global_var = self.symbols.current_function.is_none();
         if is_global_var {
             let init_val = self.const_init_or_zero(def.init(), basic_ty)?;
             let global = self.module.add_global(basic_ty, None, name);
             global.set_initializer(&init_val);
-            self.globals.insert(
+            self.symbols.globals.insert(
                 name.to_string(),
                 Symbol::new(global.as_pointer_value(), var_ty),
             );
@@ -184,6 +187,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             };
 
             let func = self
+                .symbols
                 .current_function
                 .ok_or(CodegenError::Missing("current function"))?;
             let alloca = self.create_entry_alloca(func, basic_ty, name)?;
@@ -199,7 +203,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let mut indices = vec![self.context.i32_type().const_zero()];
                 self.walk_on_array_tree(array_tree, &mut indices, alloca, basic_ty)?;
             }
-            self.insert_var(name.to_string(), alloca, var_ty);
+            self.symbols.insert_var(name.to_string(), alloca, var_ty);
         }
         Ok(())
     }
@@ -292,14 +296,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         };
 
         let function = self.module.add_function(&name, fn_type, None);
-        self.functions.insert(name.clone(), function);
+        self.symbols.functions.insert(name.clone(), function);
 
         let entry = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(entry);
 
-        let prev_func = self.current_function;
-        self.current_function = Some(function);
-        self.push_scope();
+        let prev_func = self.symbols.current_function;
+        self.symbols.current_function = Some(function);
+        self.symbols.push_scope();
 
         for (i, (pname, param_ty)) in params.into_iter().enumerate() {
             let param_val = function
@@ -308,7 +312,8 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             param_val.set_name(&pname);
 
             if param_ty.is_pointer() {
-                self.insert_var(pname, param_val.into_pointer_value(), param_ty);
+                self.symbols
+                    .insert_var(pname, param_val.into_pointer_value(), param_ty);
                 continue;
             }
 
@@ -317,7 +322,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             self.builder
                 .build_store(alloca, param_val)
                 .map_err(|_| CodegenError::LlvmBuild("parameterstore failed"))?;
-            self.insert_var(pname, alloca, param_ty);
+            self.symbols.insert_var(pname, alloca, param_ty);
         }
 
         if let Some(block) = func.block() {
@@ -338,8 +343,8 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             }
         }
 
-        self.pop_scope();
-        self.current_function = prev_func;
+        self.symbols.pop_scope();
+        self.symbols.current_function = prev_func;
         Ok(())
     }
 
@@ -369,7 +374,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
     // 4. Block & Statements
     fn compile_block(&mut self, block: Block) -> Result<()> {
-        self.push_scope();
+        self.symbols.push_scope();
         for item in block.items() {
             let is_terminal = if let BlockItem::Stmt(ref stmt) = item
                 && matches!(
@@ -389,7 +394,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 break;
             }
         }
-        self.pop_scope();
+        self.symbols.pop_scope();
         Ok(())
     }
 
@@ -444,6 +449,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .ok_or(CodegenError::Missing("if condition"))?,
         )?;
         let func = self
+            .symbols
             .current_function
             .ok_or(CodegenError::Missing("current function"))?;
 
@@ -474,13 +480,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
     fn compile_while_stmt(&mut self, stmt: WhileStmt) -> Result<()> {
         let func = self
+            .symbols
             .current_function
             .ok_or(CodegenError::Missing("current function"))?;
         let cond_bb = self.context.append_basic_block(func, "while.cond");
         let body_bb = self.context.append_basic_block(func, "while.body");
         let end_bb = self.context.append_basic_block(func, "while.end");
 
-        self.push_loop(cond_bb, end_bb);
+        self.symbols.push_loop(cond_bb, end_bb);
 
         self.builder
             .build_unconditional_branch(cond_bb)
@@ -501,13 +508,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             self.compile_stmt(body)?;
         }
         self.branch_if_no_terminator(cond_bb)?;
-        self.pop_loop();
+        self.symbols.pop_loop();
         self.builder.position_at_end(end_bb);
         Ok(())
     }
 
     fn compile_break_stmt(&mut self, _stmt: BreakStmt) -> Result<()> {
         let end_bb = self
+            .symbols
             .loop_stack
             .last()
             .ok_or(CodegenError::Unsupported("break not in loop".into()))?
@@ -520,6 +528,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
     fn compile_continue_stmt(&mut self, _stmt: ContinueStmt) -> Result<()> {
         let cond_bb = self
+            .symbols
             .loop_stack
             .last()
             .ok_or(CodegenError::Unsupported("continue not in loop".into()))?
@@ -568,7 +577,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .ok_or(CodegenError::Missing("binary operator"))?
             .op();
 
-        if let Some(func) = self.current_function
+        if let Some(func) = self.symbols.current_function
             && matches!(op_token.kind(), SyntaxKind::AMPAMP | SyntaxKind::PIPEPIPE)
         {
             let i32_zero = self.context.i32_type().const_zero();
@@ -762,7 +771,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let func = self
             .module
             .get_function(&name)
-            .or_else(|| self.functions.get(&name).copied())
+            .or_else(|| self.symbols.functions.get(&name).copied())
             .ok_or_else(|| CodegenError::UndefinedFunc(name.clone()))?;
 
         let args: Vec<BasicMetadataValueEnum<'ctx>> = expr

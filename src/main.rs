@@ -99,17 +99,14 @@ fn main() -> Result<()> {
         }
         bail!("semantic analysis failed");
     }
+    analyzer.finish_analysis();
 
     let mut program = Program {
         context: &context,
         builder: &builder,
         module: &module,
         analyzer: &analyzer,
-        current_function: None,
-        scopes: Vec::new(),
-        functions: Default::default(),
-        globals: Default::default(),
-        loop_stack: Vec::new(),
+        symbols: Default::default(),
     };
 
     let comp_unit = CompUnit::cast(root).context("Root node is not CompUnit")?;

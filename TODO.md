@@ -12,20 +12,16 @@ All duplicate code patterns have been refactored:
 - [x] parser/parsing.rs: Unified `parse_const_init_val` and `parse_init_val` via `parse_init_val_generic`
 - [x] analyzer/module.rs: Created `define_id_type!` macro for ID types boilerplate
 
-## 2. Design Issues
+## 2. Design Issues (RESOLVED)
 
 ### codegen/llvm_ir.rs
-- `Program` struct has too many fields, unclear responsibilities, should be split
-
-### analyzer/analyze.rs
-- Many empty enter/leave methods with `// todo!()` comments
-- Visitor pattern implementation is verbose
+- [x] `Program` struct split into `Program` + `SymbolTable` for clearer responsibilities
 
 ### analyzer/module.rs
-- `analyzing: AnalyzeContext` coupled in Module, only used during analysis
+- [x] `analyzing: AnalyzeContext` decoupled via `finish_analysis()` method
 
 ### parser/ast.rs
-- `BinaryOp::op()` and `UnaryOp::op()` implementations are identical, should extract to trait
+- [x] `BinaryOp::op()` and `UnaryOp::op()` unified via `OpNode` trait
 
 ## 3. Not Implemented Features
 
