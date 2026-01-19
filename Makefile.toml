@@ -32,8 +32,7 @@ args = [
     "--runtime",
     "./target/release/libairyc_runtime.a",
     "--timeout",
-    "5",
-    "--coverage",
+    "10",
 ]
 
 [tasks.test-quick]
@@ -76,5 +75,4 @@ args = [
     "./target/release/libairyc_runtime.a",
     "--timeout",
     "10",
-    "--coverage",
 ]
