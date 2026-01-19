@@ -19,30 +19,62 @@ args = ["build", "--release", "-p", "airyc-runtime"]
 description = "Run all integration tests with coverage"
 dependencies = ["build"]
 command = "cargo"
-args = ["run", "--release", "-p", "airyc-test", "--",
-        "--test-dir", "test/compiler-dev-test-cases/testcases",
-        "--compiler", "./target/release/airyc-compiler",
-        "--runtime", "./target/release/libairyc_runtime.a",
-        "--timeout", "5",
-        "--coverage"]
+args = [
+    "run",
+    "--release",
+    "-p",
+    "airyc-test",
+    "--",
+    "--test-dir",
+    "test/compiler-dev-test-cases/testcases",
+    "--compiler",
+    "./target/release/airyc-compiler",
+    "--runtime",
+    "./target/release/libairyc_runtime.a",
+    "--timeout",
+    "5",
+    "--coverage",
+]
 
 [tasks.test-quick]
 description = "Run tests without perf and coverage"
+dependencies = ["build"]
 command = "cargo"
-args = ["run", "--release", "-p", "airyc-test", "--",
-        "--test-dir", "test/compiler-dev-test-cases/testcases",
-        "--exclude", "perf",
-        "--compiler", "./target/release/airyc-compiler",
-        "--runtime", "./target/release/libairyc_runtime.a"]
+args = [
+    "run",
+    "--release",
+    "-p",
+    "airyc-test",
+    "--",
+    "--test-dir",
+    "test/compiler-dev-test-cases/testcases",
+    "--exclude",
+    "perf",
+    "--compiler",
+    "./target/release/airyc-compiler",
+    "--runtime",
+    "./target/release/libairyc_runtime.a",
+]
 
 [tasks.test-ci]
 description = "Run tests for CI"
+dependencies = ["build"]
 command = "cargo"
-args = ["run", "--release", "-p", "airyc-test", "--",
-        "--test-dir", "test/compiler-dev-test-cases/testcases",
-        "--exclude", "perf",
-        "--compiler", "./target/release/airyc-compiler",
-        "--runtime", "./target/release/libairyc_runtime.a",
-        "--timeout", "10",
-        "--coverage"]
-
+args = [
+    "run",
+    "--release",
+    "-p",
+    "airyc-test",
+    "--",
+    "--test-dir",
+    "test/compiler-dev-test-cases/testcases",
+    "--exclude",
+    "perf",
+    "--compiler",
+    "./target/release/airyc-compiler",
+    "--runtime",
+    "./target/release/libairyc_runtime.a",
+    "--timeout",
+    "10",
+    "--coverage",
+]
