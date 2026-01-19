@@ -1,3 +1,6 @@
 [submodule "test/compiler-dev-test-cases"]
 	path = test/compiler-dev-test-cases
 	url = git@github.com:pku-minic/compiler-dev-test-cases.git
+[submodule "test/open-test-cases"]
+	path = test/open-test-cases
+	url = https://github.com/pku-minic/open-test-cases.git
