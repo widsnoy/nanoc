@@ -1,5 +1,6 @@
 ---
 source: crates/airyc-codegen/src/test.rs
+assertion_line: 151
 expression: try_it(code)
 ---
 ; ModuleID = 'main'
@@ -36,9 +37,9 @@ entry:
   store [2 x i32] zeroinitializer, ptr %b, align 4
   %idx.gep = getelementptr [2 x i32], ptr %b, i32 0, i32 0
   store i32 1, ptr %idx.gep, align 4
-  %idx.gep1 = getelementptr [3 x i32], ptr %a, i32 0, i32 1
-  %a2 = load i32, ptr %idx.gep1, align 4
-  %idx.gep3 = getelementptr [2 x i32], ptr %b, i32 0, i32 1
-  store i32 %a2, ptr %idx.gep3, align 4
+  %arr.gep = getelementptr [3 x i32], ptr %a, i32 0, i32 1
+  %a1 = load i32, ptr %arr.gep, align 4
+  %idx.gep2 = getelementptr [2 x i32], ptr %b, i32 0, i32 1
+  store i32 %a1, ptr %idx.gep2, align 4
   ret i32 0
 }

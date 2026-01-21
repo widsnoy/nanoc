@@ -311,12 +311,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .ok_or(CodegenError::Missing("parameter"))?;
             param_val.set_name(&pname);
 
-            if param_ty.is_pointer() {
-                self.symbols
-                    .insert_var(pname, param_val.into_pointer_value(), param_ty);
-                continue;
-            }
-
             let alloc_ty = param_val.get_type();
             let alloca = self.create_entry_alloca(function, alloc_ty, &pname)?;
             self.builder
@@ -427,7 +421,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let (_, ptr, _) = self.get_element_ptr_by_index_val(&index_val)?;
                 ptr
             }
-            LVal::DerefExpr(_) => return Err(CodegenError::NotImplemented("deref assign")),
+            LVal::DerefExpr(deref) => self
+                .compile_expr(deref.expr().ok_or(CodegenError::Missing("deref operand"))?)?
+                .into_pointer_value(),
         };
 
         self.builder
@@ -563,11 +559,25 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             Expr::UnaryExpr(e) => self.compile_unary_expr(e),
             Expr::CallExpr(e) => self.compile_call_expr(e),
             Expr::ParenExpr(e) => self.compile_paren_expr(e),
-            Expr::DerefExpr(_e) => Err(CodegenError::NotImplemented("deref expression")),
+            Expr::DerefExpr(e) => self.compile_deref_expr(e),
             Expr::IndexVal(e) => self.compile_index_val(e, is_func_arg),
             Expr::Literal(e) => self.compile_literal(e),
         }
     }
+
+    fn compile_deref_expr(&mut self, expr: DerefExpr) -> Result<BasicValueEnum<'ctx>> {
+        let inner = expr.expr().ok_or(CodegenError::Missing("deref operand"))?;
+        let ptr = self.compile_expr(inner)?.into_pointer_value();
+        let result_ty = self
+            .analyzer
+            .get_expr_type(expr.syntax().text_range())
+            .ok_or(CodegenError::Missing("deref type"))?;
+        let llvm_ty = self.convert_ntype_to_type(result_ty)?;
+        self.builder
+            .build_load(llvm_ty, ptr, "deref")
+            .map_err(|_| CodegenError::LlvmBuild("deref load"))
+    }
+
     fn compile_binary_expr(&mut self, expr: BinaryExpr) -> Result<BasicValueEnum<'ctx>> {
         use inkwell::FloatPredicate;
         use inkwell::IntPredicate;
@@ -629,10 +639,105 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             return Ok(merge.as_basic_value());
         }
 
-        let lhs = self.compile_expr(expr.lhs().ok_or(CodegenError::Missing("left operand"))?)?;
-        let rhs = self.compile_expr(expr.rhs().ok_or(CodegenError::Missing("right operand"))?)?;
+        let lhs_node = expr.lhs().ok_or(CodegenError::Missing("left operand"))?;
+        let rhs_node = expr.rhs().ok_or(CodegenError::Missing("right operand"))?;
+        let lhs = self.compile_expr(lhs_node.clone())?;
+        let rhs = self.compile_expr(rhs_node.clone())?;
 
         match (lhs, rhs) {
+            // 指针 + 整数
+            (BasicValueEnum::PointerValue(p), BasicValueEnum::IntValue(i)) => {
+                let lhs_ty = self
+                    .analyzer
+                    .get_expr_type(lhs_node.syntax().text_range())
+                    .ok_or(CodegenError::Missing("lhs type"))?;
+                let NType::Pointer(pointee) = lhs_ty else {
+                    return Err(CodegenError::TypeMismatch("expected pointer".into()));
+                };
+                let llvm_ty = self.convert_ntype_to_type(pointee)?;
+                match op_token.kind() {
+                    SyntaxKind::PLUS => {
+                        let gep = unsafe {
+                            self.builder
+                                .build_gep(llvm_ty, p, &[i], "ptr.add")
+                                .map_err(|_| CodegenError::LlvmBuild("gep"))?
+                        };
+                        Ok(gep.into())
+                    }
+                    SyntaxKind::MINUS => {
+                        let neg = self
+                            .builder
+                            .build_int_neg(i, "neg")
+                            .map_err(|_| CodegenError::LlvmBuild("neg"))?;
+                        let gep = unsafe {
+                            self.builder
+                                .build_gep(llvm_ty, p, &[neg], "ptr.sub")
+                                .map_err(|_| CodegenError::LlvmBuild("gep"))?
+                        };
+                        Ok(gep.into())
+                    }
+                    _ => Err(CodegenError::Unsupported("ptr binary op".into())),
+                }
+            }
+            // 整数 + 指针
+            (BasicValueEnum::IntValue(i), BasicValueEnum::PointerValue(p)) => {
+                let rhs_ty = self
+                    .analyzer
+                    .get_expr_type(rhs_node.syntax().text_range())
+                    .ok_or(CodegenError::Missing("rhs type"))?;
+                let NType::Pointer(pointee) = rhs_ty else {
+                    return Err(CodegenError::TypeMismatch("expected pointer".into()));
+                };
+                let llvm_ty = self.convert_ntype_to_type(pointee)?;
+                if op_token.kind() == SyntaxKind::PLUS {
+                    let gep = unsafe {
+                        self.builder
+                            .build_gep(llvm_ty, p, &[i], "ptr.add")
+                            .map_err(|_| CodegenError::LlvmBuild("gep"))?
+                    };
+                    Ok(gep.into())
+                } else {
+                    Err(CodegenError::Unsupported("int - ptr".into()))
+                }
+            }
+            // 指针 - 指针
+            (BasicValueEnum::PointerValue(p1), BasicValueEnum::PointerValue(p2)) => {
+                if op_token.kind() != SyntaxKind::MINUS {
+                    return Err(CodegenError::Unsupported("ptr + ptr".into()));
+                }
+                let lhs_ty = self
+                    .analyzer
+                    .get_expr_type(lhs_node.syntax().text_range())
+                    .ok_or(CodegenError::Missing("lhs type"))?;
+                let NType::Pointer(pointee) = lhs_ty else {
+                    return Err(CodegenError::TypeMismatch("expected pointer".into()));
+                };
+                let elem_size = self.get_type_size(pointee)?;
+                let i64_ty = self.context.i64_type();
+                let i1 = self
+                    .builder
+                    .build_ptr_to_int(p1, i64_ty, "p1")
+                    .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
+                let i2 = self
+                    .builder
+                    .build_ptr_to_int(p2, i64_ty, "p2")
+                    .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
+                let diff = self
+                    .builder
+                    .build_int_sub(i1, i2, "diff")
+                    .map_err(|_| CodegenError::LlvmBuild("sub"))?;
+                let size_val = i64_ty.const_int(elem_size, false);
+                let result = self
+                    .builder
+                    .build_int_signed_div(diff, size_val, "ptr.diff")
+                    .map_err(|_| CodegenError::LlvmBuild("div"))?;
+                let i32_ty = self.context.i32_type();
+                let truncated = self
+                    .builder
+                    .build_int_truncate(result, i32_ty, "diff.i32")
+                    .map_err(|_| CodegenError::LlvmBuild("trunc"))?;
+                Ok(truncated.into())
+            }
             (BasicValueEnum::IntValue(l), BasicValueEnum::IntValue(r)) => {
                 let res = match op_token.kind() {
                     SyntaxKind::PLUS => self
@@ -732,6 +837,23 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .op()
             .ok_or(CodegenError::Missing("unary operator"))?
             .op();
+
+        // 取地址需要特殊处理，不能先编译操作数
+        if op_token.kind() == SyntaxKind::AMP {
+            let operand = expr.expr().ok_or(CodegenError::Missing("& operand"))?;
+            return match operand {
+                Expr::IndexVal(iv) => {
+                    let (_, ptr, _) = self.get_element_ptr_by_index_val(&iv)?;
+                    Ok(ptr.into())
+                }
+                Expr::DerefExpr(de) => {
+                    // &*ptr == ptr
+                    self.compile_expr(de.expr().ok_or(CodegenError::Missing("deref operand"))?)
+                }
+                _ => Err(CodegenError::Unsupported("cannot take address".into())),
+            };
+        }
+
         let val = self.compile_expr(expr.expr().ok_or(CodegenError::Missing("unary operand"))?)?;
 
         match val {
@@ -805,15 +927,22 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     fn compile_index_val(
         &mut self,
         expr: IndexVal,
-        func_call_r_param: bool,
+        _func_call_r_param: bool,
     ) -> Result<BasicValueEnum<'ctx>> {
         let (ty, ptr, name) = self.get_element_ptr_by_index_val(&expr)?;
-        if !func_call_r_param || (!ty.is_array_type() && !ty.is_pointer_type()) {
+        if ty.is_array_type() {
+            // 数组 decay 成指向第一个元素的指针
+            let zero = self.context.i32_type().const_zero();
+            let gep = unsafe {
+                self.builder
+                    .build_gep(ty, ptr, &[zero, zero], "arr.decay")
+                    .map_err(|_| CodegenError::LlvmBuild("gep"))?
+            };
+            Ok(gep.into())
+        } else {
             self.builder
                 .build_load(ty, ptr, &name)
                 .map_err(|_| CodegenError::LlvmBuild("load"))
-        } else {
-            Ok(ptr.into())
         }
     }
 

@@ -1,4 +1,5 @@
 use airyc_parser::ast::*;
+use airyc_parser::syntax_kind::SyntaxKind;
 use airyc_parser::visitor::Visitor;
 
 use crate::array::{ArrayTree, ArrayTreeValue};
@@ -191,8 +192,16 @@ impl Visitor for Module {
     }
 
     fn leave_func_f_param(&mut self, node: FuncFParam) {
-        let mut param_type = Self::build_basic_type(&node.ty().unwrap());
+        let base_type = Self::build_basic_type(&node.ty().unwrap());
 
+        // 处理指针声明 int *arr
+        let mut param_type = if let Some(pointer_node) = node.pointer() {
+            Self::build_pointer_type(&pointer_node, base_type)
+        } else {
+            base_type
+        };
+
+        // 处理数组参数 int arr[] 或 int arr[][3]
         if node.is_array() {
             let Some(ty) = self.build_array_type(param_type, node.indices()) else {
                 return;
@@ -266,14 +275,42 @@ impl Visitor for Module {
         let lhs = node.lhs().unwrap();
         let rhs = node.rhs().unwrap();
         let op = node.op().unwrap();
-        let op_str = op.op_str();
+        let op_kind = op.op().kind();
+
+        // 类型推导
+        let lhs_ty = self.get_expr_type(lhs.syntax().text_range()).cloned();
+        let rhs_ty = self.get_expr_type(rhs.syntax().text_range()).cloned();
+        if let (Some(l), Some(r)) = (&lhs_ty, &rhs_ty) {
+            let result_ty = match (l, r, op_kind) {
+                (NType::Pointer(p), NType::Int, SyntaxKind::PLUS | SyntaxKind::MINUS) => {
+                    NType::Pointer(p.clone())
+                }
+                (NType::Int, NType::Pointer(p), SyntaxKind::PLUS) => NType::Pointer(p.clone()),
+                (NType::Pointer(_), NType::Pointer(_), SyntaxKind::MINUS) => NType::Int,
+                (
+                    _,
+                    _,
+                    SyntaxKind::LT
+                    | SyntaxKind::GT
+                    | SyntaxKind::LTEQ
+                    | SyntaxKind::GTEQ
+                    | SyntaxKind::EQEQ
+                    | SyntaxKind::NEQ
+                    | SyntaxKind::AMPAMP
+                    | SyntaxKind::PIPEPIPE,
+                ) => NType::Int,
+                _ => l.clone(),
+            };
+            self.set_expr_type(node.syntax().text_range(), result_ty);
+        }
+
         if self.is_constant(lhs.syntax().text_range())
             && self.is_constant(rhs.syntax().text_range())
         {
             let lhs_val = self.value_table.get(&lhs.syntax().text_range()).unwrap();
             let rhs_val = self.value_table.get(&rhs.syntax().text_range()).unwrap();
 
-            if let Ok(val) = Value::eval(lhs_val, rhs_val, &op_str) {
+            if let Ok(val) = Value::eval(lhs_val, rhs_val, &op.op_str()) {
                 self.mark_constant(node.syntax().text_range());
                 self.value_table.insert(node.syntax().text_range(), val);
             }
@@ -283,7 +320,17 @@ impl Visitor for Module {
     fn leave_unary_expr(&mut self, node: UnaryExpr) {
         let expr = node.expr().unwrap();
         let op = node.op().unwrap();
-        let op_str = op.op_str();
+        let op_kind = op.op().kind();
+
+        // 类型推导
+        if let Some(inner_ty) = self.get_expr_type(expr.syntax().text_range()) {
+            let result_ty = if op_kind == SyntaxKind::AMP {
+                NType::Pointer(Box::new(inner_ty.clone()))
+            } else {
+                inner_ty.clone()
+            };
+            self.set_expr_type(node.syntax().text_range(), result_ty);
+        }
 
         if self.is_constant(expr.syntax().text_range()) {
             let val = self
@@ -291,7 +338,7 @@ impl Visitor for Module {
                 .get(&expr.syntax().text_range())
                 .unwrap()
                 .clone();
-            if let Ok(res) = Value::eval_unary(val, &op_str) {
+            if let Ok(res) = Value::eval_unary(val, &op.op_str()) {
                 self.mark_constant(node.syntax().text_range());
                 self.value_table.insert(node.syntax().text_range(), res);
             }
@@ -300,6 +347,10 @@ impl Visitor for Module {
 
     fn leave_paren_expr(&mut self, node: ParenExpr) {
         let expr = node.expr().unwrap();
+        // 类型传递
+        if let Some(ty) = self.get_expr_type(expr.syntax().text_range()) {
+            self.set_expr_type(node.syntax().text_range(), ty.clone());
+        }
         if self.is_constant(expr.syntax().text_range()) {
             self.mark_constant(node.syntax().text_range());
             let val = self
@@ -311,12 +362,11 @@ impl Visitor for Module {
         }
     }
 
-    fn enter_deref_expr(&mut self, _node: DerefExpr) {
-        todo!()
-    }
-
-    fn leave_deref_expr(&mut self, _node: DerefExpr) {
-        todo!()
+    fn leave_deref_expr(&mut self, node: DerefExpr) {
+        let inner = node.expr().unwrap();
+        if let Some(NType::Pointer(pointee)) = self.get_expr_type(inner.syntax().text_range()) {
+            self.set_expr_type(node.syntax().text_range(), (**pointee).clone());
+        }
     }
 
     // fn enter_index_val(&mut self, _node: IndexVal) {
@@ -337,12 +387,20 @@ impl Visitor for Module {
                 });
             return;
         };
+
+        // 计算索引后的类型
         let var = self.variables.get(*vid).unwrap();
-        if !var.is_const() {
+        let index_count = node.indices().count();
+        let result_ty = Self::compute_indexed_type(&var.ty, index_count);
+        let is_const = var.is_const();
+        let var_range = var.range;
+        let const_zero = var.ty.const_zero();
+        self.set_expr_type(node.syntax().text_range(), result_ty);
+
+        if !is_const {
             return;
         }
-        let mut value = self.value_table.get(&var.range).unwrap();
-        let const_zero = var.ty.const_zero();
+        let mut value = self.value_table.get(&var_range).unwrap();
 
         if let Value::Array(tree) = value {
             let mut indices = Vec::new();
@@ -397,8 +455,10 @@ impl Visitor for Module {
 
     fn enter_literal(&mut self, node: Literal) {
         self.mark_constant(node.syntax().text_range());
+        let range = node.syntax().text_range();
         let v = if let Some(n) = node.float_token() {
             let s = n.text();
+            self.set_expr_type(range, NType::Float);
             Value::Float(s.parse::<f32>().unwrap())
         } else {
             let n = node.int_token().unwrap();
@@ -411,8 +471,9 @@ impl Visitor for Module {
                 },
                 _ => (s, 10),
             };
+            self.set_expr_type(range, NType::Int);
             Value::Int(i32::from_str_radix(num_str, radix).unwrap())
         };
-        self.value_table.insert(node.syntax().text_range(), v);
+        self.value_table.insert(range, v);
     }
 }

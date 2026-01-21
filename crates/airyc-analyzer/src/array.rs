@@ -154,7 +154,7 @@ impl ArrayTree {
         cursor: &mut Option<impl ArrayTreeTrait>,
     ) -> Result<ArrayTree, ArrayInitError> {
         match ty {
-            NType::Int | NType::Float => {
+            NType::Int | NType::Float | NType::Pointer(_) => {
                 let Some(u) = cursor else { unreachable!() };
                 if let Some(expr) = u.try_expr() {
                     *cursor = u.next_sibling();

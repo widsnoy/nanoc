@@ -195,48 +195,85 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .symbols
             .lookup_var(&name)
             .ok_or_else(|| CodegenError::UndefinedVar(name.clone()))?;
-        let (ptr, elem_ty) = (symbol.ptr, symbol.ty);
-        let basic_type = self.convert_ntype_to_type(elem_ty)?;
-        if !elem_ty.is_array() && !elem_ty.is_pointer() {
-            return Ok((basic_type, ptr, name));
+        let (mut ptr, mut cur_ntype) = (symbol.ptr, symbol.ty.clone());
+        let mut cur_llvm_type = self.convert_ntype_to_type(&cur_ntype)?;
+
+        let user_indices: Vec<_> = index_val
+            .indices()
+            .map(|e| self.compile_expr(e).map(|v| v.into_int_value()))
+            .collect::<Result<Vec<_>>>()?;
+
+        if user_indices.is_empty() {
+            return Ok((cur_llvm_type, ptr, name));
         }
 
-        // TODO: multi-level pointers need multiple loads
-        let (basic_type, zero) = if elem_ty.is_array() {
-            (basic_type, Some(self.context.i32_type().const_zero()))
-        } else {
-            let NType::Pointer(inner) = elem_ty else {
-                return Err(CodegenError::TypeMismatch("expected pointer type".into()));
-            };
-            (self.convert_ntype_to_type(inner)?, None)
-        };
+        let mut idx_iter = user_indices.into_iter().peekable();
+        let ptr_ty = self.context.ptr_type(AddressSpace::default());
 
-        let indices = zero
-            .into_iter()
-            .chain(
-                index_val
-                    .indices()
-                    .map(|e| self.compile_expr(e).map(|v| v.into_int_value()))
-                    .collect::<Result<Vec<_>>>()?,
-            )
-            .collect::<Vec<_>>();
+        while idx_iter.peek().is_some() {
+            match &cur_ntype {
+                NType::Array(_, _) => {
+                    // 收集连续的数组维度索引
+                    let zero = self.context.i32_type().const_zero();
+                    let mut indices = vec![zero];
+                    let mut depth = 0;
+                    let mut inner = &cur_ntype;
 
-        let gep = unsafe {
-            self.builder
-                .build_gep(basic_type, ptr, &indices, "idx.gep")
-                .map_err(|_| CodegenError::LlvmBuild("gep failed"))?
-        };
+                    while let NType::Array(next_inner, _) = inner {
+                        if let Some(idx) = idx_iter.next() {
+                            indices.push(idx);
+                            depth += 1;
+                            inner = next_inner;
+                        } else {
+                            break;
+                        }
+                    }
 
-        let mut final_ty = basic_type;
+                    ptr = unsafe {
+                        self.builder
+                            .build_gep(cur_llvm_type, ptr, &indices, "arr.gep")
+                            .map_err(|_| CodegenError::LlvmBuild("gep failed"))?
+                    };
 
-        if indices.is_empty() {
-            final_ty = self.context.ptr_type(AddressSpace::default()).into();
-        } else {
-            for _ in 0..indices.len() - 1 {
-                final_ty = final_ty.into_array_type().get_element_type();
+                    // 更新类型：剥掉 depth 层数组
+                    for _ in 0..depth {
+                        cur_llvm_type = cur_llvm_type.into_array_type().get_element_type();
+                        if let NType::Array(inner, _) = cur_ntype {
+                            cur_ntype = *inner;
+                        }
+                    }
+                }
+                NType::Pointer(inner) => {
+                    // 指针：load 后 GEP 一个索引
+                    let pointee_ty = self.convert_ntype_to_type(inner)?;
+                    let loaded_ptr = self
+                        .builder
+                        .build_load(ptr_ty, ptr, "ptr.load")
+                        .map_err(|_| CodegenError::LlvmBuild("load ptr"))?
+                        .into_pointer_value();
+
+                    let idx = idx_iter.next().unwrap();
+                    ptr = unsafe {
+                        self.builder
+                            .build_gep(pointee_ty, loaded_ptr, &[idx], "ptr.gep")
+                            .map_err(|_| CodegenError::LlvmBuild("gep failed"))?
+                    };
+
+                    cur_ntype = *inner.clone();
+                    cur_llvm_type = pointee_ty;
+                }
+                NType::Const(inner) => {
+                    cur_ntype = *inner.clone();
+                }
+                _ => {
+                    return Err(CodegenError::TypeMismatch(
+                        "cannot index non-array/pointer".into(),
+                    ));
+                }
             }
         }
-        Ok((final_ty, gep, name))
+
+        Ok((cur_llvm_type, ptr, name))
     }
 
     /// Get constant value from analyzer
@@ -338,5 +375,17 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .map_err(|_| CodegenError::LlvmBuild("branch failed"))?;
         }
         Ok(())
+    }
+
+    /// Get size of type in bytes
+    pub(crate) fn get_type_size(&self, ty: &NType) -> Result<u64> {
+        match ty {
+            NType::Int => Ok(4),
+            NType::Float => Ok(4),
+            NType::Pointer(_) => Ok(8),
+            NType::Array(inner, count) => Ok(self.get_type_size(inner)? * (*count as u64)),
+            NType::Const(inner) => self.get_type_size(inner),
+            _ => Err(CodegenError::Unsupported("unknown type size".into())),
+        }
     }
 }

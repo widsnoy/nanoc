@@ -31,6 +31,9 @@ pub struct Module {
     /// Variable index: TextRange -> VariableID
     pub variable_map: HashMap<TextRange, VariableID>,
 
+    /// Expression type table: TextRange -> NType
+    pub type_table: HashMap<TextRange, NType>,
+
     /// Analysis context, cleared after use
     pub analyzing: AnalyzeContext,
 }
@@ -110,6 +113,14 @@ impl Module {
 
     pub fn get_value(&self, range: TextRange) -> Option<&Value> {
         self.value_table.get(&range)
+    }
+
+    pub fn set_expr_type(&mut self, range: TextRange, ty: NType) {
+        self.type_table.insert(range, ty);
+    }
+
+    pub fn get_expr_type(&self, range: TextRange) -> Option<&NType> {
+        self.type_table.get(&range)
     }
 
     pub fn new_scope(&mut self, parent: Option<ScopeID>) -> ScopeID {

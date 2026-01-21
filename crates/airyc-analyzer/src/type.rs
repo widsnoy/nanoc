@@ -36,7 +36,7 @@ impl NType {
             NType::Float => Value::Float(0.0),
             NType::Void => Value::Int(0),
             NType::Array(ntype, _) => ntype.const_zero(),
-            NType::Pointer(_ntype) => todo!(),
+            NType::Pointer(_ntype) => Value::Int(0), // null pointer
             NType::Struct(_) => todo!(),
             NType::Const(ntype) => ntype.const_zero(),
         }
