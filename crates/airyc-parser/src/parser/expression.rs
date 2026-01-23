@@ -139,14 +139,14 @@ impl Parser<'_> {
         }
     }
 
-    /// Call only after verifying binary operator
+    /// 仅在确认是二元运算符后调用
     fn parse_binary_op(&mut self) {
         self.start_node(SyntaxKind::BINARY_OP);
         self.bump(); // op
         self.finish_node();
     }
 
-    /// Call only after verifying unary operator
+    /// 仅在确认是一元运算符后调用
     fn parse_unary_op(&mut self) {
         self.start_node(SyntaxKind::UNARY_OP);
         self.bump(); // op

@@ -230,7 +230,7 @@ impl Parser<'_> {
     fn parse_block_item(&mut self) {
         match self.peek() {
             SyntaxKind::INT_KW | SyntaxKind::FLOAT_KW | SyntaxKind::STRUCT_KW => {
-                // Should refactor parse_decl_or_func_def, but rewriting for now
+                // 应该重构 parse_decl_or_func_def，但暂时重写
                 self.start_node(SyntaxKind::VAR_DECL);
                 self.parse_type();
                 self.parse_var_def();
@@ -245,7 +245,7 @@ impl Parser<'_> {
                 self.parse_const_decl();
             }
             _ => {
-                // Other cases are treated as statements
+                // 其他情况视为语句
                 self.parse_statement();
             }
         }

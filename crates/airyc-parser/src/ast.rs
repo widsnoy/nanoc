@@ -95,7 +95,7 @@ macro_rules! ast_enum {
     }
 }
 
-// 1. Compilation Unit
+// 1. 编译单元
 ast_node!(
     CompUnit ~ COMP_UNIT {
         global_decls: nodes(GlobalDecl),
@@ -104,7 +104,7 @@ ast_node!(
 
 ast_enum!(GlobalDecl { Decl, FuncDef });
 
-// 2. Declarations
+// 2. 声明
 ast_enum!(Decl { ConstDecl, VarDecl });
 
 ast_node!(
@@ -156,7 +156,7 @@ impl InitVal {
     }
 }
 
-// 3. Functions
+// 3. 函数
 ast_node!(
     FuncDef ~ FUNC_DEF {
         func_type: node(FuncType),
@@ -196,7 +196,7 @@ impl FuncFParam {
     }
 }
 
-// 4. Block & Statements
+// 4. 块和语句
 ast_node!(
     Block ~ BLOCK {
         items: nodes(BlockItem),
@@ -258,7 +258,7 @@ ast_node!(
     }
 );
 
-// 5. Expressions
+// 5. 表达式
 ast_enum!(Expr {
     BinaryExpr,
     UnaryExpr,
@@ -327,7 +327,7 @@ ast_node!(
     }
 );
 
-// as rvalue
+// 作为右值
 ast_node!(
     IndexVal ~ INDEX_VAL {
         name: node(Name),
@@ -355,7 +355,7 @@ ast_node!(
     }
 );
 
-// 6. Basic Elements
+// 6. 基本元素
 ast_node!(
     Type ~ TYPE { int_token: token(INT_KW),
         float_token: token(FLOAT_KW),
@@ -373,7 +373,7 @@ ast_node!(
 ast_node!(Pointer ~ POINTER {});
 
 impl Pointer {
-    /// true for mutable pointer, false for immutable pointer
+    /// 返回指针的可变性列表，true 表示可变指针，false 表示不可变指针
     pub fn stars(&self) -> Vec<bool> {
         let iter = self
             .syntax()

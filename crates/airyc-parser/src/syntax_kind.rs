@@ -1,9 +1,9 @@
-/// Syntax tree node types
+/// 语法树节点类型
 #[derive(Debug, Clone, Hash, Copy, Ord, Eq, PartialEq, PartialOrd)]
 #[repr(u16)]
 #[allow(non_camel_case_types)]
 pub enum SyntaxKind {
-    WHITESPACE,    // space, \t
+    WHITESPACE,    // 空格, \t
     NEWLINE,       // \n, \r, \r\n
     COMMENT_LINE,  // // ...
     COMMENT_BLOCK, // /* ... */
@@ -53,7 +53,7 @@ pub enum SyntaxKind {
     L_BRACK,       // [
     R_BRACK,       // ]
 
-    // syntax tree nodes
+    // 语法树节点
     COMP_UNIT,
 
     FUNC_DEF,
@@ -100,7 +100,7 @@ pub enum SyntaxKind {
 }
 
 impl SyntaxKind {
-    /// Check if trivia (whitespace and comments)
+    /// 检查是否为空白字符（空格和注释）
     pub fn is_trivia(self) -> bool {
         matches!(
             self,
@@ -111,7 +111,7 @@ impl SyntaxKind {
         )
     }
 
-    /// Check if keyword
+    /// 检查是否为关键字
     pub fn is_keyword(self) -> bool {
         matches!(
             self,
@@ -130,7 +130,7 @@ impl SyntaxKind {
         )
     }
 
-    /// Check if unary operator: `+`, `-`, `!`, `&`
+    /// 检查是否为一元运算符：`+`, `-`, `!`, `&`
     pub fn is_unary_op(self) -> bool {
         matches!(
             self,
@@ -138,7 +138,7 @@ impl SyntaxKind {
         )
     }
 
-    /// Check if binary operator
+    /// 检查是否为二元运算符
     pub fn is_binary_op(self) -> bool {
         matches!(
             self,
@@ -158,7 +158,7 @@ impl SyntaxKind {
         )
     }
 
-    /// Check if number literal
+    /// 检查是否为数字字面量
     pub fn is_number(self) -> bool {
         matches!(self, SyntaxKind::INT_LITERAL | SyntaxKind::FLOAT_LITERAL)
     }
@@ -189,7 +189,7 @@ impl From<SyntaxKind> for rowan::SyntaxKind {
     }
 }
 
-/// Airyc language definition
+/// Airyc 语言定义
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NanocLanguage {}
 

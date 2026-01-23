@@ -28,22 +28,22 @@ pub struct Module {
     pub scopes: Arena<Scope>,
 
     pub global_scope: ScopeID,
-    /// Check if node is constant (compile-time or runtime)
+    /// 检查节点是否为常量（编译时或运行时）
     pub constant_nodes: HashMap<TextRange, ConstKind>,
 
-    /// Store compile time constants only
+    /// 仅存储编译时常量
     pub value_table: HashMap<TextRange, Value>,
 
-    /// Store expanded arrays
+    /// 存储展开的数组
     pub expand_array: HashMap<TextRange, ArrayTree>,
 
-    /// Variable index: TextRange -> VariableID
+    /// 变量索引：TextRange -> VariableID
     pub variable_map: HashMap<TextRange, VariableID>,
 
-    /// Expression type table: TextRange -> NType
+    /// 表达式类型表：TextRange -> NType
     pub type_table: HashMap<TextRange, NType>,
 
-    /// Analysis context, cleared after use
+    /// 分析上下文，使用后清除
     pub analyzing: AnalyzeContext,
 }
 
@@ -87,7 +87,7 @@ pub enum SemanticError {
 }
 
 impl Module {
-    /// Clear analysis context after analysis is complete
+    /// 分析完成后清除分析上下文
     pub fn finish_analysis(&mut self) {
         self.analyzing = AnalyzeContext::default();
     }
@@ -119,7 +119,7 @@ impl Module {
         self.constant_nodes.get(&range).copied()
     }
 
-    /// Check if all ranges are constant, and if so, mark the parent range as constant
+    /// 检查所有范围是否为常量，如果是则将父范围标记为常量
     pub fn check_and_mark_constant(
         &mut self,
         parent_range: TextRange,
@@ -188,7 +188,7 @@ impl Module {
     }
 }
 
-/// Macro to define ID wrapper types for arena indices
+/// 定义 ID 包装类型的宏，用于 arena 索引
 macro_rules! define_id_type {
     ($name:ident) => {
         #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -283,7 +283,7 @@ impl Scope {
         var_id
     }
 
-    /// Lookup variable
+    /// 查找变量
     pub fn look_up(&self, m: &Module, var_name: &str, var_tag: VariableTag) -> Option<VariableID> {
         let mut u_opt = Some(self);
         while let Some(u) = u_opt {
@@ -300,7 +300,7 @@ impl Scope {
         None
     }
 
-    /// Lookup variable in current scope only
+    /// 仅在当前作用域查找变量
     pub fn look_up_locally(
         &self,
         m: &Module,
@@ -319,7 +319,7 @@ impl Scope {
         }
     }
 
-    /// Check if variable exists in current scope
+    /// 检查当前作用域是否存在变量
     pub fn have_variable(&self, var_name: &str) -> bool {
         self.variables.contains_key(var_name)
     }

@@ -96,7 +96,7 @@ impl std::fmt::Debug for ArrayTree {
 pub trait ArrayTreeTrait: AstNode<Language = NanocLanguage> + Sized {
     /// Node -> Expr
     fn try_expr(&self) -> Option<ArrayTreeValue>;
-    /// Node -> {Node, Node, Node}, expect leaf
+    /// Node -> {Node, Node, Node}，期望叶子节点
     fn is_subtree(&self) -> bool {
         self.syntax().children().any(|x| Self::can_cast(x.kind()))
     }
@@ -131,11 +131,11 @@ impl ArrayTreeTrait for InitVal {
 
 #[derive(Debug)]
 pub enum ArrayInitError {
-    /// Assign array to scalar
+    /// 将数组赋值给标量
     AssignArrayToNumber,
-    /// Array index out of bounds
+    /// 数组索引越界
     IndexOutOfBound,
-    /// Index and type mismatch
+    /// 索引和类型不匹配
     MisMatchIndexAndType,
     Unkown,
 }
@@ -170,7 +170,7 @@ impl ArrayTree {
                     };
                     if u.is_subtree() {
                         let mut first_child = u.first_child();
-                        // May have extra elements, just ignore
+                        // 可能有多余元素，直接忽略
                         let subtree = Self::build(inner, &mut first_child)?;
                         children_vec.push(subtree);
                         *cursor = u.next_sibling();
@@ -194,7 +194,7 @@ impl ArrayTree {
         }
     }
 
-    /// Get leaf node
+    /// 获取叶子节点
     pub fn get_leaf(&self, indices: &[i32]) -> Result<ArrayTreeValue, ArrayInitError> {
         let mut u = self;
         for i in indices {

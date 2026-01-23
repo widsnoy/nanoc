@@ -95,7 +95,7 @@ impl Visitor for Module {
         self.analyzing.current_base_type = Some(Self::build_basic_type(&node.ty().unwrap()));
     }
 
-    // todo: First check if lhs and rhs match
+    // 待办：首先检查左值和右值是否匹配
     fn leave_var_def(&mut self, def: VarDef) {
         let base_type = self.analyzing.current_base_type.clone().unwrap();
         let var_type = if let Some(pointer_node) = def.pointer() {
@@ -171,7 +171,7 @@ impl Visitor for Module {
                 let name = name_node.ident().unwrap();
                 let Some(v) = scope.look_up(self, name.text(), VariableTag::Define) else {
                     return;
-                }; // Function definition is a scope
+                }; // 函数定义是一个作用域
                 param_list.push(v);
             }
         }
@@ -245,30 +245,30 @@ impl Visitor for Module {
     }
 
     fn enter_assign_stmt(&mut self, _node: AssignStmt) {
-        // todo!("Check if types match")
+        // 待办：检查类型是否匹配
     }
 
     fn leave_assign_stmt(&mut self, _node: AssignStmt) {
-        // todo!()
+        // 待办
     }
 
     fn enter_break_stmt(&mut self, _node: BreakStmt) {
-        // todo!()
+        // 待办
     }
 
     fn leave_break_stmt(&mut self, _node: BreakStmt) {
-        // todo!()
+        // 待办
     }
 
     fn enter_continue_stmt(&mut self, _node: ContinueStmt) {
-        // todo!()
+        // 待办
     }
 
     fn leave_continue_stmt(&mut self, _node: ContinueStmt) {
-        // todo!()
+        // 待办
     }
 
-    // Check return type
+    // 检查返回类型
     fn leave_return_stmt(&mut self, _node: ReturnStmt) {}
 
     fn leave_binary_expr(&mut self, node: BinaryExpr) {
@@ -433,7 +433,7 @@ impl Visitor for Module {
                 let Some(v) = self.get_value(range) else {
                     return;
                 };
-                // todo: If non-constant, should do type checking
+                // 待办：如果非常量，应该进行类型检查
                 let Value::Int(index) = v else {
                     self.analyzing.errors.push(SemanticError::TypeMismatch {
                         expected: NType::Int,

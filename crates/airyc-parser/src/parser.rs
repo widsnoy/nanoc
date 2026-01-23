@@ -6,7 +6,7 @@ use crate::syntax_kind::SyntaxKind;
 use crate::{lexer::Lexer, syntax_kind::NanocLanguage};
 use rowan::{Checkpoint, GreenNode, GreenNodeBuilder};
 
-/// Syntax parser
+/// 语法解析器
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     builder: GreenNodeBuilder<'static>,
@@ -47,7 +47,7 @@ impl<'a> Parser<'a> {
         self.builder.finish_node();
     }
 
-    /// Consume current token and add to syntax tree
+    /// 消费当前 token 并添加到语法树
     pub(crate) fn bump(&mut self) {
         if self.lexer.current() == SyntaxKind::EOF {
             return;
@@ -60,7 +60,7 @@ impl<'a> Parser<'a> {
         self.lexer.bump();
     }
 
-    /// Consume tokens until non-trivia
+    /// 消费 token 直到遇到非空白字符
     pub(crate) fn bump_trivia(&mut self) {
         while self.lexer.current().is_trivia() {
             self.builder.token(
@@ -71,7 +71,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Consume token if expected type, otherwise report error
+    /// 消费期望类型的 token，否则报错
     pub(crate) fn expect(&mut self, kind: SyntaxKind) {
         self.bump_trivia();
         if self.lexer.at(kind) {
@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Record error
+    /// 记录错误
     pub(crate) fn error(&mut self, message: impl Into<String>) {
         self.errors.push(message.into());
         if !self.lexer.at(SyntaxKind::EOF) {
@@ -95,27 +95,27 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Finish parsing and return GreenNode
+    /// 完成解析并返回 GreenNode
     pub(crate) fn finish(self) -> (GreenNode, Vec<String>) {
         (self.builder.finish(), self.errors)
     }
 
-    /// Check if current token matches `kind` (skip trivia)
+    /// 检查当前 token 是否匹配 `kind`（跳过空白）
     pub(crate) fn at(&self, kind: SyntaxKind) -> bool {
         self.peek() == kind
     }
 
-    /// Check if next token matches `kind` (skip trivia)
+    /// 检查下一个 token 是否匹配 `kind`（跳过空白）
     pub(crate) fn at_1(&self, kind: SyntaxKind) -> bool {
         self.peek_1() == kind
     }
 
-    /// Get current kind (skip trivia)
+    /// 获取当前 token 类型（跳过空白）
     pub(crate) fn peek(&self) -> SyntaxKind {
         self.lexer.current_without_trivia()
     }
 
-    /// Get next kind (skip trivia)
+    /// 获取下一个 token 类型（跳过空白）
     pub(crate) fn peek_1(&self) -> SyntaxKind {
         self.lexer.current_without_trivia_1()
     }

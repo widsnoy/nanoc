@@ -18,13 +18,13 @@ pub struct LexerError {
     pub span: Range<usize>,
 }
 
-/// Tokens
+/// 词法单元
 #[derive(Logos, Debug, PartialEq, Clone)]
 #[logos(error = LexerErrorKind)]
 #[allow(clippy::upper_case_acronyms)]
 #[allow(non_camel_case_types)]
 pub enum Token {
-    // Trivia (whitespace and comments)
+    // 空白字符（空格和注释）
     #[regex(r"[ \t]+")]
     WHITESPACE,
     #[regex(r"(\r\n|\n|\r)")]
@@ -34,7 +34,7 @@ pub enum Token {
     #[regex(r"/\*[^*]*\*+(?:[^/*][^*]*\*+)*/")]
     COMMENT_BLOCK,
 
-    // Keywords
+    // 关键字
     #[token("const")]
     CONST_KW,
     #[token("int")]
@@ -60,7 +60,7 @@ pub enum Token {
     #[token("impl")]
     IMPL_KW,
 
-    // Operators and punctuation
+    // 运算符和标点符号
     #[token("=")]
     EQ,
     #[token(";")]
@@ -86,7 +86,7 @@ pub enum Token {
     #[token("->")]
     ARROW,
 
-    // Arithmetic operators
+    // 算术运算符
     #[token("+")]
     PLUS,
     #[token("-")]
@@ -96,7 +96,7 @@ pub enum Token {
     #[token("%")]
     PERCENT,
 
-    // Comparison operators
+    // 比较运算符
     #[token("==")]
     EQEQ,
     #[token("!=")]
@@ -110,7 +110,7 @@ pub enum Token {
     #[token(">=")]
     GTEQ,
 
-    // Logical operators
+    // 逻辑运算符
     #[token("&&")]
     AMPAMP,
     #[token("||")]
@@ -118,11 +118,11 @@ pub enum Token {
     #[token("!")]
     BANG,
 
-    /// ref address
+    /// 取地址运算符
     #[token("&")]
     AMP,
 
-    // Literals
+    // 字面量
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
     IDENT,
     #[regex(r"0[xX][0-9a-fA-F]+", priority = 3)]
@@ -186,7 +186,7 @@ impl From<Token> for SyntaxKind {
     }
 }
 
-/// Lexer
+/// 词法分析器
 pub struct Lexer<'a> {
     tokens: Vec<(SyntaxKind, &'a str)>,
     pos: usize,
@@ -218,7 +218,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Get first non-trivia token position from current
+    /// 从当前位置获取第一个非空白 token 的位置
     fn get_next_non_trivia_pos(tokens: &[(SyntaxKind, &str)], start_pos: usize) -> usize {
         let mut pos = start_pos;
         while pos < tokens.len() {
@@ -231,7 +231,7 @@ impl<'a> Lexer<'a> {
         pos
     }
 
-    /// Return current token type
+    /// 返回当前 token 类型
     pub fn current(&self) -> SyntaxKind {
         self.tokens
             .get(self.pos)
@@ -239,12 +239,12 @@ impl<'a> Lexer<'a> {
             .unwrap_or(SyntaxKind::EOF)
     }
 
-    /// Return current token text
+    /// 返回当前 token 文本
     pub fn current_text(&self) -> &'a str {
         self.tokens.get(self.pos).map(|t| t.1).unwrap_or("")
     }
 
-    /// Return current non-trivia token type
+    /// 返回当前非空白 token 类型
     pub fn current_without_trivia(&self) -> SyntaxKind {
         self.tokens
             .get(self.pos_skip_trivia)
@@ -252,7 +252,7 @@ impl<'a> Lexer<'a> {
             .unwrap_or(SyntaxKind::EOF)
     }
 
-    /// Return next non-trivia token type
+    /// 返回下一个非空白 token 类型
     pub fn current_without_trivia_1(&self) -> SyntaxKind {
         self.tokens
             .get(self.pos_skip_trivia_1)
@@ -260,7 +260,7 @@ impl<'a> Lexer<'a> {
             .unwrap_or(SyntaxKind::EOF)
     }
 
-    /// Move to next token
+    /// 移动到下一个 token
     pub fn bump(&mut self) {
         if self.pos < self.tokens.len() {
             self.pos += 1;
@@ -272,7 +272,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    /// Check if current token matches `kind`
+    /// 检查当前 token 是否匹配 `kind`
     pub fn at(&self, kind: SyntaxKind) -> bool {
         self.current() == kind
     }

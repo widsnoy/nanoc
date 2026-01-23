@@ -27,7 +27,7 @@ impl Module {
         }
         ty
     }
-    /// Extract variable name from Name node
+    /// 从 Name 节点提取变量名
     pub(crate) fn extract_name(node: &Name) -> String {
         node.ident()
             .map(|t| t.text().to_string())

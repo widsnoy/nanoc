@@ -8,7 +8,7 @@ pub mod syntax_kind;
 #[cfg(test)]
 mod test;
 
-/// Parser errors
+/// 解析器错误
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]

@@ -17,7 +17,7 @@ pub(crate) fn get_ident_node(name: &ConstIndexVal) -> Option<SyntaxToken> {
     name.name().and_then(|n| n.ident())
 }
 
-/// Extract name text
+/// 提取名称文本
 pub(crate) fn name_text(name: &Name) -> Option<String> {
     name.ident().map(|t| t.text().to_string())
 }
@@ -41,7 +41,7 @@ impl<'a, 'ctx> SymbolTable<'a, 'ctx> {
         self.loop_stack.pop();
     }
 
-    /// Insert local variable
+    /// 插入局部变量
     pub(crate) fn insert_var(&mut self, name: String, ptr: PointerValue<'ctx>, ty: &'a NType) {
         if let Some(scope) = self.scopes.last_mut() {
             scope.insert(name, Symbol::new(ptr, ty));

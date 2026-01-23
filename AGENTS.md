@@ -114,10 +114,11 @@ use airyc_parser::ast::*;
 - Use `.expect("message")` only when failure is a bug
 - Propagate errors with `?` operator
 
-### Comments
-- Chinese comments are allowed (per copilot-instructions.md)
-- Use `///` for doc comments on public items
-- Use `//` for inline explanations
+### Comments and Documentation Language
+- **All comments and documentation must be in Chinese**
+- **Error messages in `Err()`, `panic!()`, `.expect()` must remain in English**
+- Use `///` for doc comments on public items (in Chinese)
+- Use `//` for inline explanations (in Chinese)
 
 ### Testing
 - Use `insta` for snapshot testing (parser, codegen)

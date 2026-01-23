@@ -14,7 +14,7 @@ use inkwell::{builder::Builder, context::Context};
 use crate::error::{CodegenError, Result};
 use crate::utils::*;
 
-/// Symbol table for variables and functions
+/// 变量和函数的符号表
 #[derive(Default)]
 pub struct SymbolTable<'a, 'ctx> {
     pub current_function: Option<FunctionValue<'ctx>>,
@@ -249,7 +249,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         Ok(())
     }
 
-    /// Walk ArrayTree leaves and store initial values (for VarDef with Expr)
+    /// 遍历 ArrayTree 叶子节点并存储初始化值（用于 VarDef 的 Expr）
     fn walk_on_array_tree(
         &mut self,
         array_tree: &ArrayTree,
@@ -345,7 +345,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         Err(CodegenError::Missing("init value"))
     }
 
-    // 3. Functions
+    // 3. 函数
     fn compile_func_def(&mut self, func: FuncDef) -> Result<()> {
         let name = name_text(&func.name().ok_or(CodegenError::Missing("function name"))?)
             .ok_or(CodegenError::Missing("identifier"))?;
