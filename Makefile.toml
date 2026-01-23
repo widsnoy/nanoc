@@ -35,7 +35,7 @@ args = [
     "10",
 ]
 
-[tasks.test-quick]
+[tasks.test-pku-minic]
 description = "Run tests without perf and coverage"
 dependencies = ["build"]
 command = "cargo"
@@ -55,8 +55,8 @@ args = [
     "./target/release/libairyc_runtime.a",
 ]
 
-[tasks.test-ci]
-description = "Run tests for CI"
+[tasks.test-pointer]
+description = "Run pointer functionality tests"
 dependencies = ["build"]
 command = "cargo"
 args = [
@@ -66,13 +66,16 @@ args = [
     "airyc-test",
     "--",
     "--test-dir",
-    "test/compiler-dev-test-cases/testcases",
-    "--exclude",
-    "perf",
+    "test/pointer_tests",
     "--compiler",
     "./target/release/airyc-compiler",
     "--runtime",
     "./target/release/libairyc_runtime.a",
     "--timeout",
     "10",
+    "--verbose",
 ]
+
+[tasks.test-ci]
+description = "Run tests for CI"
+dependencies = ["test-pku-minic", "test-pointer"]

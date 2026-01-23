@@ -203,6 +203,8 @@ fn test_const_propagation() {
 
 #[test]
 fn test_non_const_propagation_error() {
+    // 现在允许运行时初始化的 const 变量
+    // const int b = a + 2; 是合法的，b 是运行时初始化的 const
     let source = r#"
     int main() {
         int a = 1;
@@ -210,11 +212,8 @@ fn test_non_const_propagation_error() {
     }
     "#;
     let module = analyze(source);
-    assert!(!module.analyzing.errors.is_empty());
-    match &module.analyzing.errors[0] {
-        SemanticError::ConstantExprExpected { .. } => {}
-        _ => panic!("Expected ConstantExprExpected error"),
-    }
+    // 不再报错，因为允许运行时初始化
+    assert!(module.analyzing.errors.is_empty());
 }
 
 #[test]
@@ -297,14 +296,13 @@ fn test_const_modulo_operation() {
 #[test]
 fn test_const_expression_expected_error() {
     let source = r#"
-    int b[2] = {1};
-    int d = b[1];
+    int x = 5;
+    void foo(int arr[][x]) {}
     int main() {
-        int x;
-        const int a = x + 1;
+        return 0;
     }
     "#;
     let module = analyze(source);
-    // Should error: non-constant expression in const initialization
-    assert!(module.analyzing.errors.len() == 3);
+    // Should error: non-constant expression in array size
+    assert!(!module.analyzing.errors.is_empty());
 }

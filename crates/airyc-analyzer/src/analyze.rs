@@ -1,8 +1,9 @@
 use airyc_parser::ast::*;
+use airyc_parser::syntax_kind::SyntaxKind;
 use airyc_parser::visitor::Visitor;
 
 use crate::array::{ArrayTree, ArrayTreeValue};
-use crate::module::{Function, Module, SemanticError, VariableTag};
+use crate::module::{ConstKind, Function, Module, SemanticError, VariableTag};
 use crate::r#type::NType;
 use crate::value::Value;
 
@@ -51,33 +52,27 @@ impl Visitor for Module {
             return;
         };
 
-        // Handle initialization value
-        let init_value = match var_type {
+        match &var_type {
             NType::Array(_, _) => {
-                let range = const_init_val_node.syntax().text_range();
+                let init_range = const_init_val_node.syntax().text_range();
                 let array_tree = ArrayTree::new(&var_type, const_init_val_node).unwrap(); // Error handling TODO
-                self.expand_array.insert(range, array_tree.clone());
-                Value::Array(array_tree)
+                self.expand_array.insert(init_range, array_tree.clone());
+                self.value_table.insert(range, Value::Array(array_tree));
             }
             _ => {
-                let Some(init_value) = self
+                // 如果初始值是编译时常量，存入 value_table 用于常量折叠
+                // 如果不是编译时常量（如 &a），仍然允许声明，只是不能用于常量折叠
+                if let Some(init_value) = self
                     .value_table
                     .get(&const_init_val_node.syntax().text_range())
                     .cloned()
-                else {
-                    self.analyzing
-                        .errors
-                        .push(SemanticError::ExpectInitialVal { name, range });
-                    return;
-                };
-                init_value
+                {
+                    self.value_table.insert(range, init_value);
+                }
             }
-        };
+        }
 
-        self.value_table.insert(range, init_value);
-
-        // Check if init value type matches
-
+        let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
         let _ = scope.new_variable(
             &mut self.variables,
             &mut self.variable_map,
@@ -128,7 +123,7 @@ impl Visitor for Module {
         if let Some(init_val_node) = def.init() {
             let range = init_val_node.syntax().text_range();
             if self.global_scope == self.analyzing.current_scope
-                && !self.constant_nodes.contains(&range)
+                && !self.constant_nodes.contains_key(&range)
             {
                 self.analyzing
                     .errors
@@ -165,8 +160,10 @@ impl Visitor for Module {
     }
 
     fn leave_func_def(&mut self, node: FuncDef) {
-        let scope = self.scopes.get(*self.analyzing.current_scope).unwrap();
         let mut param_list = Vec::new();
+
+        let scope = self.scopes.get(*self.analyzing.current_scope).unwrap();
+        let parent_scope = scope.parent.unwrap();
 
         if let Some(params) = node.params() {
             for param in params.params() {
@@ -179,7 +176,11 @@ impl Visitor for Module {
             }
         }
 
-        let ret_type = Self::build_func_type(&node.func_type().unwrap());
+        let func_type_node = node.func_type().unwrap();
+        let ret_type = Self::build_func_type(&func_type_node);
+        // 将函数返回类型存储到 type_table，供 codegen 使用
+        self.set_expr_type(func_type_node.syntax().text_range(), ret_type.clone());
+
         let name = node.name().unwrap().ident().unwrap().text().to_string();
         self.functions.insert(Function {
             name,
@@ -187,12 +188,20 @@ impl Visitor for Module {
             ret_type,
         });
 
-        self.analyzing.current_scope = scope.parent.unwrap();
+        self.analyzing.current_scope = parent_scope;
     }
 
     fn leave_func_f_param(&mut self, node: FuncFParam) {
-        let mut param_type = Self::build_basic_type(&node.ty().unwrap());
+        let base_type = Self::build_basic_type(&node.ty().unwrap());
 
+        // 处理指针声明 int *arr
+        let mut param_type = if let Some(pointer_node) = node.pointer() {
+            Self::build_pointer_type(&pointer_node, base_type)
+        } else {
+            base_type
+        };
+
+        // 处理数组参数 int arr[] 或 int arr[][3]
         if node.is_array() {
             let Some(ty) = self.build_array_type(param_type, node.indices()) else {
                 return;
@@ -266,15 +275,43 @@ impl Visitor for Module {
         let lhs = node.lhs().unwrap();
         let rhs = node.rhs().unwrap();
         let op = node.op().unwrap();
-        let op_str = op.op_str();
+        let op_kind = op.op().kind();
+
+        // 类型推导
+        let lhs_ty = self.get_expr_type(lhs.syntax().text_range()).cloned();
+        let rhs_ty = self.get_expr_type(rhs.syntax().text_range()).cloned();
+        if let (Some(l), Some(r)) = (&lhs_ty, &rhs_ty) {
+            let result_ty = match (l, r, op_kind) {
+                (NType::Pointer(p), NType::Int, SyntaxKind::PLUS | SyntaxKind::MINUS) => {
+                    NType::Pointer(p.clone())
+                }
+                (NType::Int, NType::Pointer(p), SyntaxKind::PLUS) => NType::Pointer(p.clone()),
+                (NType::Pointer(_), NType::Pointer(_), SyntaxKind::MINUS) => NType::Int,
+                (
+                    _,
+                    _,
+                    SyntaxKind::LT
+                    | SyntaxKind::GT
+                    | SyntaxKind::LTEQ
+                    | SyntaxKind::GTEQ
+                    | SyntaxKind::EQEQ
+                    | SyntaxKind::NEQ
+                    | SyntaxKind::AMPAMP
+                    | SyntaxKind::PIPEPIPE,
+                ) => NType::Int,
+                _ => l.clone(),
+            };
+            self.set_expr_type(node.syntax().text_range(), result_ty);
+        }
+
         if self.is_constant(lhs.syntax().text_range())
             && self.is_constant(rhs.syntax().text_range())
         {
             let lhs_val = self.value_table.get(&lhs.syntax().text_range()).unwrap();
             let rhs_val = self.value_table.get(&rhs.syntax().text_range()).unwrap();
 
-            if let Ok(val) = Value::eval(lhs_val, rhs_val, &op_str) {
-                self.mark_constant(node.syntax().text_range());
+            if let Ok(val) = Value::eval(lhs_val, rhs_val, &op.op_str()) {
+                self.mark_constant(node.syntax().text_range(), ConstKind::CompileTime);
                 self.value_table.insert(node.syntax().text_range(), val);
             }
         }
@@ -283,7 +320,23 @@ impl Visitor for Module {
     fn leave_unary_expr(&mut self, node: UnaryExpr) {
         let expr = node.expr().unwrap();
         let op = node.op().unwrap();
-        let op_str = op.op_str();
+        let op_kind = op.op().kind();
+
+        // 类型推导
+        if let Some(inner_ty) = self.get_expr_type(expr.syntax().text_range()) {
+            let result_ty = if op_kind == SyntaxKind::AMP {
+                NType::Pointer(Box::new(inner_ty.clone()))
+            } else {
+                inner_ty.clone()
+            };
+            self.set_expr_type(node.syntax().text_range(), result_ty);
+        }
+
+        // 取地址操作 & 是运行时常量
+        if op_kind == SyntaxKind::AMP {
+            self.mark_constant(node.syntax().text_range(), ConstKind::Runtime);
+            return;
+        }
 
         if self.is_constant(expr.syntax().text_range()) {
             let val = self
@@ -291,8 +344,8 @@ impl Visitor for Module {
                 .get(&expr.syntax().text_range())
                 .unwrap()
                 .clone();
-            if let Ok(res) = Value::eval_unary(val, &op_str) {
-                self.mark_constant(node.syntax().text_range());
+            if let Ok(res) = Value::eval_unary(val, &op.op_str()) {
+                self.mark_constant(node.syntax().text_range(), ConstKind::CompileTime);
                 self.value_table.insert(node.syntax().text_range(), res);
             }
         }
@@ -300,8 +353,16 @@ impl Visitor for Module {
 
     fn leave_paren_expr(&mut self, node: ParenExpr) {
         let expr = node.expr().unwrap();
+        // 类型传递
+        if let Some(ty) = self.get_expr_type(expr.syntax().text_range()) {
+            self.set_expr_type(node.syntax().text_range(), ty.clone());
+        }
         if self.is_constant(expr.syntax().text_range()) {
-            self.mark_constant(node.syntax().text_range());
+            self.mark_constant(
+                node.syntax().text_range(),
+                self.get_const_kind(expr.syntax().text_range())
+                    .unwrap_or(ConstKind::CompileTime),
+            );
             let val = self
                 .value_table
                 .get(&expr.syntax().text_range())
@@ -311,17 +372,27 @@ impl Visitor for Module {
         }
     }
 
-    fn enter_deref_expr(&mut self, _node: DerefExpr) {
-        todo!()
+    /// 解引用表达式得到的都不是常量
+    fn leave_deref_expr(&mut self, node: DerefExpr) {
+        let inner = node.expr().unwrap();
+        if let Some(ty) = self.get_expr_type(inner.syntax().text_range()) {
+            // 处理 Const(Pointer(...)) 和 Pointer(...) 两种情况
+            let pointee: Option<NType> = match ty {
+                NType::Pointer(pointee) => Some((*pointee).as_ref().clone()),
+                NType::Const(inner) => {
+                    if let NType::Pointer(pointee) = inner.as_ref() {
+                        Some(pointee.as_ref().clone())
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            };
+            if let Some(pointee) = pointee {
+                self.set_expr_type(node.syntax().text_range(), pointee);
+            }
+        }
     }
-
-    fn leave_deref_expr(&mut self, _node: DerefExpr) {
-        todo!()
-    }
-
-    // fn enter_index_val(&mut self, _node: IndexVal) {
-    //     todo!()
-    // }
 
     fn leave_index_val(&mut self, node: IndexVal) {
         let ident_token = node.name().unwrap().ident().unwrap();
@@ -337,12 +408,23 @@ impl Visitor for Module {
                 });
             return;
         };
+
+        // 计算索引后的类型
         let var = self.variables.get(*vid).unwrap();
-        if !var.is_const() {
+        let index_count = node.indices().count();
+        let result_ty = Self::compute_indexed_type(&var.ty, index_count);
+        let is_const = var.is_const();
+        let var_range = var.range;
+        let const_zero = var.ty.const_zero();
+        self.set_expr_type(node.syntax().text_range(), result_ty);
+
+        if !is_const {
             return;
         }
-        let mut value = self.value_table.get(&var.range).unwrap();
-        let const_zero = var.ty.const_zero();
+        // const 变量可能没有编译时常量值（如 int *const p = &a）
+        let Some(mut value) = self.value_table.get(&var_range) else {
+            return;
+        };
 
         if let Value::Array(tree) = value {
             let mut indices = Vec::new();
@@ -374,7 +456,11 @@ impl Visitor for Module {
             };
             value = match leaf {
                 ArrayTreeValue::ConstExpr(expr) => {
-                    self.value_table.get(&expr.syntax().text_range()).unwrap()
+                    // 运行时常量可能没有在 value_table 中
+                    let Some(v) = self.value_table.get(&expr.syntax().text_range()) else {
+                        return;
+                    };
+                    v
                 }
                 ArrayTreeValue::Empty => &const_zero,
                 _ => unreachable!(),
@@ -382,13 +468,24 @@ impl Visitor for Module {
         }
         let range = node.syntax().text_range();
         self.value_table.insert(range, value.clone());
-        self.mark_constant(range);
+        self.mark_constant(range, ConstKind::CompileTime);
     }
 
     fn leave_const_expr(&mut self, node: ConstExpr) {
         let expr = node.expr().unwrap();
         let range = expr.syntax().text_range();
-        if !self.is_constant(range) {
+
+        // 检查父节点类型，只有在数组大小声明中才要求编译时常量
+        // ConstInitVal 中的 ConstExpr 允许运行时值
+        let parent = node.syntax().parent();
+        let is_array_size = parent
+            .as_ref()
+            .map(|p| {
+                p.kind() == SyntaxKind::CONST_INDEX_VAL || p.kind() == SyntaxKind::FUNC_F_PARAM
+            })
+            .unwrap_or(false);
+
+        if is_array_size && !self.is_constant(range) {
             self.analyzing
                 .errors
                 .push(SemanticError::ConstantExprExpected { range });
@@ -396,9 +493,11 @@ impl Visitor for Module {
     }
 
     fn enter_literal(&mut self, node: Literal) {
-        self.mark_constant(node.syntax().text_range());
+        self.mark_constant(node.syntax().text_range(), ConstKind::CompileTime);
+        let range = node.syntax().text_range();
         let v = if let Some(n) = node.float_token() {
             let s = n.text();
+            self.set_expr_type(range, NType::Float);
             Value::Float(s.parse::<f32>().unwrap())
         } else {
             let n = node.int_token().unwrap();
@@ -411,8 +510,9 @@ impl Visitor for Module {
                 },
                 _ => (s, 10),
             };
+            self.set_expr_type(range, NType::Int);
             Value::Int(i32::from_str_radix(num_str, radix).unwrap())
         };
-        self.value_table.insert(node.syntax().text_range(), v);
+        self.value_table.insert(range, v);
     }
 }

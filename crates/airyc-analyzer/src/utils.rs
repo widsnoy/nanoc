@@ -63,4 +63,18 @@ impl Module {
         }
         Some(ty)
     }
+
+    /// 计算索引后的类型：去掉 index_count 层数组/指针
+    pub(crate) fn compute_indexed_type(ty: &NType, index_count: usize) -> NType {
+        let mut current = ty.clone();
+        for _ in 0..index_count {
+            current = match current {
+                NType::Array(inner, _) => *inner,
+                NType::Pointer(inner) => *inner,
+                NType::Const(inner) => Self::compute_indexed_type(&inner, 1),
+                _ => current,
+            };
+        }
+        current
+    }
 }

@@ -12,6 +12,15 @@ use crate::{
     value::Value,
 };
 
+/// 常量类型：区分编译时常量和运行时常量
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConstKind {
+    /// 编译时常量：值在编译时就能确定
+    CompileTime,
+    /// 运行时常量：值在运行时确定但之后不可变（如指针）
+    Runtime,
+}
+
 #[derive(Debug, Default)]
 pub struct Module {
     pub variables: Arena<Variable>,
@@ -19,10 +28,10 @@ pub struct Module {
     pub scopes: Arena<Scope>,
 
     pub global_scope: ScopeID,
-    /// Check if node is compile-time constant
-    pub constant_nodes: HashSet<TextRange>,
+    /// Check if node is constant (compile-time or runtime)
+    pub constant_nodes: HashMap<TextRange, ConstKind>,
 
-    /// Store constants only
+    /// Store compile time constants only
     pub value_table: HashMap<TextRange, Value>,
 
     /// Store expanded arrays
@@ -30,6 +39,9 @@ pub struct Module {
 
     /// Variable index: TextRange -> VariableID
     pub variable_map: HashMap<TextRange, VariableID>,
+
+    /// Expression type table: TextRange -> NType
+    pub type_table: HashMap<TextRange, NType>,
 
     /// Analysis context, cleared after use
     pub analyzing: AnalyzeContext,
@@ -80,12 +92,31 @@ impl Module {
         self.analyzing = AnalyzeContext::default();
     }
 
-    pub fn mark_constant(&mut self, range: TextRange) {
-        self.constant_nodes.insert(range);
+    pub fn mark_constant(&mut self, range: TextRange, kind: ConstKind) {
+        // 如果已经标记为 CompileTime，不降级为 Runtime
+        if let Some(existing) = self.constant_nodes.get(&range)
+            && *existing == ConstKind::CompileTime
+        {
+            return;
+        }
+        self.constant_nodes.insert(range, kind);
     }
 
+    /// 检查是否为编译时常量
+    pub fn is_compile_time_constant(&self, range: TextRange) -> bool {
+        self.constant_nodes
+            .get(&range)
+            .is_some_and(|k| *k == ConstKind::CompileTime)
+    }
+
+    /// 检查是否为常量（编译时或运行时）
     pub fn is_constant(&self, range: TextRange) -> bool {
-        self.constant_nodes.contains(&range)
+        self.constant_nodes.contains_key(&range)
+    }
+
+    /// 获取常量类型
+    pub fn get_const_kind(&self, range: TextRange) -> Option<ConstKind> {
+        self.constant_nodes.get(&range).copied()
     }
 
     /// Check if all ranges are constant, and if so, mark the parent range as constant
@@ -95,21 +126,35 @@ impl Module {
         expr_range: Option<TextRange>,
         child_ranges: impl Iterator<Item = TextRange>,
     ) {
-        if let Some(r) = expr_range
-            && !self.is_constant(r)
-        {
-            return;
-        }
-        for r in child_ranges {
-            if !self.is_constant(r) {
-                return;
+        let mut weakest_kind = ConstKind::CompileTime;
+
+        if let Some(r) = expr_range {
+            match self.get_const_kind(r) {
+                Some(ConstKind::Runtime) => weakest_kind = ConstKind::Runtime,
+                Some(ConstKind::CompileTime) => {}
+                None => return,
             }
         }
-        self.mark_constant(parent_range);
+        for r in child_ranges {
+            match self.get_const_kind(r) {
+                Some(ConstKind::Runtime) => weakest_kind = ConstKind::Runtime,
+                Some(ConstKind::CompileTime) => {}
+                None => return,
+            }
+        }
+        self.mark_constant(parent_range, weakest_kind);
     }
 
     pub fn get_value(&self, range: TextRange) -> Option<&Value> {
         self.value_table.get(&range)
+    }
+
+    pub fn set_expr_type(&mut self, range: TextRange, ty: NType) {
+        self.type_table.insert(range, ty);
+    }
+
+    pub fn get_expr_type(&self, range: TextRange) -> Option<&NType> {
+        self.type_table.get(&range)
     }
 
     pub fn new_scope(&mut self, parent: Option<ScopeID>) -> ScopeID {
