@@ -1,10 +1,10 @@
 # AGENTS.md - Airyc Compiler
 
-This document provides guidelines for AI coding agents working on the airyc compiler codebase.
+Guidelines for AI coding agents working on the airyc compiler codebase.
 
 ## Project Overview
 
-Airyc is a compiler for a SysY-based language with added structure and pointer support. It compiles to LLVM IR and native executables.
+Airyc is a compiler for a SysY-based language with structure and pointer support. Compiles to LLVM IR and native executables.
 
 ### Crate Structure
 
@@ -13,6 +13,7 @@ Airyc is a compiler for a SysY-based language with added structure and pointer s
 - `crates/airyc-analyzer` - Semantic analysis, type checking, symbol resolution
 - `crates/airyc-codegen` - LLVM IR code generation using inkwell
 - `crates/airyc-runtime` - Runtime library (C code compiled to static lib)
+- `crates/airyc-test` - Integration test runner
 
 ## Build Commands
 
@@ -22,9 +23,6 @@ cargo build --workspace
 
 # Build release
 cargo build --release --workspace
-
-# Build only the compiler binary
-cargo build --bin airyc-compiler
 
 # Build with cargo-make (release compiler + runtime)
 cargo make build
@@ -57,6 +55,7 @@ cargo test -p airyc-codegen
 # Run a single test by name
 cargo test -p airyc-parser test_declarations
 cargo test -p airyc-parser test_if_statement
+cargo test -p airyc-codegen test_function_call
 
 # Run tests with output
 cargo test --workspace -- --nocapture
@@ -65,8 +64,11 @@ cargo test --workspace -- --nocapture
 cargo insta test --review
 cargo insta accept
 
-# Run integration tests (requires built compiler)
-cd test && bash ./test.sh lv1 lv3 lv4 lv5 lv6 lv7 lv8 lv9
+# Run integration tests (requires cargo-make)
+cargo make test              # All tests with coverage
+cargo make test-pku-minic    # Tests without perf
+cargo make test-pointer      # Pointer functionality tests
+cargo make test-ci           # CI test suite
 ```
 
 ## Code Style Guidelines
@@ -75,10 +77,8 @@ cd test && bash ./test.sh lv1 lv3 lv4 lv5 lv6 lv7 lv8 lv9
 - Edition 2024
 
 ### Imports
-- Group imports: std first, then external crates, then local crates
-- Use `crate::` for internal imports
-- Prefer explicit imports over glob imports
-- Example:
+Group imports: std first, then external crates, then local crates. Use `crate::` for internal imports.
+
 ```rust
 use std::collections::HashMap;
 
@@ -92,7 +92,7 @@ use airyc_parser::ast::*;
 ### Formatting
 - Use `cargo fmt` (rustfmt defaults)
 - 4-space indentation
-- Max line width: 100 characters (default)
+- Max line width: 100 characters
 
 ### Naming Conventions
 - Types: `PascalCase` (e.g., `CompUnit`, `NType`, `SyntaxKind`)
@@ -102,10 +102,11 @@ use airyc_parser::ast::*;
 - Type aliases for IDs: `PascalCase` with `ID` suffix (e.g., `VariableID`, `ScopeID`)
 
 ### Type Definitions
-- Use `thiserror` for error types
+- Use `thiserror` for error types with `#[derive(Debug, Error)]`
 - Use `#[derive(Debug, Clone, PartialEq)]` for data types
 - Prefer enums for AST node kinds and type representations
 - Use `Box<T>` for recursive types
+- Define `Result<T>` type alias in error modules
 
 ### Error Handling
 - Use `Result<T, E>` for fallible operations
@@ -142,7 +143,7 @@ The CI pipeline runs:
 2. `cargo clippy --workspace --all-targets --all-features -- -D warnings`
 3. `cargo build --verbose --workspace`
 4. `cargo test --verbose --workspace`
-5. Integration tests via `test/test.sh`
+5. `cargo make test-ci` (integration tests)
 
 All checks must pass before merging.
 
@@ -152,9 +153,8 @@ From `.github/copilot-instructions.md`:
 - When performing code review, respond in Chinese
 - Chinese comments are allowed in code
 
-## Dependencies
+## Key Dependencies
 
-Key dependencies:
 - `logos` - Lexer generator
 - `rowan` - Lossless syntax trees
 - `inkwell` - LLVM bindings (requires LLVM 21.1)
