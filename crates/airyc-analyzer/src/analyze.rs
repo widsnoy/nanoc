@@ -470,18 +470,40 @@ impl Visitor for Module {
     fn leave_const_expr(&mut self, node: ConstExpr) {
         let expr = node.expr().unwrap();
         let range = expr.syntax().text_range();
-        // FIXME: 现在数组定义的下标必须是编译时常量，非全局变量可以不用
-        let is_global_scope = self.global_scope == self.analyzing.current_scope;
-        let Some(const_kind) = self.get_const_kind(range) else {
-            self.analyzing
-                .errors
-                .push(SemanticError::ConstantExprExpected { range });
+
+        // 检查父节点，判断是否需要编译时常量
+        let parent = node.syntax().parent();
+        let requires_compile_time = parent
+            .as_ref()
+            .map(|p| {
+                // 数组大小声明需要编译时常量
+                p.kind() == SyntaxKind::CONST_INDEX_VAL || p.kind() == SyntaxKind::FUNC_F_PARAM
+            })
+            .unwrap_or(false);
+
+        if !requires_compile_time {
+            // const 变量初始化不需要检查，允许运行时常量
             return;
-        };
-        if is_global_scope && const_kind != ConstKind::CompileTime {
-            self.analyzing
-                .errors
-                .push(SemanticError::ConstantExprExpected { range });
+        }
+
+        // 数组大小必须是编译时常量
+        let is_global_scope = self.global_scope == self.analyzing.current_scope;
+        match self.get_const_kind(range) {
+            Some(ConstKind::CompileTime) => {
+                // OK
+            }
+            Some(ConstKind::Runtime) if !is_global_scope => {
+                // 局部作用域的运行时常量作为数组大小（VLA），目前不支持
+                self.analyzing
+                    .errors
+                    .push(SemanticError::ConstantExprExpected { range });
+            }
+            _ => {
+                // 非常量表达式或全局作用域的运行时常量
+                self.analyzing
+                    .errors
+                    .push(SemanticError::ConstantExprExpected { range });
+            }
         }
     }
 

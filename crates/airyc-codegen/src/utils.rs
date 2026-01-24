@@ -312,7 +312,24 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     "floattoboolf",
                 )
                 .map_err(|_| CodegenError::LlvmBuild("float compare failed")),
-            _ => Err(CodegenError::TypeMismatch("cannot convert to bool".into())),
+            BasicValueEnum::PointerValue(p) => {
+                let i64_ty = self.context.i64_type();
+                let ptr_as_int = self
+                    .builder
+                    .build_ptr_to_int(p, i64_ty, "ptr_to_int")
+                    .map_err(|_| CodegenError::LlvmBuild("ptr_to_int failed"))?;
+                self.builder
+                    .build_int_compare(
+                        inkwell::IntPredicate::NE,
+                        ptr_as_int,
+                        i64_ty.const_zero(),
+                        "ptr_to_bool",
+                    )
+                    .map_err(|_| CodegenError::LlvmBuild("int compare failed"))
+            }
+            _ => Err(CodegenError::Unsupported(
+                "unsupported type for bool conversion".into(),
+            )),
         }
     }
 
