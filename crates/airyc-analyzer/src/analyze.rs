@@ -95,7 +95,7 @@ impl Visitor for Module {
         self.analyzing.current_base_type = Some(Self::build_basic_type(&node.ty().unwrap()));
     }
 
-    // 待办：首先检查左值和右值是否匹配
+    // TODO：首先检查左值和右值是否匹配
     fn leave_var_def(&mut self, def: VarDef) {
         let base_type = self.analyzing.current_base_type.clone().unwrap();
         let var_type = if let Some(pointer_node) = def.pointer() {
@@ -245,27 +245,27 @@ impl Visitor for Module {
     }
 
     fn enter_assign_stmt(&mut self, _node: AssignStmt) {
-        // 待办：检查类型是否匹配
+        // TODO：检查类型是否匹配
     }
 
     fn leave_assign_stmt(&mut self, _node: AssignStmt) {
-        // 待办
+        // TODO
     }
 
     fn enter_break_stmt(&mut self, _node: BreakStmt) {
-        // 待办
+        // TODO
     }
 
     fn leave_break_stmt(&mut self, _node: BreakStmt) {
-        // 待办
+        // TODO
     }
 
     fn enter_continue_stmt(&mut self, _node: ContinueStmt) {
-        // 待办
+        // TODO
     }
 
     fn leave_continue_stmt(&mut self, _node: ContinueStmt) {
-        // 待办
+        // TODO
     }
 
     // 检查返回类型
@@ -281,31 +281,33 @@ impl Visitor for Module {
         let lhs_ty = self.get_expr_type(lhs.syntax().text_range()).cloned();
         let rhs_ty = self.get_expr_type(rhs.syntax().text_range()).cloned();
         if let (Some(l), Some(r)) = (&lhs_ty, &rhs_ty) {
-            let result_ty = match (l, r, op_kind) {
-                (NType::Pointer(p), NType::Int, SyntaxKind::PLUS | SyntaxKind::MINUS) => {
-                    NType::Pointer(p.clone())
+            let result_ty = match op_kind {
+                // 指针 +/- 整数
+                SyntaxKind::PLUS | SyntaxKind::MINUS
+                    if l.is_pointer() && matches!(r, NType::Int) =>
+                {
+                    l.clone()
                 }
-                (NType::Int, NType::Pointer(p), SyntaxKind::PLUS) => NType::Pointer(p.clone()),
-                (NType::Pointer(_), NType::Pointer(_), SyntaxKind::MINUS) => NType::Int,
-                (
-                    _,
-                    _,
-                    SyntaxKind::LT
-                    | SyntaxKind::GT
-                    | SyntaxKind::LTEQ
-                    | SyntaxKind::GTEQ
-                    | SyntaxKind::EQEQ
-                    | SyntaxKind::NEQ
-                    | SyntaxKind::AMPAMP
-                    | SyntaxKind::PIPEPIPE,
-                ) => NType::Int,
+                // 整数 + 指针
+                SyntaxKind::PLUS if matches!(l, NType::Int) && r.is_pointer() => r.clone(),
+                // 指针 - 指针
+                SyntaxKind::MINUS if l.is_pointer() && r.is_pointer() => NType::Int,
+                // 比较运算符
+                SyntaxKind::LT
+                | SyntaxKind::GT
+                | SyntaxKind::LTEQ
+                | SyntaxKind::GTEQ
+                | SyntaxKind::EQEQ
+                | SyntaxKind::NEQ
+                | SyntaxKind::AMPAMP
+                | SyntaxKind::PIPEPIPE => NType::Int,
                 _ => l.clone(),
             };
             self.set_expr_type(node.syntax().text_range(), result_ty);
         }
 
-        if self.is_constant(lhs.syntax().text_range())
-            && self.is_constant(rhs.syntax().text_range())
+        if self.is_compile_time_constant(lhs.syntax().text_range())
+            && self.is_compile_time_constant(rhs.syntax().text_range())
         {
             let lhs_val = self.value_table.get(&lhs.syntax().text_range()).unwrap();
             let rhs_val = self.value_table.get(&rhs.syntax().text_range()).unwrap();
@@ -357,17 +359,10 @@ impl Visitor for Module {
         if let Some(ty) = self.get_expr_type(expr.syntax().text_range()) {
             self.set_expr_type(node.syntax().text_range(), ty.clone());
         }
-        if self.is_constant(expr.syntax().text_range()) {
-            self.mark_constant(
-                node.syntax().text_range(),
-                self.get_const_kind(expr.syntax().text_range())
-                    .unwrap_or(ConstKind::CompileTime),
-            );
-            let val = self
-                .value_table
-                .get(&expr.syntax().text_range())
-                .unwrap()
-                .clone();
+        let expr_range = expr.syntax().text_range();
+        if let Some(const_kind) = self.get_const_kind(expr_range) {
+            self.mark_constant(node.syntax().text_range(), const_kind);
+            let val = self.value_table.get(&expr_range).unwrap().clone();
             self.value_table.insert(node.syntax().text_range(), val);
         }
     }
@@ -413,7 +408,7 @@ impl Visitor for Module {
         let var = self.variables.get(*vid).unwrap();
         let index_count = node.indices().count();
         let result_ty = Self::compute_indexed_type(&var.ty, index_count);
-        let is_const = var.is_const();
+        let is_const = result_ty.is_const();
         let var_range = var.range;
         let const_zero = var.ty.const_zero();
         self.set_expr_type(node.syntax().text_range(), result_ty);
@@ -423,6 +418,7 @@ impl Visitor for Module {
         }
         // const 变量可能没有编译时常量值（如 int *const p = &a）
         let Some(mut value) = self.value_table.get(&var_range) else {
+            self.mark_constant(node.syntax().text_range(), ConstKind::Runtime);
             return;
         };
 
@@ -433,7 +429,7 @@ impl Visitor for Module {
                 let Some(v) = self.get_value(range) else {
                     return;
                 };
-                // 待办：如果非常量，应该进行类型检查
+                // TODO：如果非常量，应该进行类型检查
                 let Value::Int(index) = v else {
                     self.analyzing.errors.push(SemanticError::TypeMismatch {
                         expected: NType::Int,
@@ -474,18 +470,15 @@ impl Visitor for Module {
     fn leave_const_expr(&mut self, node: ConstExpr) {
         let expr = node.expr().unwrap();
         let range = expr.syntax().text_range();
-
-        // 检查父节点类型，只有在数组大小声明中才要求编译时常量
-        // ConstInitVal 中的 ConstExpr 允许运行时值
-        let parent = node.syntax().parent();
-        let is_array_size = parent
-            .as_ref()
-            .map(|p| {
-                p.kind() == SyntaxKind::CONST_INDEX_VAL || p.kind() == SyntaxKind::FUNC_F_PARAM
-            })
-            .unwrap_or(false);
-
-        if is_array_size && !self.is_constant(range) {
+        // FIXME: 现在数组定义的下标必须是编译时常量，非全局变量可以不用
+        let is_global_scope = self.global_scope == self.analyzing.current_scope;
+        let Some(const_kind) = self.get_const_kind(range) else {
+            self.analyzing
+                .errors
+                .push(SemanticError::ConstantExprExpected { range });
+            return;
+        };
+        if is_global_scope && const_kind != ConstKind::CompileTime {
             self.analyzing
                 .errors
                 .push(SemanticError::ConstantExprExpected { range });

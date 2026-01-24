@@ -16,17 +16,28 @@ impl NType {
         matches!(self, Self::Array(_, _))
     }
 
+    /// 检查是否为指针类型（包括 Const(Pointer(...))）
     pub fn is_pointer(&self) -> bool {
-        matches!(self, Self::Pointer(_))
+        self.pointer_inner().is_some()
     }
-    pub fn is_const(&self) -> bool {
+
+    /// 提取指针类型的内部类型，处理 Pointer(...) 和 Const(Pointer(...)) 两种情况
+    pub fn pointer_inner(&self) -> Option<&NType> {
         match self {
-            Self::Const(_) => true,
-            Self::Array(inner, _) => inner.is_const(),
-            Self::Pointer(_) => false,
-            Self::Struct(_) => todo!(),
-            _ => false,
+            Self::Pointer(inner) => Some(inner.as_ref()),
+            Self::Const(inner) => {
+                if let Self::Pointer(p) = inner.as_ref() {
+                    Some(p.as_ref())
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
+    }
+
+    pub fn is_const(&self) -> bool {
+        matches!(self, Self::Const(_))
     }
 
     /// 返回标量零值（int / float）

@@ -1,4 +1,3 @@
-use airyc_analyzer::r#type::NType;
 use airyc_parser::ast::*;
 use airyc_parser::syntax_kind::SyntaxKind;
 use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum};
@@ -114,9 +113,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .analyzer
                     .get_expr_type(lhs_node.syntax().text_range())
                     .ok_or(CodegenError::Missing("lhs type"))?;
-                let NType::Pointer(pointee) = lhs_ty else {
-                    return Err(CodegenError::TypeMismatch("expected pointer".into()));
-                };
+                let pointee = lhs_ty
+                    .pointer_inner()
+                    .ok_or_else(|| CodegenError::TypeMismatch("expected pointer".into()))?;
                 let llvm_ty = self.convert_ntype_to_type(pointee)?;
                 match op_token.kind() {
                     SyntaxKind::PLUS => {
@@ -148,9 +147,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .analyzer
                     .get_expr_type(rhs_node.syntax().text_range())
                     .ok_or(CodegenError::Missing("rhs type"))?;
-                let NType::Pointer(pointee) = rhs_ty else {
-                    return Err(CodegenError::TypeMismatch("expected pointer".into()));
-                };
+                let pointee = rhs_ty
+                    .pointer_inner()
+                    .ok_or_else(|| CodegenError::TypeMismatch("expected pointer".into()))?;
                 let llvm_ty = self.convert_ntype_to_type(pointee)?;
                 if op_token.kind() == SyntaxKind::PLUS {
                     let gep = unsafe {
@@ -172,9 +171,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .analyzer
                     .get_expr_type(lhs_node.syntax().text_range())
                     .ok_or(CodegenError::Missing("lhs type"))?;
-                let NType::Pointer(pointee) = lhs_ty else {
-                    return Err(CodegenError::TypeMismatch("expected pointer".into()));
-                };
+                let pointee = lhs_ty
+                    .pointer_inner()
+                    .ok_or_else(|| CodegenError::TypeMismatch("expected pointer".into()))?;
                 let elem_size = self.get_type_size(pointee)?;
                 let i64_ty = self.context.i64_type();
                 let i1 = self
