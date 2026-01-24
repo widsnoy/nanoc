@@ -102,44 +102,26 @@ ast_node!(
     }
 );
 
-ast_enum!(GlobalDecl { Decl, FuncDef });
+ast_enum!(GlobalDecl { VarDecl, FuncDef });
 
 // 2. 声明
-ast_enum!(Decl { ConstDecl, VarDecl });
-
-ast_node!(
-    ConstDecl ~ CONST_DECL {
-        ty: node(Type),
-        const_defs: nodes(ConstDef),
-    }
-);
-
-ast_node!(
-    ConstDef ~ CONST_DEF {
-        pointer: node(Pointer),
-        const_index_val: node(ConstIndexVal),
-        init: node(ConstInitVal),
-    }
-);
-
-ast_node!(
-    ConstInitVal ~ CONST_INIT_VAL {
-        expr: node(ConstExpr),
-        inits: nodes(ConstInitVal),
-    }
-);
-
 ast_node!(
     VarDecl ~ VAR_DECL {
+        const_token: token(CONST_KW),
         ty: node(Type),
         var_defs: nodes(VarDef),
     }
 );
+impl VarDecl {
+    pub fn is_const(&self) -> bool {
+        self.const_token().is_some()
+    }
+}
 
 ast_node!(
     VarDef ~ VAR_DEF {
         pointer: node(Pointer),
-        const_index_val: node(ConstIndexVal),
+        index_val: node(IndexVal),
         init: node(InitVal),
     }
 );
@@ -186,7 +168,7 @@ ast_node!(
         pointer: node(Pointer),
         name: node(Name),
         l_brack_token: token(L_BRACK),
-        indices: nodes(ConstExpr),
+        indices: nodes(Expr),
     }
 );
 
@@ -203,7 +185,7 @@ ast_node!(
     }
 );
 
-ast_enum!(BlockItem { Decl, Stmt });
+ast_enum!(BlockItem { VarDecl, Stmt });
 
 ast_enum!(Stmt {
     AssignStmt,
@@ -327,24 +309,11 @@ ast_node!(
     }
 );
 
-// 作为右值
+// 作为右值或声明
 ast_node!(
     IndexVal ~ INDEX_VAL {
         name: node(Name),
         indices: nodes(Expr),
-    }
-);
-
-ast_node!(
-    ConstIndexVal ~ CONST_INDEX_VAL {
-        name: node(Name),
-        indices: nodes(ConstExpr),
-    }
-);
-
-ast_node!(
-    ConstExpr ~ CONST_EXPR {
-        expr: node(Expr),
     }
 );
 

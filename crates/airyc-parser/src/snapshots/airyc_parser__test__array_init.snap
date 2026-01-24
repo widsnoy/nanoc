@@ -5,104 +5,93 @@ expression: try_it(source)
 COMP_UNIT@0..82
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
-  CONST_DECL@5..32
+  VAR_DECL@5..32
     CONST_KW@5..10 "const"
     TYPE@10..14
       WHITESPACE@10..11 " "
       INT_KW@11..14 "int"
-    CONST_DEF@14..31
-      CONST_INDEX_VAL@14..19
+    VAR_DEF@14..31
+      INDEX_VAL@14..19
         NAME@14..16
           WHITESPACE@14..15 " "
           IDENT@15..16 "a"
         L_BRACK@16..17 "["
-        CONST_EXPR@17..18
-          LITERAL@17..18
-            INT_LITERAL@17..18 "3"
+        LITERAL@17..18
+          INT_LITERAL@17..18 "3"
         R_BRACK@18..19 "]"
       WHITESPACE@19..20 " "
       EQ@20..21 "="
-      CONST_INIT_VAL@21..31
+      INIT_VAL@21..31
         WHITESPACE@21..22 " "
         L_BRACE@22..23 "{"
-        CONST_INIT_VAL@23..24
-          CONST_EXPR@23..24
-            LITERAL@23..24
-              INT_LITERAL@23..24 "1"
+        INIT_VAL@23..24
+          LITERAL@23..24
+            INT_LITERAL@23..24 "1"
         COMMA@24..25 ","
-        CONST_INIT_VAL@25..27
-          CONST_EXPR@25..27
-            LITERAL@25..27
-              WHITESPACE@25..26 " "
-              INT_LITERAL@26..27 "2"
+        INIT_VAL@25..27
+          LITERAL@25..27
+            WHITESPACE@25..26 " "
+            INT_LITERAL@26..27 "2"
         COMMA@27..28 ","
-        CONST_INIT_VAL@28..30
-          CONST_EXPR@28..30
-            LITERAL@28..30
-              WHITESPACE@28..29 " "
-              INT_LITERAL@29..30 "3"
+        INIT_VAL@28..30
+          LITERAL@28..30
+            WHITESPACE@28..29 " "
+            INT_LITERAL@29..30 "3"
         R_BRACE@30..31 "}"
     SEMI@31..32 ";"
   NEWLINE@32..33 "\n"
   WHITESPACE@33..37 "    "
-  CONST_DECL@37..77
+  VAR_DECL@37..77
     CONST_KW@37..42 "const"
     TYPE@42..46
       WHITESPACE@42..43 " "
       INT_KW@43..46 "int"
-    CONST_DEF@46..76
-      CONST_INDEX_VAL@46..54
+    VAR_DEF@46..76
+      INDEX_VAL@46..54
         NAME@46..48
           WHITESPACE@46..47 " "
           IDENT@47..48 "a"
         L_BRACK@48..49 "["
-        CONST_EXPR@49..50
-          LITERAL@49..50
-            INT_LITERAL@49..50 "2"
+        LITERAL@49..50
+          INT_LITERAL@49..50 "2"
         R_BRACK@50..51 "]"
         L_BRACK@51..52 "["
-        CONST_EXPR@52..53
-          LITERAL@52..53
-            INT_LITERAL@52..53 "3"
+        LITERAL@52..53
+          INT_LITERAL@52..53 "3"
         R_BRACK@53..54 "]"
       WHITESPACE@54..55 " "
       EQ@55..56 "="
-      CONST_INIT_VAL@56..76
+      INIT_VAL@56..76
         WHITESPACE@56..57 " "
         L_BRACE@57..58 "{"
-        CONST_INIT_VAL@58..67
+        INIT_VAL@58..67
           L_BRACE@58..59 "{"
-          CONST_INIT_VAL@59..60
-            CONST_EXPR@59..60
-              LITERAL@59..60
-                INT_LITERAL@59..60 "1"
+          INIT_VAL@59..60
+            LITERAL@59..60
+              INT_LITERAL@59..60 "1"
           COMMA@60..61 ","
-          CONST_INIT_VAL@61..63
-            CONST_EXPR@61..63
-              LITERAL@61..63
-                WHITESPACE@61..62 " "
-                INT_LITERAL@62..63 "2"
+          INIT_VAL@61..63
+            LITERAL@61..63
+              WHITESPACE@61..62 " "
+              INT_LITERAL@62..63 "2"
           COMMA@63..64 ","
-          CONST_INIT_VAL@64..66
-            CONST_EXPR@64..66
-              LITERAL@64..66
-                WHITESPACE@64..65 " "
-                INT_LITERAL@65..66 "3"
+          INIT_VAL@64..66
+            LITERAL@64..66
+              WHITESPACE@64..65 " "
+              INT_LITERAL@65..66 "3"
           R_BRACE@66..67 "}"
         COMMA@67..68 ","
-        CONST_INIT_VAL@68..75
+        INIT_VAL@68..75
           WHITESPACE@68..69 " "
           L_BRACE@69..70 "{"
-          CONST_INIT_VAL@70..71
-            CONST_EXPR@70..71
-              LITERAL@70..71
-                INT_LITERAL@70..71 "4"
+          INIT_VAL@70..71
+            LITERAL@70..71
+              INT_LITERAL@70..71 "4"
           COMMA@71..72 ","
-          CONST_INIT_VAL@72..74
-            CONST_EXPR@72..74
-              LITERAL@72..74
-                WHITESPACE@72..73 " "
-                INT_LITERAL@73..74 "5"
+          INIT_VAL@72..74
+            LITERAL@72..74
+              WHITESPACE@72..73 " "
+              INT_LITERAL@73..74 "5"
           R_BRACE@74..75 "}"
         R_BRACE@75..76 "}"
     SEMI@76..77 ";"

@@ -9,7 +9,7 @@ COMP_UNIT@0..216
     TYPE@5..8
       INT_KW@5..8 "int"
     VAR_DEF@8..22
-      CONST_INDEX_VAL@8..10
+      INDEX_VAL@8..10
         NAME@8..10
           WHITESPACE@8..9 " "
           IDENT@9..10 "x"
@@ -43,7 +43,7 @@ COMP_UNIT@0..216
     TYPE@28..31
       INT_KW@28..31 "int"
     VAR_DEF@31..47
-      CONST_INDEX_VAL@31..33
+      INDEX_VAL@31..33
         NAME@31..33
           WHITESPACE@31..32 " "
           IDENT@32..33 "y"
@@ -80,7 +80,7 @@ COMP_UNIT@0..216
     TYPE@53..56
       INT_KW@53..56 "int"
     VAR_DEF@56..72
-      CONST_INDEX_VAL@56..58
+      INDEX_VAL@56..58
         NAME@56..58
           WHITESPACE@56..57 " "
           IDENT@57..58 "z"
@@ -114,7 +114,7 @@ COMP_UNIT@0..216
     TYPE@78..81
       INT_KW@78..81 "int"
     VAR_DEF@81..92
-      CONST_INDEX_VAL@81..83
+      INDEX_VAL@81..83
         NAME@81..83
           WHITESPACE@81..82 " "
           IDENT@82..83 "w"
@@ -140,7 +140,7 @@ COMP_UNIT@0..216
     TYPE@98..101
       INT_KW@98..101 "int"
     VAR_DEF@101..113
-      CONST_INDEX_VAL@101..105
+      INDEX_VAL@101..105
         NAME@101..105
           WHITESPACE@101..102 " "
           IDENT@102..105 "rel"
@@ -166,7 +166,7 @@ COMP_UNIT@0..216
     TYPE@119..122
       INT_KW@119..122 "int"
     VAR_DEF@122..138
-      CONST_INDEX_VAL@122..128
+      INDEX_VAL@122..128
         NAME@122..128
           WHITESPACE@122..123 " "
           IDENT@123..128 "unary"
@@ -198,7 +198,7 @@ COMP_UNIT@0..216
     TYPE@144..147
       INT_KW@144..147 "int"
     VAR_DEF@147..161
-      CONST_INDEX_VAL@147..151
+      INDEX_VAL@147..151
         NAME@147..151
           WHITESPACE@147..148 " "
           IDENT@148..151 "ptr"
@@ -229,7 +229,7 @@ COMP_UNIT@0..216
     TYPE@167..170
       INT_KW@167..170 "int"
     VAR_DEF@170..184
-      CONST_INDEX_VAL@170..174
+      INDEX_VAL@170..174
         NAME@170..174
           WHITESPACE@170..171 " "
           IDENT@171..174 "arr"
@@ -255,7 +255,7 @@ COMP_UNIT@0..216
     TYPE@190..193
       INT_KW@190..193 "int"
     VAR_DEF@193..210
-      CONST_INDEX_VAL@193..198
+      INDEX_VAL@193..198
         NAME@193..198
           WHITESPACE@193..194 " "
           IDENT@194..198 "call"

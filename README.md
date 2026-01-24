@@ -4,17 +4,12 @@ Based on SysY language, added structure and pointer support
 
 ```text
 CompUnit    := {GlobalDecl}
-GlobalDecl  := Decl | FuncDef
+GlobalDecl  := VarDecl | FuncDef
 
 Type        := 'int' | 'float' | 'struct' Name
 
-Decl        := ConstDecl | VarDecl
-ConstDecl   := 'const' Type ConstDef {',' ConstDef} ';'
-ConstDef    := Pointer ConstIndexVal '=' ConstInitVal
-ConstInitVal:= ConstExpr | '{' [ConstInitVal {',' ConstInitVal}] '}'
-
-VarDecl     := Type VarDef {',' VarDef} ';'
-VarDef      := Pointer ConstIndexVal ['=' InitVal]
+VarDecl     := ['const'] Type VarDef {',' VarDef} ';'
+VarDef      := Pointer IndexVal ['=' InitVal]
 InitVal     := Expr | '{' [InitVal {',' InitVal}] '}'
 
 Pointer     := {'*' ['const']}
@@ -22,10 +17,10 @@ Pointer     := {'*' ['const']}
 FuncDef     := FuncType Name '(' [FuncFParams] ')' Block
 FuncType    := ('void' | Type) Pointer
 FuncFParams := FuncFParam {',' FuncFParam}
-FuncFParam  := Type Pointer Name ['[' ']' {'[' ConstExpr ']'}]
+FuncFParam  := Type Pointer Name ['[' ']' {'[' Expr ']'}]
 
 Block       := '{' {BlockItem} '}'
-BlockItem   := Decl | Stmt
+BlockItem   := VarDecl | Stmt
 
 Stmt        := AssignStmt
              | ExprStmt
@@ -63,10 +58,8 @@ PrimaryExpr := '(' Expr ')' | LVal | Literal
 
 LVal        := IndexVal | DerefExpr
 IndexVal    := Name {'[' Expr ']'}
-ConstIndexVal   := Name {'[' ConstExpr ']'}
 
 FuncRParams := Expr {',' Expr}
 Literal     := IntConst | FloatConst
 Name        := Ident
-ConstExpr   := Expr
 ```

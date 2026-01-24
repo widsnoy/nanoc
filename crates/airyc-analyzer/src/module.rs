@@ -1,4 +1,5 @@
 use std::{
+    borrow::Borrow,
     collections::{HashMap, HashSet},
     ops::Deref,
 };
@@ -103,20 +104,20 @@ impl Module {
     }
 
     /// 检查是否为编译时常量
-    pub fn is_compile_time_constant(&self, range: TextRange) -> bool {
+    pub fn is_compile_time_constant(&self, range: impl Borrow<TextRange>) -> bool {
         self.constant_nodes
-            .get(&range)
+            .get(range.borrow())
             .is_some_and(|k| *k == ConstKind::CompileTime)
     }
 
     /// 检查是否为常量（编译时或运行时）
-    pub fn is_constant(&self, range: TextRange) -> bool {
-        self.constant_nodes.contains_key(&range)
+    pub fn is_constant(&self, range: impl Borrow<TextRange>) -> bool {
+        self.constant_nodes.contains_key(range.borrow())
     }
 
     /// 获取常量类型
-    pub fn get_const_kind(&self, range: TextRange) -> Option<ConstKind> {
-        self.constant_nodes.get(&range).copied()
+    pub fn get_const_kind(&self, range: impl Borrow<TextRange>) -> Option<ConstKind> {
+        self.constant_nodes.get(range.borrow()).copied()
     }
 
     /// 检查所有范围是否为常量，如果是则将父范围标记为常量
@@ -145,16 +146,16 @@ impl Module {
         self.mark_constant(parent_range, weakest_kind);
     }
 
-    pub fn get_value(&self, range: TextRange) -> Option<&Value> {
-        self.value_table.get(&range)
+    pub fn get_value(&self, range: impl Borrow<TextRange>) -> Option<&Value> {
+        self.value_table.get(range.borrow())
     }
 
     pub fn set_expr_type(&mut self, range: TextRange, ty: NType) {
         self.type_table.insert(range, ty);
     }
 
-    pub fn get_expr_type(&self, range: TextRange) -> Option<&NType> {
-        self.type_table.get(&range)
+    pub fn get_expr_type(&self, range: impl Borrow<TextRange>) -> Option<&NType> {
+        self.type_table.get(range.borrow())
     }
 
     pub fn new_scope(&mut self, parent: Option<ScopeID>) -> ScopeID {

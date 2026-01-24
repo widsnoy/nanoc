@@ -40,6 +40,14 @@ impl NType {
         matches!(self, Self::Const(_))
     }
 
+    /// 去掉 Const 包装，返回内部类型
+    pub fn unwrap_const(&self) -> NType {
+        match self {
+            Self::Const(inner) => inner.as_ref().clone(),
+            _ => self.clone(),
+        }
+    }
+
     /// 返回标量零值（int / float）
     pub fn const_zero(&self) -> Value {
         match self {

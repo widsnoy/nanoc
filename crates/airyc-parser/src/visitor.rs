@@ -48,9 +48,6 @@ macro_rules! def_visitor {
 
 def_visitor! {
     CompUnit, COMP_UNIT, enter_comp_unit, leave_comp_unit;
-    ConstDecl, CONST_DECL, enter_const_decl, leave_const_decl;
-    ConstDef, CONST_DEF, enter_const_def, leave_const_def;
-    ConstInitVal, CONST_INIT_VAL, enter_const_init_val, leave_const_init_val;
     VarDecl, VAR_DECL, enter_var_decl, leave_var_decl;
     VarDef, VAR_DEF, enter_var_def, leave_var_def;
     InitVal, INIT_VAL, enter_init_val, leave_init_val;
@@ -75,8 +72,6 @@ def_visitor! {
     ParenExpr, PAREN_EXPR, enter_paren_expr, leave_paren_expr;
     DerefExpr, DEREF_EXPR, enter_deref_expr, leave_deref_expr;
     IndexVal, INDEX_VAL, enter_index_val, leave_index_val;
-    ConstIndexVal, CONST_INDEX_VAL, enter_const_index_val, leave_const_index_val;
-    ConstExpr, CONST_EXPR, enter_const_expr, leave_const_expr;
     Literal, LITERAL, enter_literal, leave_literal;
     Type, TYPE, enter_type, leave_type;
     Name, NAME, enter_name, leave_name;

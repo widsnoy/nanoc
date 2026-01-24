@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use airyc_parser::{
-    ast::{AstNode, ConstExpr, ConstInitVal, Expr, InitVal},
+    ast::{AstNode, Expr, InitVal},
     syntax_kind::NanocLanguage,
 };
 use text_size::TextRange;
@@ -10,7 +10,6 @@ use crate::{r#type::NType, value::Value};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ArrayTreeValue {
-    ConstExpr(ConstExpr),
     Expr(Expr),
     Empty,
 }
@@ -21,8 +20,8 @@ impl ArrayTreeValue {
         value_table: &'a HashMap<TextRange, Value>,
     ) -> Option<&'a Value> {
         match self {
-            Self::ConstExpr(node) => value_table.get(&node.syntax().text_range()),
-            _ => None,
+            Self::Expr(node) => value_table.get(&node.syntax().text_range()),
+            Self::Empty => None,
         }
     }
 }
@@ -70,7 +69,6 @@ impl std::fmt::Display for ArrayTree {
                 }
                 ArrayTree::Val(v) => {
                     let text = match v {
-                        ArrayTreeValue::ConstExpr(e) => e.syntax().text(),
                         ArrayTreeValue::Expr(e) => e.syntax().text(),
                         ArrayTreeValue::Empty => {
                             return writeln!(f, "{}{}Empty", prefix, connector);
@@ -114,13 +112,6 @@ pub trait ArrayTreeTrait: AstNode<Language = NanocLanguage> + Sized {
     }
 }
 
-impl ArrayTreeTrait for ConstInitVal {
-    fn try_expr(&self) -> Option<ArrayTreeValue> {
-        self.syntax()
-            .children()
-            .find_map(|x| ConstExpr::cast(x.clone()).map(ArrayTreeValue::ConstExpr))
-    }
-}
 impl ArrayTreeTrait for InitVal {
     fn try_expr(&self) -> Option<ArrayTreeValue> {
         self.syntax()
@@ -221,7 +212,7 @@ impl ArrayTree {
 #[cfg(test)]
 mod test {
     use airyc_parser::{
-        ast::{AstNode, ConstIndexVal, ConstInitVal, SyntaxNode, Type},
+        ast::{AstNode, IndexVal, InitVal, SyntaxNode, Type},
         parser::Parser,
         syntax_kind::SyntaxKind,
         visitor::Visitor as _,
@@ -236,7 +227,7 @@ mod test {
     fn get_init_val_node(root: &SyntaxNode) -> SyntaxNode {
         let res = root
             .descendants()
-            .find(|x| matches!(x.kind(), SyntaxKind::CONST_INIT_VAL));
+            .find(|x| matches!(x.kind(), SyntaxKind::INIT_VAL));
         res.unwrap()
     }
 
@@ -245,10 +236,10 @@ mod test {
         res.unwrap()
     }
 
-    fn get_const_index_node(root: &SyntaxNode) -> SyntaxNode {
+    fn get_index_val_node(root: &SyntaxNode) -> SyntaxNode {
         let res = root
             .descendants()
-            .find(|x| x.kind() == SyntaxKind::CONST_INDEX_VAL);
+            .find(|x| x.kind() == SyntaxKind::INDEX_VAL);
         res.unwrap()
     }
 
@@ -256,7 +247,7 @@ mod test {
         let p = Parser::new(text);
         let (tree, _) = p.parse();
         let root = Parser::new_root(tree);
-        let init_val_node = ConstInitVal::cast(get_init_val_node(&root)).unwrap();
+        let init_val_node = InitVal::cast(get_init_val_node(&root)).unwrap();
         // dbg!(init_val_node.syntax());
         let mut module = Module::default();
         module.walk(&root);
@@ -264,9 +255,7 @@ mod test {
         let ty = module
             .build_array_type(
                 basic_ty,
-                ConstIndexVal::cast(get_const_index_node(&root))
-                    .unwrap()
-                    .indices(),
+                IndexVal::cast(get_index_val_node(&root)).unwrap().indices(),
             )
             .unwrap();
         dbg!(&ty);

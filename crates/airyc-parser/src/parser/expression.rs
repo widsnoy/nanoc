@@ -5,12 +5,6 @@ impl Parser<'_> {
         self.parse_l_or_exp();
     }
 
-    pub(super) fn parse_const_exp(&mut self) {
-        self.start_node(SyntaxKind::CONST_EXPR);
-        self.parse_l_or_exp();
-        self.finish_node();
-    }
-
     fn parse_l_or_exp(&mut self) {
         let cp = self.checkpoint();
         self.parse_l_and_exp();
