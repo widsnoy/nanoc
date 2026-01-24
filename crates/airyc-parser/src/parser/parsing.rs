@@ -7,7 +7,7 @@ impl Parser<'_> {
 
         loop {
             match self.peek() {
-                SyntaxKind::CONST_KW => self.parse_const_decl(),
+                SyntaxKind::CONST_KW => self.parse_var_decl(),
                 SyntaxKind::EOF => break,
                 _ => self.parse_decl_or_func_def(),
             }
@@ -17,29 +17,23 @@ impl Parser<'_> {
         self.finish_node();
     }
 
-    fn parse_const_decl(&mut self) {
-        self.start_node(SyntaxKind::CONST_DECL);
-        self.expect(SyntaxKind::CONST_KW);
+    /// 解析变量声明：[const] Type VarDef {',' VarDef} ';'
+    fn parse_var_decl(&mut self) {
+        self.start_node(SyntaxKind::VAR_DECL);
+
+        // 可选的 const 关键字
+        if self.at(SyntaxKind::CONST_KW) {
+            self.bump();
+        }
+
         self.parse_type();
-        self.parse_const_def();
+        self.parse_var_def();
         while self.at(SyntaxKind::COMMA) {
             self.bump();
-            self.parse_const_def();
+            self.parse_var_def();
         }
 
         self.expect(SyntaxKind::SEMI);
-        self.finish_node();
-    }
-
-    fn parse_const_def(&mut self) {
-        self.start_node(SyntaxKind::CONST_DEF);
-
-        self.parse_pointers();
-
-        self.parse_const_index_val();
-
-        self.expect(SyntaxKind::EQ);
-        self.parse_const_init_val();
         self.finish_node();
     }
 
@@ -79,7 +73,7 @@ impl Parser<'_> {
 
             self.start_node_at(cp_vardef, SyntaxKind::VAR_DEF);
 
-            self.parse_const_index_val();
+            self.parse_index_val();
 
             if self.at(SyntaxKind::EQ) {
                 self.bump();
@@ -124,7 +118,7 @@ impl Parser<'_> {
     fn parse_var_def(&mut self) {
         self.start_node(SyntaxKind::VAR_DEF);
         self.parse_pointers();
-        self.parse_const_index_val();
+        self.parse_index_val();
         if self.at(SyntaxKind::EQ) {
             self.bump();
             self.parse_init_val();
@@ -146,36 +140,19 @@ impl Parser<'_> {
         self.finish_node();
     }
 
-    fn parse_const_init_val(&mut self) {
-        self.parse_init_val_generic(
-            SyntaxKind::CONST_INIT_VAL,
-            Self::parse_const_init_val,
-            Self::parse_const_exp,
-        );
-    }
-
     fn parse_init_val(&mut self) {
-        self.parse_init_val_generic(SyntaxKind::INIT_VAL, Self::parse_init_val, Self::parse_exp);
-    }
-
-    fn parse_init_val_generic(
-        &mut self,
-        kind: SyntaxKind,
-        parse_recursive: fn(&mut Self),
-        parse_expr: fn(&mut Self),
-    ) {
-        self.start_node(kind);
+        self.start_node(SyntaxKind::INIT_VAL);
         if self.at(SyntaxKind::L_BRACE) {
             self.bump();
             while !matches!(self.peek(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
-                parse_recursive(self);
+                self.parse_init_val();
                 if self.at(SyntaxKind::COMMA) {
                     self.bump();
                 }
             }
             self.expect(SyntaxKind::R_BRACE);
         } else {
-            parse_expr(self);
+            self.parse_exp();
         }
         self.finish_node();
     }
@@ -200,7 +177,7 @@ impl Parser<'_> {
             self.expect(SyntaxKind::R_BRACK);
             while self.at(SyntaxKind::L_BRACK) {
                 self.bump();
-                self.parse_const_exp();
+                self.parse_exp();
                 self.expect(SyntaxKind::R_BRACK);
             }
         }
@@ -229,20 +206,11 @@ impl Parser<'_> {
 
     fn parse_block_item(&mut self) {
         match self.peek() {
-            SyntaxKind::INT_KW | SyntaxKind::FLOAT_KW | SyntaxKind::STRUCT_KW => {
-                // 应该重构 parse_decl_or_func_def，但暂时重写
-                self.start_node(SyntaxKind::VAR_DECL);
-                self.parse_type();
-                self.parse_var_def();
-                while self.at(SyntaxKind::COMMA) {
-                    self.bump();
-                    self.parse_var_def();
-                }
-                self.expect(SyntaxKind::SEMI);
-                self.finish_node();
-            }
-            SyntaxKind::CONST_KW => {
-                self.parse_const_decl();
+            SyntaxKind::INT_KW
+            | SyntaxKind::FLOAT_KW
+            | SyntaxKind::STRUCT_KW
+            | SyntaxKind::CONST_KW => {
+                self.parse_var_decl();
             }
             _ => {
                 // 其他情况视为语句
@@ -257,12 +225,13 @@ impl Parser<'_> {
         self.finish_node();
     }
 
-    pub(super) fn parse_const_index_val(&mut self) {
-        self.start_node(SyntaxKind::CONST_INDEX_VAL);
+    /// 解析 IndexVal: Name {'[' Expr ']'}
+    pub(super) fn parse_index_val(&mut self) {
+        self.start_node(SyntaxKind::INDEX_VAL);
         self.parse_name();
         while self.at(SyntaxKind::L_BRACK) {
             self.bump();
-            self.parse_const_exp();
+            self.parse_exp();
             self.expect(SyntaxKind::R_BRACK);
         }
         self.finish_node();

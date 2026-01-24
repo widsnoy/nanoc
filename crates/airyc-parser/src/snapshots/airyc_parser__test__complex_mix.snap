@@ -5,23 +5,22 @@ expression: try_it(source)
 COMP_UNIT@0..164
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
-  CONST_DECL@5..25
+  VAR_DECL@5..25
     CONST_KW@5..10 "const"
     TYPE@10..14
       WHITESPACE@10..11 " "
       INT_KW@11..14 "int"
-    CONST_DEF@14..24
-      CONST_INDEX_VAL@14..18
+    VAR_DEF@14..24
+      INDEX_VAL@14..18
         NAME@14..18
           WHITESPACE@14..15 " "
           IDENT@15..18 "MAX"
       WHITESPACE@18..19 " "
       EQ@19..20 "="
-      CONST_INIT_VAL@20..24
-        CONST_EXPR@20..24
-          LITERAL@20..24
-            WHITESPACE@20..21 " "
-            INT_LITERAL@21..24 "100"
+      INIT_VAL@20..24
+        LITERAL@20..24
+          WHITESPACE@20..21 " "
+          INT_LITERAL@21..24 "100"
     SEMI@24..25 ";"
   NEWLINE@25..26 "\n"
   WHITESPACE@26..30 "    "
@@ -32,7 +31,7 @@ COMP_UNIT@0..164
         WHITESPACE@36..37 " "
         IDENT@37..42 "Point"
     VAR_DEF@42..44
-      CONST_INDEX_VAL@42..44
+      INDEX_VAL@42..44
         NAME@42..44
           WHITESPACE@42..43 " "
           IDENT@43..44 "p"
@@ -77,7 +76,7 @@ COMP_UNIT@0..164
           WHITESPACE@85..93 "        "
           INT_KW@93..96 "int"
         VAR_DEF@96..102
-          CONST_INDEX_VAL@96..98
+          INDEX_VAL@96..98
             NAME@96..98
               WHITESPACE@96..97 " "
               IDENT@97..98 "a"
@@ -97,7 +96,7 @@ COMP_UNIT@0..164
           POINTER@115..117
             WHITESPACE@115..116 " "
             STAR@116..117 "*"
-          CONST_INDEX_VAL@117..120
+          INDEX_VAL@117..120
             NAME@117..120
               IDENT@117..120 "ptr"
           WHITESPACE@120..121 " "
@@ -111,26 +110,25 @@ COMP_UNIT@0..164
                 NAME@124..125
                   IDENT@124..125 "a"
         SEMI@125..126 ";"
-      CONST_DECL@126..153
+      VAR_DECL@126..153
         NEWLINE@126..127 "\n"
         WHITESPACE@127..135 "        "
         CONST_KW@135..140 "const"
         TYPE@140..144
           WHITESPACE@140..141 " "
           INT_KW@141..144 "int"
-        CONST_DEF@144..152
-          CONST_INDEX_VAL@144..146
+        VAR_DEF@144..152
+          INDEX_VAL@144..146
             NAME@144..146
               WHITESPACE@144..145 " "
               IDENT@145..146 "b"
           WHITESPACE@146..147 " "
           EQ@147..148 "="
-          CONST_INIT_VAL@148..152
-            CONST_EXPR@148..152
-              INDEX_VAL@148..152
-                NAME@148..152
-                  WHITESPACE@148..149 " "
-                  IDENT@149..152 "MAX"
+          INIT_VAL@148..152
+            INDEX_VAL@148..152
+              NAME@148..152
+                WHITESPACE@148..149 " "
+                IDENT@149..152 "MAX"
         SEMI@152..153 ";"
       NEWLINE@153..154 "\n"
       WHITESPACE@154..158 "    "

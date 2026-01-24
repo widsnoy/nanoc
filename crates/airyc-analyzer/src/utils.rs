@@ -1,4 +1,4 @@
-use airyc_parser::ast::{AstNode as _, ConstExpr, FuncType, Name, Pointer, Type};
+use airyc_parser::ast::{AstNode as _, Expr, FuncType, Name, Pointer, Type};
 
 use crate::{module::Module, r#type::NType, value::Value};
 
@@ -51,9 +51,9 @@ impl Module {
     pub(crate) fn build_array_type(
         &self,
         mut ty: NType,
-        indices_iter: impl Iterator<Item = ConstExpr>,
+        indices_iter: impl Iterator<Item = Expr>,
     ) -> Option<NType> {
-        let indices = indices_iter.collect::<Vec<ConstExpr>>();
+        let indices = indices_iter.collect::<Vec<Expr>>();
         for expr in indices.iter().rev() {
             let x = self.get_value(expr.syntax().text_range()).cloned()?;
             let Value::Int(y) = x else {

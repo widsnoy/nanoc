@@ -57,9 +57,6 @@ pub enum SyntaxKind {
     COMP_UNIT,
 
     FUNC_DEF,
-    CONST_DECL,
-    CONST_DEF,
-    CONST_INIT_VAL,
     VAR_DECL,
     VAR_DEF,
     INIT_VAL,
@@ -77,7 +74,6 @@ pub enum SyntaxKind {
     UNARY_OP,
     BINARY_OP,
 
-    CONST_EXPR,
     BINARY_EXPR,
     UNARY_EXPR,
     CALL_EXPR,
@@ -85,7 +81,6 @@ pub enum SyntaxKind {
     DEREF_EXPR,
 
     INDEX_VAL,
-    CONST_INDEX_VAL,
 
     BLOCK,
     IF_STMT,

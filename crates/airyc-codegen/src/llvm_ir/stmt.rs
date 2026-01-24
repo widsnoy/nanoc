@@ -18,7 +18,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 false
             };
             match item {
-                BlockItem::Decl(decl) => self.compile_local_decl(decl)?,
+                BlockItem::VarDecl(decl) => self.compile_local_decl(decl)?,
                 BlockItem::Stmt(stmt) => self.compile_stmt(stmt)?,
             }
 

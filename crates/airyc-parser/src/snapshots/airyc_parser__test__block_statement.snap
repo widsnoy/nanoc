@@ -26,7 +26,7 @@ COMP_UNIT@0..73
             WHITESPACE@29..41 "            "
             INT_KW@41..44 "int"
           VAR_DEF@44..51
-            CONST_INDEX_VAL@44..51
+            INDEX_VAL@44..51
               NAME@44..51
                 WHITESPACE@44..45 " "
                 IDENT@45..51 "nested"

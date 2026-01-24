@@ -30,7 +30,7 @@ COMP_UNIT@0..173
     TYPE@158..161
       INT_KW@158..161 "int"
     VAR_DEF@161..167
-      CONST_INDEX_VAL@161..163
+      INDEX_VAL@161..163
         NAME@161..163
           WHITESPACE@161..162 " "
           IDENT@162..163 "a"

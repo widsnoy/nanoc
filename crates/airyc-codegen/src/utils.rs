@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use airyc_analyzer::array::ArrayTree;
 use airyc_analyzer::r#type::NType;
 use airyc_analyzer::value::Value;
-use airyc_parser::ast::{AstNode, ConstIndexVal, IndexVal, Name, SyntaxToken};
+use airyc_parser::ast::{AstNode, IndexVal, Name, SyntaxToken};
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, FloatValue, FunctionValue, IntValue, PointerValue};
@@ -13,8 +13,8 @@ use crate::error::{CodegenError, Result};
 use crate::llvm_ir::{LoopContext, Program, Symbol, SymbolTable};
 
 /// Extract ident token from variable definition
-pub(crate) fn get_ident_node(name: &ConstIndexVal) -> Option<SyntaxToken> {
-    name.name().and_then(|n| n.ident())
+pub(crate) fn get_ident_node(index_val: &IndexVal) -> Option<SyntaxToken> {
+    index_val.name().and_then(|n| n.ident())
 }
 
 /// 提取名称文本
@@ -172,9 +172,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 })
             }
             ArrayTree::Val(array_tree_value) => match array_tree_value {
-                airyc_analyzer::array::ArrayTreeValue::ConstExpr(const_expr) => {
-                    self.get_const_var_value(const_expr)
-                }
                 airyc_analyzer::array::ArrayTreeValue::Expr(expr) => self.get_const_var_value(expr),
                 airyc_analyzer::array::ArrayTreeValue::Empty => Ok(ty.const_zero()),
             },
