@@ -46,7 +46,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             let init_val = if is_const {
                 // const 变量必须有初始值
                 let init_node = def.init().ok_or(CodegenError::Missing("initial value"))?;
-                self.compile_const_init_val(init_node, basic_ty)?
+                self.get_const_var_value(&init_node, Some(basic_ty))?
             } else {
                 self.const_init_or_zero(def.init(), basic_ty)?
             };
@@ -71,15 +71,11 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             let (init_val, array_tree) = if let Some(init_node) = def.init() {
                 if let Some(expr) = init_node.expr() {
                     // 单值初始化
-                    if is_const {
-                        // const 变量尝试获取编译时常量值
-                        if let Ok(const_val) = self.get_const_var_value(&expr) {
-                            (Some(const_val), None)
-                        } else {
-                            // 运行时初始化
-                            (Some(self.compile_expr(expr)?), None)
-                        }
+
+                    if let Ok(const_val) = self.get_const_var_value(&expr, None) {
+                        (Some(const_val), None)
                     } else {
+                        // 运行时初始化
                         (Some(self.compile_expr(expr)?), None)
                     }
                 } else {
@@ -110,37 +106,21 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .build_store(alloca, init_val)
                     .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
             } else {
+                // 逐个 load/store 到数组
                 let array_tree = array_tree.ok_or(CodegenError::Missing("array tree"))?;
                 self.builder
                     .build_store(alloca, basic_ty.const_zero())
                     .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
                 let mut indices = vec![self.context.i32_type().const_zero()];
-                self.walk_on_array_tree(array_tree, &mut indices, alloca, basic_ty)?;
+                self.store_on_array_tree(array_tree, &mut indices, alloca, basic_ty)?;
             }
             self.symbols.insert_var(name.to_string(), alloca, var_ty);
         }
         Ok(())
     }
 
-    fn compile_const_init_val(
-        &mut self,
-        init: InitVal,
-        ty: BasicTypeEnum<'ctx>,
-    ) -> Result<BasicValueEnum<'ctx>> {
-        if let Some(expr) = init.expr() {
-            return self.get_const_var_value(&expr);
-        }
-        let range = init.syntax().text_range();
-        let array_tree = self
-            .analyzer
-            .expand_array
-            .get(&range)
-            .ok_or(CodegenError::Missing("array init info"))?;
-        self.convert_array_tree_to_global_init(array_tree, ty)
-    }
-
     /// 遍历 ArrayTree 叶子节点并存储初始化值
-    fn walk_on_array_tree(
+    fn store_on_array_tree(
         &mut self,
         array_tree: &ArrayTree,
         indices: &mut Vec<IntValue<'ctx>>,
@@ -150,7 +130,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         match array_tree {
             ArrayTree::Val(ArrayTreeValue::Expr(expr)) => {
                 // 尝试获取编译时常量值，否则编译表达式
-                let value = if let Ok(const_val) = self.get_const_var_value(expr) {
+                let value = if let Ok(const_val) = self.get_const_var_value(expr, None) {
                     const_val
                 } else {
                     self.compile_expr(expr.clone())?
@@ -168,7 +148,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let i32_type = self.context.i32_type();
                 for (i, child) in children.iter().enumerate() {
                     indices.push(i32_type.const_int(i as u64, false));
-                    self.walk_on_array_tree(child, indices, ptr, elem_ty)?;
+                    self.store_on_array_tree(child, indices, ptr, elem_ty)?;
                     indices.pop();
                 }
             }
@@ -190,10 +170,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         };
         let range = init.syntax().text_range();
         if let Some(value) = self.analyzer.get_value(range) {
-            return self.convert_value(value);
-        }
-        if let Some(array_tree) = self.analyzer.expand_array.get(&range) {
-            return self.convert_array_tree_to_global_init(array_tree, ty);
+            return self.convert_value(value, Some(ty));
         }
         Err(CodegenError::Missing("init value"))
     }

@@ -1,5 +1,4 @@
 use std::{
-    borrow::Borrow,
     collections::{HashMap, HashSet},
     ops::Deref,
 };
@@ -13,15 +12,6 @@ use crate::{
     value::Value,
 };
 
-/// 常量类型：区分编译时常量和运行时常量
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConstKind {
-    /// 编译时常量：值在编译时就能确定
-    CompileTime,
-    /// 运行时常量：值在运行时确定但之后不可变（如指针）
-    Runtime,
-}
-
 #[derive(Debug, Default)]
 pub struct Module {
     pub variables: Arena<Variable>,
@@ -29,10 +19,8 @@ pub struct Module {
     pub scopes: Arena<Scope>,
 
     pub global_scope: ScopeID,
-    /// 检查节点是否为常量（编译时或运行时）
-    pub constant_nodes: HashMap<TextRange, ConstKind>,
 
-    /// 仅存储编译时常量
+    /// 存储编译时能计算的表达式
     pub value_table: HashMap<TextRange, Value>,
 
     /// 存储展开的数组
@@ -53,6 +41,7 @@ pub struct AnalyzeContext {
     pub current_scope: ScopeID,
     pub errors: Vec<SemanticError>,
     pub current_base_type: Option<NType>,
+    pub current_var_type: Option<NType>,
 }
 
 #[derive(Debug)]
@@ -93,69 +82,21 @@ impl Module {
         self.analyzing = AnalyzeContext::default();
     }
 
-    pub fn mark_constant(&mut self, range: TextRange, kind: ConstKind) {
-        // 如果已经标记为 CompileTime，不降级为 Runtime
-        if let Some(existing) = self.constant_nodes.get(&range)
-            && *existing == ConstKind::CompileTime
-        {
-            return;
-        }
-        self.constant_nodes.insert(range, kind);
-    }
-
     /// 检查是否为编译时常量
-    pub fn is_compile_time_constant(&self, range: impl Borrow<TextRange>) -> bool {
-        self.constant_nodes
-            .get(range.borrow())
-            .is_some_and(|k| *k == ConstKind::CompileTime)
+    pub fn is_compile_time_constant(&self, range: TextRange) -> bool {
+        self.value_table.contains_key(&range)
     }
 
-    /// 检查是否为常量（编译时或运行时）
-    pub fn is_constant(&self, range: impl Borrow<TextRange>) -> bool {
-        self.constant_nodes.contains_key(range.borrow())
-    }
-
-    /// 获取常量类型
-    pub fn get_const_kind(&self, range: impl Borrow<TextRange>) -> Option<ConstKind> {
-        self.constant_nodes.get(range.borrow()).copied()
-    }
-
-    /// 检查所有范围是否为常量，如果是则将父范围标记为常量
-    pub fn check_and_mark_constant(
-        &mut self,
-        parent_range: TextRange,
-        expr_range: Option<TextRange>,
-        child_ranges: impl Iterator<Item = TextRange>,
-    ) {
-        let mut weakest_kind = ConstKind::CompileTime;
-
-        if let Some(r) = expr_range {
-            match self.get_const_kind(r) {
-                Some(ConstKind::Runtime) => weakest_kind = ConstKind::Runtime,
-                Some(ConstKind::CompileTime) => {}
-                None => return,
-            }
-        }
-        for r in child_ranges {
-            match self.get_const_kind(r) {
-                Some(ConstKind::Runtime) => weakest_kind = ConstKind::Runtime,
-                Some(ConstKind::CompileTime) => {}
-                None => return,
-            }
-        }
-        self.mark_constant(parent_range, weakest_kind);
-    }
-
-    pub fn get_value(&self, range: impl Borrow<TextRange>) -> Option<&Value> {
-        self.value_table.get(range.borrow())
+    pub fn get_value(&self, range: TextRange) -> Option<&Value> {
+        self.value_table.get(&range)
     }
 
     pub fn set_expr_type(&mut self, range: TextRange, ty: NType) {
         self.type_table.insert(range, ty);
     }
 
-    pub fn get_expr_type(&self, range: impl Borrow<TextRange>) -> Option<&NType> {
-        self.type_table.get(range.borrow())
+    pub fn get_expr_type(&self, range: TextRange) -> Option<&NType> {
+        self.type_table.get(&range)
     }
 
     pub fn new_scope(&mut self, parent: Option<ScopeID>) -> ScopeID {

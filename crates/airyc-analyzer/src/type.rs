@@ -12,6 +12,7 @@ pub enum NType {
 }
 
 impl NType {
+    /// array 不可能被 const wrap
     pub fn is_array(&self) -> bool {
         matches!(self, Self::Array(_, _))
     }
