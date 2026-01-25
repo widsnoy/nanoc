@@ -6,7 +6,7 @@ use airyc_parser::{
 };
 use text_size::TextRange;
 
-use crate::{r#type::NType, value::Value};
+use crate::{module::Module, r#type::NType, value::Value};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ArrayTreeValue {
@@ -128,26 +128,36 @@ pub enum ArrayInitError {
     IndexOutOfBound,
     /// 索引和类型不匹配
     MisMatchIndexAndType,
-    Unkown,
 }
 
 impl ArrayTree {
-    pub fn new(ty: &NType, init_val: impl ArrayTreeTrait) -> Result<ArrayTree, ArrayInitError> {
+    pub fn new(
+        m: &Module,
+        ty: &NType,
+        init_val: impl ArrayTreeTrait,
+    ) -> Result<(ArrayTree, bool), ArrayInitError> {
         let Some(first_child) = init_val.first_child() else {
-            return Ok(ArrayTree::Val(ArrayTreeValue::Empty));
+            return Ok((ArrayTree::Val(ArrayTreeValue::Empty), true));
         };
-
-        Self::build(ty, &mut Some(first_child))
+        let mut is_const = true;
+        match Self::build(m, ty, &mut Some(first_child), &mut is_const) {
+            Ok(s) => Ok((s, is_const)),
+            Err(e) => Err(e),
+        }
     }
 
     fn build(
+        m: &Module,
         ty: &NType,
         cursor: &mut Option<impl ArrayTreeTrait>,
+        is_const: &mut bool,
     ) -> Result<ArrayTree, ArrayInitError> {
         match ty {
             NType::Int | NType::Float | NType::Pointer(_) => {
                 let Some(u) = cursor else { unreachable!() };
                 if let Some(expr) = u.try_expr() {
+                    let range = u.syntax().text_range();
+                    *is_const &= m.value_table.contains_key(&range);
                     *cursor = u.next_sibling();
                     return Ok(ArrayTree::Val(expr));
                 }
@@ -162,11 +172,11 @@ impl ArrayTree {
                     if u.is_subtree() {
                         let mut first_child = u.first_child();
                         // 可能有多余元素，直接忽略
-                        let subtree = Self::build(inner, &mut first_child)?;
+                        let subtree = Self::build(m, inner, &mut first_child, is_const)?;
                         children_vec.push(subtree);
                         *cursor = u.next_sibling();
                     } else if u.try_expr().is_some() {
-                        let subtree = Self::build(inner, cursor)?;
+                        let subtree = Self::build(m, inner, cursor, is_const)?;
                         children_vec.push(subtree);
                     } else {
                         // {}
@@ -180,7 +190,7 @@ impl ArrayTree {
                 }
                 Ok(ArrayTree::Children(children_vec))
             }
-            NType::Const(inner) => Self::build(inner, cursor),
+            NType::Const(inner) => Self::build(m, inner, cursor, is_const),
             _ => unreachable!(),
         }
     }
@@ -259,7 +269,7 @@ mod test {
             )
             .unwrap();
         dbg!(&ty);
-        let array_tree = ArrayTree::new(&ty, init_val_node)?;
+        let (array_tree, _) = ArrayTree::new(&module, &ty, init_val_node)?;
         Ok((array_tree.to_string(), module, array_tree))
     }
 

@@ -3,7 +3,7 @@ use airyc_parser::syntax_kind::SyntaxKind;
 use airyc_parser::visitor::Visitor;
 
 use crate::array::{ArrayTree, ArrayTreeValue};
-use crate::module::{ConstKind, Function, Module, SemanticError, VariableTag};
+use crate::module::{Function, Module, SemanticError, VariableTag};
 use crate::r#type::NType;
 use crate::value::Value;
 
@@ -35,6 +35,7 @@ impl Visitor for Module {
         let index_val_node = def.index_val().unwrap();
 
         // 检查数组维度是否为编译时常量
+        // FIXME: 如果是局部变量也可以不是
         for expr in index_val_node.indices() {
             let range = expr.syntax().text_range();
             if !self.is_compile_time_constant(range) {
@@ -48,67 +49,57 @@ impl Visitor for Module {
         let var_type = self
             .build_array_type(var_type, index_val_node.indices())
             .unwrap();
+        let index_val_node = def.index_val().unwrap();
         let name_node = index_val_node.name().unwrap();
         let name = Self::extract_name(&name_node);
-        let range = name_node.ident().unwrap().text_range();
+        let var_range = name_node.ident().unwrap().text_range();
 
-        let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
+        let current_scope = self.analyzing.current_scope;
+        let scope = self.scopes.get_mut(*current_scope).unwrap();
+        let is_global = current_scope == self.global_scope;
         if scope.have_variable(&name) {
-            self.analyzing
-                .errors
-                .push(SemanticError::VariableDefined { name, range });
+            self.analyzing.errors.push(SemanticError::VariableDefined {
+                name,
+                range: var_range,
+            });
             return;
         }
 
-        // const 变量必须有初始值
-        if is_const {
-            let Some(init_val_node) = def.init() else {
+        if let Some(init_val_node) = def.init() {
+            // 如果是表达式，已经在 expr 处理。这里只用考虑数组初始列表
+            let init_range = init_val_node.syntax().text_range();
+            if var_type.is_array() {
+                let (array_tree, is_const_list) =
+                    match ArrayTree::new(self, &var_type, init_val_node) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            self.analyzing.errors.push(SemanticError::ArrayError {
+                                message: e,
+                                range: init_range,
+                            });
+                            return;
+                        }
+                    };
+                if is_const_list {
+                    self.value_table
+                        .insert(init_range, Value::Array(array_tree.clone()));
+                }
+                self.expand_array.insert(init_range, array_tree);
+            }
+            if let Some(value) = self.value_table.get(&init_range) {
+                self.value_table.insert(var_range, value.clone());
+            } else if is_global {
                 self.analyzing
                     .errors
-                    .push(SemanticError::ExpectInitialVal { name, range });
+                    .push(SemanticError::ConstantExprExpected { range: init_range });
                 return;
             };
-
-            let init_range = init_val_node.syntax().text_range();
-            let sotre_array_init_list = || {
-                let array_tree = ArrayTree::new(&var_type.unwrap_const(), init_val_node).unwrap();
-                self.expand_array.insert(init_range, array_tree.clone());
-                self.value_table.insert(range, Value::Array(array_tree));
-            };
-
-            match &var_type {
-                NType::Array(_, _) => {
-                    sotre_array_init_list();
-                }
-                NType::Const(inner) if matches!(inner.as_ref(), NType::Array(_, _)) => {
-                    sotre_array_init_list();
-                }
-                _ => {
-                    // 如果初始值是编译时常量，存入 value_table 用于常量折叠
-                    if let Some(init_value) = self.value_table.get(&init_range).cloned() {
-                        self.value_table.insert(range, init_value);
-                    }
-                }
-            }
-        } else {
-            // 非 const 变量
-            if let Some(init_val_node) = def.init() {
-                let init_range = init_val_node.syntax().text_range();
-                // 全局变量初始化必须是编译时常量
-                if self.global_scope == self.analyzing.current_scope
-                    && !self.is_compile_time_constant(init_range)
-                {
-                    self.analyzing
-                        .errors
-                        .push(SemanticError::ConstantExprExpected { range: init_range });
-                    return;
-                }
-
-                if var_type.is_array() {
-                    let array_tree = ArrayTree::new(&var_type, init_val_node).unwrap();
-                    self.expand_array.insert(init_range, array_tree);
-                }
-            }
+        } else if is_const {
+            self.analyzing.errors.push(SemanticError::ExpectInitialVal {
+                name,
+                range: var_range,
+            });
+            return;
         }
 
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
@@ -117,16 +108,8 @@ impl Visitor for Module {
             &mut self.variable_map,
             name,
             var_type,
-            range,
+            var_range,
             VariableTag::Define,
-        );
-    }
-
-    fn leave_init_val(&mut self, node: InitVal) {
-        self.check_and_mark_constant(
-            node.syntax().text_range(),
-            node.expr().map(|e| e.syntax().text_range()),
-            node.inits().map(|c| c.syntax().text_range()),
         );
     }
 
@@ -270,7 +253,6 @@ impl Visitor for Module {
             let rhs_val = self.value_table.get(&rhs.syntax().text_range()).unwrap();
 
             if let Ok(val) = Value::eval(lhs_val, rhs_val, &op.op_str()) {
-                self.mark_constant(node.syntax().text_range(), ConstKind::CompileTime);
                 self.value_table.insert(node.syntax().text_range(), val);
             }
         }
@@ -291,18 +273,16 @@ impl Visitor for Module {
         }
 
         if op_kind == SyntaxKind::AMP {
-            self.mark_constant(node.syntax().text_range(), ConstKind::Runtime);
             return;
         }
 
-        if self.is_constant(expr.syntax().text_range()) {
+        if self.is_compile_time_constant(expr.syntax().text_range()) {
             let val = self
                 .value_table
                 .get(&expr.syntax().text_range())
                 .unwrap()
                 .clone();
             if let Ok(res) = Value::eval_unary(val, &op.op_str()) {
-                self.mark_constant(node.syntax().text_range(), ConstKind::CompileTime);
                 self.value_table.insert(node.syntax().text_range(), res);
             }
         }
@@ -314,8 +294,7 @@ impl Visitor for Module {
             self.set_expr_type(node.syntax().text_range(), ty.clone());
         }
         let expr_range = expr.syntax().text_range();
-        if let Some(const_kind) = self.get_const_kind(expr_range) {
-            self.mark_constant(node.syntax().text_range(), const_kind);
+        if self.is_compile_time_constant(expr_range) {
             let val = self.value_table.get(&expr_range).unwrap().clone();
             self.value_table.insert(node.syntax().text_range(), val);
         }
@@ -381,7 +360,6 @@ impl Visitor for Module {
             return;
         }
         let Some(mut value) = self.value_table.get(&var_range) else {
-            self.mark_constant(node.syntax().text_range(), ConstKind::Runtime);
             return;
         };
 
@@ -424,11 +402,9 @@ impl Visitor for Module {
         }
         let range = node.syntax().text_range();
         self.value_table.insert(range, value.clone());
-        self.mark_constant(range, ConstKind::CompileTime);
     }
 
     fn enter_literal(&mut self, node: Literal) {
-        self.mark_constant(node.syntax().text_range(), ConstKind::CompileTime);
         let range = node.syntax().text_range();
         let v = if let Some(n) = node.float_token() {
             let s = n.text();

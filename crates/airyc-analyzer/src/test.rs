@@ -48,19 +48,6 @@ fn test_duplicate_variable_error() {
 }
 
 #[test]
-fn test_const_expression_calculation() {
-    let source = r#"
-    int main() {
-        const int a = 1 + 2;
-    }
-    "#;
-    let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
-    // Constant expression 1 + 2 should be evaluated
-    assert!(!module.constant_nodes.is_empty());
-}
-
-#[test]
 fn test_const_binary_operations() {
     let source = r#"
     int main() {

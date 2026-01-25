@@ -172,7 +172,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 })
             }
             ArrayTree::Val(array_tree_value) => match array_tree_value {
-                airyc_analyzer::array::ArrayTreeValue::Expr(expr) => self.get_const_var_value(expr),
+                airyc_analyzer::array::ArrayTreeValue::Expr(expr) => {
+                    self.get_const_var_value(expr, None)
+                }
                 airyc_analyzer::array::ArrayTreeValue::Empty => Ok(ty.const_zero()),
             },
         }
@@ -275,12 +277,17 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     /// Get constant value from analyzer
-    pub(crate) fn get_const_var_value(&self, expr: &impl AstNode) -> Result<BasicValueEnum<'ctx>> {
+    /// 如果是 Array，保证 ty.is_some() == true
+    pub(crate) fn get_const_var_value(
+        &self,
+        expr: &impl AstNode,
+        ty: Option<BasicTypeEnum<'ctx>>,
+    ) -> Result<BasicValueEnum<'ctx>> {
         let value = self
             .analyzer
             .get_value(expr.syntax().text_range())
             .ok_or(CodegenError::Missing("constant value"))?;
-        self.convert_value(value)
+        self.convert_value(value, ty)
     }
 
     /// Convert any value to i1 boolean
@@ -331,11 +338,16 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     /// Convert `Value` to `BasicValueEnum`
-    pub(crate) fn convert_value(&self, value: &Value) -> Result<BasicValueEnum<'ctx>> {
+    /// 如果是 Array，保证 ty.is_some() == true
+    pub(crate) fn convert_value(
+        &self,
+        value: &Value,
+        ty: Option<BasicTypeEnum<'ctx>>,
+    ) -> Result<BasicValueEnum<'ctx>> {
         match value {
             Value::Int(x) => Ok(self.context.i32_type().const_int(*x as u64, false).into()),
             Value::Float(x) => Ok(self.context.f32_type().const_float(*x as f64).into()),
-            Value::Array(_) => Err(CodegenError::NotImplemented("array constant")),
+            Value::Array(tree) => self.convert_array_tree_to_global_init(tree, ty.unwrap()),
             Value::Struct(_) => Err(CodegenError::NotImplemented("struct constant")),
             Value::Pointee(_, _) => Err(CodegenError::NotImplemented("pointer constant")),
         }
