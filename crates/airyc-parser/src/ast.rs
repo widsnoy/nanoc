@@ -241,6 +241,7 @@ ast_enum!(Expr {
     UnaryExpr,
     CallExpr,
     ParenExpr,
+    PostfixExpr,
     IndexVal,
     Literal,
 });
@@ -260,8 +261,17 @@ ast_node!(
     }
 );
 
+ast_node!(
+    PostfixExpr ~ POSTFIX_EXPR {
+        expr: node(Expr),
+        op: node(PostfixOp),
+        name: node(Name),
+    }
+);
+
 ast_node!(BinaryOp ~ BINARY_OP {});
 ast_node!(UnaryOp ~ UNARY_OP {});
+ast_node!(PostfixOp ~ POSTFIX_OP {});
 
 pub trait OpNode: AstNode<Language = NanocLanguage> {
     fn op(&self) -> SyntaxToken {
@@ -277,6 +287,7 @@ pub trait OpNode: AstNode<Language = NanocLanguage> {
 
 impl OpNode for BinaryOp {}
 impl OpNode for UnaryOp {}
+impl OpNode for PostfixOp {}
 
 ast_node!(
     CallExpr ~ CALL_EXPR {

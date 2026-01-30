@@ -8,12 +8,38 @@ impl Parser<'_> {
         loop {
             match self.peek() {
                 SyntaxKind::CONST_KW => self.parse_var_decl(),
+                SyntaxKind::STRUCT_KW => self.parse_struct_def(),
                 SyntaxKind::EOF => break,
                 _ => self.parse_decl_or_func_def(),
             }
             self.bump_trivia();
         }
 
+        self.finish_node();
+    }
+
+    /// 解析结构体申明
+    fn parse_struct_def(&mut self) {
+        self.start_node(SyntaxKind::STRUCT_DEF);
+        self.expect(SyntaxKind::STRUCT_KW);
+        self.parse_name();
+        self.expect(SyntaxKind::L_BRACE);
+
+        while self.peek() != SyntaxKind::R_BRACE {
+            self.parse_struct_field();
+            if self.at(SyntaxKind::COMMA) {
+                self.bump();
+            }
+        }
+
+        self.finish_node();
+    }
+
+    fn parse_struct_field(&mut self) {
+        self.start_node(SyntaxKind::STRUCT_FIELD);
+        self.parse_type();
+        self.parse_pointers();
+        self.parse_index_val();
         self.finish_node();
     }
 
@@ -206,10 +232,7 @@ impl Parser<'_> {
 
     fn parse_block_item(&mut self) {
         match self.peek() {
-            SyntaxKind::INT_KW
-            | SyntaxKind::FLOAT_KW
-            | SyntaxKind::STRUCT_KW
-            | SyntaxKind::CONST_KW => {
+            SyntaxKind::INT_KW | SyntaxKind::FLOAT_KW | SyntaxKind::CONST_KW => {
                 self.parse_var_decl();
             }
             _ => {
