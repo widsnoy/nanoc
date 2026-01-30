@@ -51,6 +51,8 @@ def_visitor! {
     VarDecl, VAR_DECL, enter_var_decl, leave_var_decl;
     VarDef, VAR_DEF, enter_var_def, leave_var_def;
     InitVal, INIT_VAL, enter_init_val, leave_init_val;
+    StructDef, STRUCT_DEF, enter_struct_def, leave_struct_def;
+    StructField, STRUCT_FIELD, enter_struct_field, leave_struct_field;
     FuncDef, FUNC_DEF, enter_func_def, leave_func_def;
     FuncType, FUNC_TYPE, enter_func_type, leave_func_type;
     FuncFParams, FUNC_F_PARAMS, enter_func_f_params, leave_func_f_params;
