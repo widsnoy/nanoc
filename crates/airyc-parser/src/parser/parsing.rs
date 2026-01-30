@@ -232,7 +232,10 @@ impl Parser<'_> {
 
     fn parse_block_item(&mut self) {
         match self.peek() {
-            SyntaxKind::INT_KW | SyntaxKind::FLOAT_KW | SyntaxKind::CONST_KW => {
+            SyntaxKind::INT_KW
+            | SyntaxKind::FLOAT_KW
+            | SyntaxKind::STRUCT_KW
+            | SyntaxKind::CONST_KW => {
                 self.parse_var_decl();
             }
             _ => {
