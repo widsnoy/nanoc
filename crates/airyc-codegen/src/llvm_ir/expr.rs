@@ -23,6 +23,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             Expr::ParenExpr(e) => self.compile_paren_expr(e),
             Expr::IndexVal(e) => self.compile_index_val(e, is_func_arg),
             Expr::Literal(e) => self.compile_literal(e),
+            Expr::PostfixExpr(_) => todo!(),
         }
     }
 
