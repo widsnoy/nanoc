@@ -8,7 +8,9 @@ impl Parser<'_> {
         loop {
             match self.peek() {
                 SyntaxKind::CONST_KW => self.parse_var_decl(),
-                SyntaxKind::STRUCT_KW => self.parse_struct_def(),
+                // struct name { ... } 是结构体定义
+                // struct name ident; 是变量声明
+                SyntaxKind::STRUCT_KW if self.at_2(SyntaxKind::L_BRACE) => self.parse_struct_def(),
                 SyntaxKind::EOF => break,
                 _ => self.parse_decl_or_func_def(),
             }
@@ -32,6 +34,7 @@ impl Parser<'_> {
             }
         }
 
+        self.expect(SyntaxKind::R_BRACE);
         self.finish_node();
     }
 
