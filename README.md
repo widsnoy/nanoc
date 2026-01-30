@@ -31,7 +31,7 @@ Stmt        := AssignStmt
              | ContinueStmt
              | ReturnStmt
 
-AssignStmt  := LVal '=' Expr ';'
+AssignStmt  := Expr '=' Expr ';'
 ExprStmt    := [Expr] ';'
 IfStmt      := 'if' '(' Expr ')' Stmt ['else' Stmt]
 WhileStmt   := 'while' '(' Expr ')' Stmt
@@ -58,8 +58,6 @@ UnaryOp     := '+' | '-' | '!' | '&' | '*'
 CallExpr    := Name '(' [FuncRParams] ')'
 ParenExpr   := '(' Expr ')'
 IndexVal    := Name {'[' Expr ']'}
-
-LVal        := IndexVal | DerefExpr
 
 FuncRParams := Expr {',' Expr}
 Literal     := IntConst | FloatConst
