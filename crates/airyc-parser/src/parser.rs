@@ -110,6 +110,11 @@ impl<'a> Parser<'a> {
         self.peek_1() == kind
     }
 
+    /// 检查向前看两步的 token 是否匹配 `kind`（跳过空白）
+    pub(crate) fn at_2(&self, kind: SyntaxKind) -> bool {
+        self.peek_2() == kind
+    }
+
     /// 获取当前 token 类型（跳过空白）
     pub(crate) fn peek(&self) -> SyntaxKind {
         self.lexer.current_without_trivia()
@@ -118,5 +123,10 @@ impl<'a> Parser<'a> {
     /// 获取下一个 token 类型（跳过空白）
     pub(crate) fn peek_1(&self) -> SyntaxKind {
         self.lexer.current_without_trivia_1()
+    }
+
+    /// 获取向前看两步的 token 类型（跳过空白）
+    pub(crate) fn peek_2(&self) -> SyntaxKind {
+        self.lexer.current_without_trivia_2()
     }
 }
