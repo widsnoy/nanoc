@@ -60,6 +60,8 @@ pub enum SyntaxKind {
     VAR_DECL,
     VAR_DEF,
     INIT_VAL,
+    STRUCT_DEF,
+    STRUCT_FIELD,
 
     TYPE,
     FUNC_TYPE,
@@ -73,9 +75,11 @@ pub enum SyntaxKind {
 
     UNARY_OP,
     BINARY_OP,
+    POSTFIX_OP,
 
     BINARY_EXPR,
     UNARY_EXPR,
+    POSTFIX_EXPR,
     CALL_EXPR,
     PAREN_EXPR,
 
@@ -154,6 +158,11 @@ impl SyntaxKind {
                 | SyntaxKind::AMPAMP
                 | SyntaxKind::PIPEPIPE
         )
+    }
+
+    /// 检查是否是后缀运算符
+    pub fn is_postfix_op(self) -> bool {
+        matches!(self, SyntaxKind::ARROW | SyntaxKind::DOT)
     }
 
     /// 检查是否为数字字面量

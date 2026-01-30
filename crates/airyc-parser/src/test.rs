@@ -180,3 +180,16 @@ fn test_array_init() {
     "#;
     insta::assert_debug_snapshot!(try_it(source));
 }
+
+#[test]
+fn test_postfix_expressions() {
+    let source = r#"
+    int x = s.field;
+    int y = p->member;
+    int z = s.a.b;
+    int w = p->a->b;
+    int mixed = arr[0].field;
+    int complex = func().member;
+    "#;
+    insta::assert_debug_snapshot!(try_it(source));
+}

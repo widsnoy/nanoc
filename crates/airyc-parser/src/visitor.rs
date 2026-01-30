@@ -65,8 +65,7 @@ def_visitor! {
     ReturnStmt, RETURN_STMT, enter_return_stmt, leave_return_stmt;
     BinaryExpr, BINARY_EXPR, enter_binary_expr, leave_binary_expr;
     UnaryExpr, UNARY_EXPR, enter_unary_expr, leave_unary_expr;
-    BinaryOp, BINARY_OP, enter_binary_op, leave_binary_op;
-    UnaryOp, UNARY_OP, enter_unary_op, leave_unary_op;
+    PostfixExpr, POSTFIX_EXPR, enter_postfix_expr, leave_postfix_expr;
     CallExpr, CALL_EXPR, enter_call_expr, leave_call_expr;
     FuncRParams, FUNC_R_PARAMS, enter_func_r_params, leave_func_r_params;
     ParenExpr, PAREN_EXPR, enter_paren_expr, leave_paren_expr;
