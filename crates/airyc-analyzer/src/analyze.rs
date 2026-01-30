@@ -266,13 +266,30 @@ impl Visitor for Module {
         if let Some(inner_ty) = self.get_expr_type(expr.syntax().text_range()) {
             let result_ty = if op_kind == SyntaxKind::AMP {
                 NType::Pointer(Box::new(inner_ty.clone()))
+            } else if op_kind == SyntaxKind::STAR {
+                let pointee: Option<NType> = match inner_ty {
+                    NType::Pointer(pointee) => Some((*pointee).as_ref().clone()),
+                    NType::Const(inner) => {
+                        if let NType::Pointer(pointee) = inner.as_ref() {
+                            Some(pointee.as_ref().clone())
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                };
+                if let Some(pointee) = pointee {
+                    pointee
+                } else {
+                    unreachable!("");
+                }
             } else {
                 inner_ty.clone()
             };
             self.set_expr_type(node.syntax().text_range(), result_ty);
         }
 
-        if op_kind == SyntaxKind::AMP {
+        if matches!(op_kind, SyntaxKind::STAR | SyntaxKind::AMP) {
             return;
         }
 
@@ -297,26 +314,6 @@ impl Visitor for Module {
         if self.is_compile_time_constant(expr_range) {
             let val = self.value_table.get(&expr_range).unwrap().clone();
             self.value_table.insert(node.syntax().text_range(), val);
-        }
-    }
-
-    fn leave_deref_expr(&mut self, node: DerefExpr) {
-        let inner = node.expr().unwrap();
-        if let Some(ty) = self.get_expr_type(inner.syntax().text_range()) {
-            let pointee: Option<NType> = match ty {
-                NType::Pointer(pointee) => Some((*pointee).as_ref().clone()),
-                NType::Const(inner) => {
-                    if let NType::Pointer(pointee) = inner.as_ref() {
-                        Some(pointee.as_ref().clone())
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            };
-            if let Some(pointee) = pointee {
-                self.set_expr_type(node.syntax().text_range(), pointee);
-            }
         }
     }
 

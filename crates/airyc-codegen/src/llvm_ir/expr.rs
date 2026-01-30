@@ -21,18 +21,19 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             Expr::UnaryExpr(e) => self.compile_unary_expr(e),
             Expr::CallExpr(e) => self.compile_call_expr(e),
             Expr::ParenExpr(e) => self.compile_paren_expr(e),
-            Expr::DerefExpr(e) => self.compile_deref_expr(e),
             Expr::IndexVal(e) => self.compile_index_val(e, is_func_arg),
             Expr::Literal(e) => self.compile_literal(e),
         }
     }
 
-    fn compile_deref_expr(&mut self, expr: DerefExpr) -> Result<BasicValueEnum<'ctx>> {
-        let inner = expr.expr().ok_or(CodegenError::Missing("deref operand"))?;
-        let ptr = self.compile_expr(inner)?.into_pointer_value();
+    fn compile_deref_expr(&mut self, expr: &UnaryExpr) -> Result<BasicValueEnum<'ctx>> {
+        // 获取整个解引用表达式的类型（即解引用后的结果类型）
+        let range = expr.syntax().text_range();
+        let operand = expr.expr().ok_or(CodegenError::Missing("* operand"))?;
+        let ptr = self.compile_expr(operand)?.into_pointer_value();
         let result_ty = self
             .analyzer
-            .get_expr_type(expr.syntax().text_range())
+            .get_expr_type(range)
             .ok_or(CodegenError::Missing("deref type"))?;
         let llvm_ty = self.convert_ntype_to_type(result_ty)?;
         self.builder
@@ -301,19 +302,22 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .op();
 
         // 取地址需要特殊处理，不能先编译操作数
-        if op_token.kind() == SyntaxKind::AMP {
+        let op_kind = op_token.kind();
+        if op_kind == SyntaxKind::AMP {
             let operand = expr.expr().ok_or(CodegenError::Missing("& operand"))?;
             return match operand {
                 Expr::IndexVal(iv) => {
                     let (_, ptr, _) = self.get_element_ptr_by_index_val(&iv)?;
                     Ok(ptr.into())
                 }
-                Expr::DerefExpr(de) => {
+                Expr::UnaryExpr(de) if de.op().map(|x| x.op().kind()) == Some(SyntaxKind::STAR) => {
                     // &*ptr == ptr
                     self.compile_expr(de.expr().ok_or(CodegenError::Missing("deref operand"))?)
                 }
                 _ => Err(CodegenError::Unsupported("cannot take address".into())),
             };
+        } else if op_kind == SyntaxKind::STAR {
+            return self.compile_deref_expr(&expr);
         }
 
         let val = self.compile_expr(expr.expr().ok_or(CodegenError::Missing("unary operand"))?)?;

@@ -200,15 +200,10 @@ ast_enum!(Stmt {
 
 ast_node!(
     AssignStmt ~ ASSIGN_STMT {
-        lhs: nth(LVal, 0),
+        lhs: nth(Expr, 0),
         rhs: nth(Expr, 1),
     }
 );
-
-ast_enum!(LVal {
-    IndexVal,
-    DerefExpr
-});
 
 ast_node!(
     ExprStmt ~ EXPR_STMT {
@@ -246,7 +241,6 @@ ast_enum!(Expr {
     UnaryExpr,
     CallExpr,
     ParenExpr,
-    DerefExpr,
     IndexVal,
     Literal,
 });
@@ -299,12 +293,6 @@ ast_node!(
 
 ast_node!(
     ParenExpr ~ PAREN_EXPR {
-        expr: node(Expr),
-    }
-);
-
-ast_node!(
-    DerefExpr ~ DEREF_EXPR {
         expr: node(Expr),
     }
 );

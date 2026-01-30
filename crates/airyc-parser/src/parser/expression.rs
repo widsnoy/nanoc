@@ -105,13 +105,6 @@ impl Parser<'_> {
     }
 
     pub(super) fn parse_lval_or_call_expr(&mut self) {
-        if self.at(SyntaxKind::STAR) {
-            self.start_node(SyntaxKind::DEREF_EXPR);
-            self.bump(); // '*'
-            self.parse_unary_exp();
-            self.finish_node();
-            return;
-        }
         let cp = self.checkpoint();
         self.parse_name();
         if self.at(SyntaxKind::L_PAREN) {
