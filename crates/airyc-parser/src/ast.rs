@@ -102,7 +102,11 @@ ast_node!(
     }
 );
 
-ast_enum!(GlobalDecl { VarDecl, FuncDef });
+ast_enum!(GlobalDecl {
+    VarDecl,
+    FuncDef,
+    StructDef
+});
 
 // 2. 声明
 ast_node!(
@@ -138,7 +142,23 @@ impl InitVal {
     }
 }
 
-// 3. 函数
+// 3. Struct 定义
+ast_node!(
+    StructDef ~ STRUCT_DEF {
+        name: node(Name),
+        fields: nodes(StructField),
+    }
+);
+
+ast_node!(
+    StructField ~ STRUCT_FIELD {
+        ty: node(Type),
+        pointer: node(Pointer),
+        index_val: node(IndexVal),
+    }
+);
+
+// 4. 函数
 ast_node!(
     FuncDef ~ FUNC_DEF {
         func_type: node(FuncType),
@@ -178,7 +198,7 @@ impl FuncFParam {
     }
 }
 
-// 4. 块和语句
+// 5. 块和语句
 ast_node!(
     Block ~ BLOCK {
         items: nodes(BlockItem),
@@ -235,7 +255,7 @@ ast_node!(
     }
 );
 
-// 5. 表达式
+// 6. 表达式
 ast_enum!(Expr {
     BinaryExpr,
     UnaryExpr,
@@ -323,7 +343,7 @@ ast_node!(
     }
 );
 
-// 6. 基本元素
+// 7. 基本元素
 ast_node!(
     Type ~ TYPE { int_token: token(INT_KW),
         float_token: token(FLOAT_KW),

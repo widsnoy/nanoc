@@ -16,6 +16,7 @@ use crate::{
 pub struct Module {
     pub variables: Arena<Variable>,
     pub functions: Arena<Function>,
+    pub structs: Arena<StructDef>,
     pub scopes: Arena<Scope>,
 
     pub global_scope: ScopeID,
@@ -28,6 +29,9 @@ pub struct Module {
 
     /// 变量索引：TextRange -> VariableID
     pub variable_map: HashMap<TextRange, VariableID>,
+
+    /// Struct 索引：Name -> StructID
+    pub struct_map: HashMap<String, StructID>,
 
     /// 表达式类型表：TextRange -> NType
     pub type_table: HashMap<TextRange, NType>,
@@ -72,6 +76,27 @@ pub enum SemanticError {
     },
     ArrayError {
         message: ArrayInitError,
+        range: TextRange,
+    },
+    StructDefined {
+        name: String,
+        range: TextRange,
+    },
+    StructUndefined {
+        name: String,
+        range: TextRange,
+    },
+    FieldNotFound {
+        struct_name: String,
+        field_name: String,
+        range: TextRange,
+    },
+    NotAStruct {
+        ty: NType,
+        range: TextRange,
+    },
+    NotAStructPointer {
+        ty: NType,
         range: TextRange,
     },
 }
@@ -128,6 +153,32 @@ impl Module {
             .get(&range)
             .and_then(|f| self.variables.get(**f))
     }
+
+    /// 获取 struct 定义
+    pub fn get_struct(&self, id: StructID) -> Option<&StructDef> {
+        self.structs.get(*id)
+    }
+
+    /// 根据名称查找 struct
+    pub fn find_struct(&self, name: &str) -> Option<StructID> {
+        self.struct_map.get(name).copied()
+    }
+
+    /// 添加新的 struct 定义
+    pub fn new_struct(
+        &mut self,
+        name: String,
+        fields: Vec<StructField>,
+        range: TextRange,
+    ) -> StructID {
+        let struct_def = StructDef {
+            name,
+            fields,
+            range,
+        };
+        let id = self.structs.insert(struct_def);
+        StructID(id)
+    }
 }
 
 /// 定义 ID 包装类型的宏，用于 arena 索引
@@ -161,6 +212,7 @@ macro_rules! define_id_type {
 define_id_type!(VariableID);
 define_id_type!(FunctionID);
 define_id_type!(ScopeID);
+define_id_type!(StructID);
 
 impl Default for ScopeID {
     fn default() -> Self {
@@ -194,6 +246,34 @@ pub struct Function {
     pub name: String,
     pub params: Vec<VariableID>,
     pub ret_type: NType,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructDef {
+    pub name: String,
+    pub fields: Vec<StructField>,
+    pub range: TextRange,
+}
+
+impl StructDef {
+    /// 根据字段名查找字段索引
+    pub fn field_index(&self, name: &str) -> Option<u32> {
+        self.fields
+            .iter()
+            .position(|f| f.name == name)
+            .map(|i| i as u32)
+    }
+
+    /// 根据字段名查找字段
+    pub fn field(&self, name: &str) -> Option<&StructField> {
+        self.fields.iter().find(|f| f.name == name)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StructField {
+    pub name: String,
+    pub ty: NType,
 }
 
 #[derive(Debug)]
@@ -240,25 +320,6 @@ impl Scope {
             u_opt = u.parent.map(|x| m.scopes.get(*x).unwrap());
         }
         None
-    }
-
-    /// 仅在当前作用域查找变量
-    pub fn look_up_locally(
-        &self,
-        m: &Module,
-        var_name: &str,
-        var_tag: VariableTag,
-    ) -> Option<VariableID> {
-        if let Some(entry) = self.variables.get(var_name)
-            && let Some(idx) = entry.iter().find(|x| {
-                let var = m.variables.get(***x).unwrap();
-                var.tag == var_tag
-            })
-        {
-            Some(*idx)
-        } else {
-            None
-        }
     }
 
     /// 检查当前作用域是否存在变量

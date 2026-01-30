@@ -13,8 +13,75 @@ impl Visitor for Module {
         self.global_scope = self.analyzing.current_scope;
     }
 
+    fn enter_struct_def(&mut self, node: StructDef) {
+        let range = node.syntax().text_range();
+
+        // 获取 struct 名称
+        let name = if let Some(name_node) = node.name() {
+            Self::extract_name(&name_node)
+        } else {
+            self.analyzing.errors.push(SemanticError::StructUndefined {
+                name: "<unnamed>".to_string(),
+                range,
+            });
+            return;
+        };
+
+        // 检查是否重复定义
+        if self.find_struct(&name).is_some() {
+            self.analyzing.errors.push(SemanticError::StructDefined {
+                name: name.clone(),
+                range,
+            });
+            return;
+        }
+
+        // 收集字段
+        let mut fields = Vec::new();
+        let mut field_names = std::collections::HashSet::new();
+
+        for field_node in node.fields() {
+            // 获取字段类型
+            let field_ty = if let Some(ty_node) = field_node.ty() {
+                let base_ty = self.build_basic_type(&ty_node);
+                if let Some(pointer_node) = field_node.pointer() {
+                    Self::build_pointer_type(&pointer_node, base_ty)
+                } else {
+                    base_ty
+                }
+            } else {
+                continue;
+            };
+
+            // 获取字段名称
+            if let Some(index_val) = field_node.index_val()
+                && let Some(field_name_node) = index_val.name()
+            {
+                let field_name = Self::extract_name(&field_name_node);
+
+                // 检查字段名是否重复
+                if !field_names.insert(field_name.clone()) {
+                    self.analyzing.errors.push(SemanticError::VariableDefined {
+                        name: field_name.clone(),
+                        range: field_name_node.syntax().text_range(),
+                    });
+                    continue;
+                }
+
+                fields.push(crate::module::StructField {
+                    name: field_name,
+                    ty: field_ty,
+                });
+            }
+        }
+
+        // 添加 struct 定义
+        let struct_id = self.new_struct(name.clone(), fields, range);
+        self.struct_map.insert(name, struct_id);
+    }
+
     fn enter_var_decl(&mut self, node: VarDecl) {
-        let base_type = Self::build_basic_type(&node.ty().unwrap());
+        let base_type = self.build_basic_type(&node.ty().unwrap());
         // 如果是 const 声明，将类型包装为 Const
         self.analyzing.current_base_type = if node.is_const() {
             Some(NType::Const(Box::new(base_type)))
@@ -135,7 +202,7 @@ impl Visitor for Module {
         }
 
         let func_type_node = node.func_type().unwrap();
-        let ret_type = Self::build_func_type(&func_type_node);
+        let ret_type = self.build_func_type(&func_type_node);
         self.set_expr_type(func_type_node.syntax().text_range(), ret_type.clone());
 
         let name = node.name().unwrap().ident().unwrap().text().to_string();
@@ -149,7 +216,7 @@ impl Visitor for Module {
     }
 
     fn leave_func_f_param(&mut self, node: FuncFParam) {
-        let base_type = Self::build_basic_type(&node.ty().unwrap());
+        let base_type = self.build_basic_type(&node.ty().unwrap());
 
         let mut param_type = if let Some(pointer_node) = node.pointer() {
             Self::build_pointer_type(&pointer_node, base_type)
@@ -326,6 +393,14 @@ impl Visitor for Module {
             return;
         }
 
+        // 如果 IndexVal 是在 struct 字段定义中（父节点是 STRUCT_FIELD），则跳过
+        // 因为 struct 字段由 enter_struct_def 处理
+        if let Some(parent) = node.syntax().parent()
+            && parent.kind() == SyntaxKind::STRUCT_FIELD
+        {
+            return;
+        }
+
         let Some(name_node) = node.name() else {
             return;
         };
@@ -399,6 +474,81 @@ impl Visitor for Module {
         }
         let range = node.syntax().text_range();
         self.value_table.insert(range, value.clone());
+    }
+
+    fn leave_postfix_expr(&mut self, node: PostfixExpr) {
+        let range = node.syntax().text_range();
+
+        // 获取操作符类型
+        let Some(op_node) = node.op() else {
+            return;
+        };
+        let op = op_node.op().kind();
+
+        // 获取成员名称
+        let Some(name_node) = node.name() else {
+            return;
+        };
+        let member_name = Self::extract_name(&name_node);
+
+        // 获取左操作数的类型
+        let Some(base_expr) = node.expr() else {
+            return;
+        };
+
+        let base_range = base_expr.syntax().text_range();
+        let Some(base_ty) = self.get_expr_type(base_range).cloned() else {
+            // 基础表达式类型未知，无法继续
+            return;
+        };
+
+        // 根据操作符提取 struct ID
+        let struct_id = match op {
+            SyntaxKind::DOT => {
+                // 直接成员访问：左操作数必须是 struct 类型
+                if let Some(id) = base_ty.as_struct_id() {
+                    id
+                } else {
+                    self.analyzing.errors.push(SemanticError::NotAStruct {
+                        ty: base_ty.clone(),
+                        range: base_range,
+                    });
+                    return;
+                }
+            }
+            SyntaxKind::ARROW => {
+                // 指针成员访问：左操作数必须是 struct 指针类型
+                if let Some(id) = base_ty.as_struct_pointer_id() {
+                    id
+                } else {
+                    self.analyzing
+                        .errors
+                        .push(SemanticError::NotAStructPointer {
+                            ty: base_ty.clone(),
+                            range: base_range,
+                        });
+                    return;
+                }
+            }
+            _ => return,
+        };
+
+        // 查找 struct 定义
+        let Some(struct_def) = self.get_struct(struct_id).cloned() else {
+            // Struct 未定义（可能是前向引用）
+            return;
+        };
+
+        // 查找字段并设置类型
+        if let Some(field) = struct_def.field(&member_name) {
+            self.set_expr_type(range, field.ty.clone());
+        } else {
+            self.analyzing.errors.push(SemanticError::FieldNotFound {
+                struct_name: struct_def.name.clone(),
+                field_name: member_name,
+                range,
+            });
+        }
     }
 
     fn enter_literal(&mut self, node: Literal) {

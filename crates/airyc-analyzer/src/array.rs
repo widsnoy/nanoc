@@ -261,7 +261,7 @@ mod test {
         // dbg!(init_val_node.syntax());
         let mut module = Module::default();
         module.walk(&root);
-        let basic_ty = Module::build_basic_type(&Type::cast(get_type_node(&root)).unwrap());
+        let basic_ty = module.build_basic_type(&Type::cast(get_type_node(&root)).unwrap());
         let ty = module
             .build_array_type(
                 basic_ty,

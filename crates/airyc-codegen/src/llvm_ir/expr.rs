@@ -1,6 +1,7 @@
+use airyc_analyzer::r#type::NType;
 use airyc_parser::ast::*;
 use airyc_parser::syntax_kind::SyntaxKind;
-use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum};
+use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, PointerValue};
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
@@ -8,22 +9,14 @@ use crate::utils::*;
 
 impl<'a, 'ctx> Program<'a, 'ctx> {
     pub(crate) fn compile_expr(&mut self, expr: Expr) -> Result<BasicValueEnum<'ctx>> {
-        self.compile_expr_inner(expr, false)
-    }
-
-    fn compile_expr_inner(
-        &mut self,
-        expr: Expr,
-        is_func_arg: bool,
-    ) -> Result<BasicValueEnum<'ctx>> {
         match expr {
             Expr::BinaryExpr(e) => self.compile_binary_expr(e),
             Expr::UnaryExpr(e) => self.compile_unary_expr(e),
             Expr::CallExpr(e) => self.compile_call_expr(e),
             Expr::ParenExpr(e) => self.compile_paren_expr(e),
-            Expr::IndexVal(e) => self.compile_index_val(e, is_func_arg),
+            Expr::IndexVal(e) => self.compile_index_val(e),
             Expr::Literal(e) => self.compile_literal(e),
-            Expr::PostfixExpr(_) => todo!(),
+            Expr::PostfixExpr(e) => self.compile_postfix_expr(e),
         }
     }
 
@@ -367,7 +360,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .args()
             .map(|rps| {
                 rps.args()
-                    .map(|a| self.compile_expr_inner(a, true).map(|v| v.into()))
+                    .map(|a| self.compile_expr(a).map(|v| v.into()))
                     .collect::<Result<Vec<_>>>()
             })
             .transpose()?
@@ -391,11 +384,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         )
     }
 
-    fn compile_index_val(
-        &mut self,
-        expr: IndexVal,
-        _func_call_r_param: bool,
-    ) -> Result<BasicValueEnum<'ctx>> {
+    fn compile_index_val(&mut self, expr: IndexVal) -> Result<BasicValueEnum<'ctx>> {
         let (ty, ptr, name) = self.get_element_ptr_by_index_val(&expr)?;
         if ty.is_array_type() {
             // 数组 decay 成指向第一个元素的指针
@@ -436,5 +425,116 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             return Ok(self.context.f32_type().const_float(v as f64).into());
         }
         Err(CodegenError::Unsupported("unknown literal".into()))
+    }
+
+    /// 获取 struct 字段的指针
+    /// 返回 (字段指针, 字段类型)
+    fn get_struct_field_ptr(
+        &mut self,
+        base_ptr: PointerValue<'ctx>,
+        base_ty: &NType,
+        member_name: &str,
+        is_pointer_access: bool,
+    ) -> Result<(PointerValue<'ctx>, NType)> {
+        // 根据访问方式提取 struct ID
+        let struct_id = if is_pointer_access {
+            base_ty
+                .as_struct_pointer_id()
+                .ok_or(CodegenError::NotImplemented("not a struct pointer"))?
+        } else {
+            base_ty
+                .as_struct_id()
+                .ok_or(CodegenError::NotImplemented("not a struct"))?
+        };
+
+        let struct_def = self
+            .analyzer
+            .get_struct(struct_id)
+            .ok_or(CodegenError::NotImplemented("undefined struct"))?;
+
+        let field_idx = struct_def
+            .field_index(member_name)
+            .ok_or(CodegenError::NotImplemented("field not found"))?;
+
+        let field_ty = struct_def.fields[field_idx as usize].ty.clone();
+
+        let struct_ntype = NType::Struct(struct_id);
+        let struct_llvm_ty = self.convert_ntype_to_type(&struct_ntype)?;
+
+        let field_ptr = self
+            .builder
+            .build_struct_gep(struct_llvm_ty, base_ptr, field_idx, member_name)
+            .map_err(|_| CodegenError::LlvmBuild("struct gep failed"))?;
+
+        Ok((field_ptr, field_ty))
+    }
+
+    fn compile_postfix_expr(&mut self, expr: PostfixExpr) -> Result<BasicValueEnum<'ctx>> {
+        let (field_ptr, field_ty) = self.get_postfix_expr_ptr(expr)?;
+
+        // Load 字段值
+        let field_llvm_ty = self.convert_ntype_to_type(&field_ty)?;
+        self.builder
+            .build_load(field_llvm_ty, field_ptr, "field")
+            .map_err(|_| CodegenError::LlvmBuild("load field failed"))
+    }
+
+    /// 编译 PostfixExpr 为左值，返回 (指针, 字段类型)
+    fn get_postfix_expr_ptr(
+        &mut self,
+        postfix: PostfixExpr,
+    ) -> Result<(PointerValue<'ctx>, airyc_analyzer::r#type::NType)> {
+        let op = postfix
+            .op()
+            .ok_or(CodegenError::Missing("postfix operator"))?;
+        let op_kind = op.op().kind();
+        let member_name = name_text(&postfix.name().ok_or(CodegenError::Missing("member name"))?)
+            .ok_or(CodegenError::Missing("identifier"))?;
+
+        let base_expr = postfix
+            .expr()
+            .ok_or(CodegenError::Missing("base expression"))?;
+        let base_range = base_expr.syntax().text_range();
+        let base_ty = self
+            .analyzer
+            .get_expr_type(base_range)
+            .ok_or(CodegenError::Missing("base type"))?
+            .clone();
+
+        // 根据操作符类型获取基础指针
+        let (base_ptr, is_pointer_access) = match op_kind {
+            SyntaxKind::DOT => (self.get_expr_ptr(base_expr)?, false),
+            SyntaxKind::ARROW => (self.compile_expr(base_expr)?.into_pointer_value(), true),
+            _ => return Err(CodegenError::NotImplemented("unknown postfix operator")),
+        };
+
+        // 获取字段指针和类型
+        self.get_struct_field_ptr(base_ptr, &base_ty, &member_name, is_pointer_access)
+    }
+
+    /// 编译表达式为左值（返回指针）
+    pub(crate) fn get_expr_ptr(&mut self, expr: Expr) -> Result<PointerValue<'ctx>> {
+        match expr {
+            Expr::IndexVal(index_val) => {
+                // IndexVal 可以作为左值
+                let (_, ptr, _) = self.get_element_ptr_by_index_val(&index_val)?;
+                Ok(ptr)
+            }
+            Expr::UnaryExpr(unary) => {
+                // 解引用表达式可以作为左值
+                let op = unary.op().ok_or(CodegenError::Missing("unary operator"))?;
+                if op.op().kind() == SyntaxKind::STAR {
+                    let operand = unary.expr().ok_or(CodegenError::Missing("* operand"))?;
+                    Ok(self.compile_expr(operand)?.into_pointer_value())
+                } else {
+                    Err(CodegenError::NotImplemented("not an lvalue"))
+                }
+            }
+            Expr::PostfixExpr(postfix) => {
+                let (ptr, _) = self.get_postfix_expr_ptr(postfix)?;
+                Ok(ptr)
+            }
+            _ => Err(CodegenError::NotImplemented("not an lvalue")),
+        }
     }
 }
