@@ -4,7 +4,7 @@ Based on SysY language, added structure and pointer support
 
 ```text
 CompUnit    := {GlobalDecl}
-GlobalDecl  := VarDecl | FuncDef
+GlobalDecl  := VarDecl | FuncDef | StructDef
 
 Type        := 'int' | 'float' | 'struct' Name
 
@@ -18,6 +18,10 @@ FuncDef     := FuncType Name '(' [FuncFParams] ')' Block
 FuncType    := ('void' | Type) Pointer
 FuncFParams := FuncFParam {',' FuncFParam}
 FuncFParam  := Type Pointer Name ['[' ']' {'[' Expr ']'}]
+FuncRParams := Expr {',' Expr}
+
+StructDef   := 'struct' Name '{' [StructField {',' StructField}] '}'
+StructField := Type Pointer IndexVal
 
 Block       := '{' {BlockItem} '}'
 BlockItem   := VarDecl | Stmt
@@ -43,7 +47,7 @@ Expr        := BinaryExpr
              | UnaryExpr
              | CallExpr
              | ParenExpr
-             | DerefExpr
+             | PostfixExpr
              | IndexVal
              | Literal
 
@@ -55,11 +59,13 @@ BinaryOp    := '||' | '&&' | '==' | '!='
 UnaryExpr   := UnaryOp Expr
 UnaryOp     := '+' | '-' | '!' | '&' | '*'
 
+PostfixExpr := Expr PostfixOp Name
+PostfixOp   := '.' | '->'
+
 CallExpr    := Name '(' [FuncRParams] ')'
 ParenExpr   := '(' Expr ')'
 IndexVal    := Name {'[' Expr ']'}
 
-FuncRParams := Expr {',' Expr}
 Literal     := IntConst | FloatConst
 Name        := Ident
 ```
