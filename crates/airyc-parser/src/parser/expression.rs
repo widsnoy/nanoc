@@ -84,8 +84,25 @@ impl Parser<'_> {
             self.parse_unary_exp();
             self.finish_node();
         } else {
-            self.parse_primary_exp();
+            self.parse_postfix_exp();
         }
+    }
+
+    fn parse_postfix_exp(&mut self) {
+        let cp = self.checkpoint();
+        self.parse_primary_exp();
+        while self.peek().is_postfix_op() {
+            self.start_node_at(cp, SyntaxKind::POSTFIX_EXPR);
+            self.parse_postfix_op();
+            self.parse_name();
+            self.finish_node();
+        }
+    }
+
+    fn parse_postfix_op(&mut self) {
+        self.start_node(SyntaxKind::POSTFIX_OP);
+        self.bump(); // . or ->
+        self.finish_node();
     }
 
     fn parse_primary_exp(&mut self) {
