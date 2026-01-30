@@ -1,0 +1,32 @@
+---
+source: crates/airyc-parser/src/test.rs
+assertion_line: 37
+expression: try_it(source1)
+---
+COMP_UNIT@0..29
+  STRUCT_DEF@0..29
+    STRUCT_KW@0..6 "struct"
+    NAME@6..12
+      WHITESPACE@6..7 " "
+      IDENT@7..12 "Point"
+    WHITESPACE@12..13 " "
+    L_BRACE@13..14 "{"
+    STRUCT_FIELD@14..20
+      TYPE@14..18
+        WHITESPACE@14..15 " "
+        INT_KW@15..18 "int"
+      INDEX_VAL@18..20
+        NAME@18..20
+          WHITESPACE@18..19 " "
+          IDENT@19..20 "x"
+    COMMA@20..21 ","
+    STRUCT_FIELD@21..27
+      TYPE@21..25
+        WHITESPACE@21..22 " "
+        INT_KW@22..25 "int"
+      INDEX_VAL@25..27
+        NAME@25..27
+          WHITESPACE@25..26 " "
+          IDENT@26..27 "y"
+    WHITESPACE@27..28 " "
+    R_BRACE@28..29 "}"

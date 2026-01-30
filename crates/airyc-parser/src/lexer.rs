@@ -192,6 +192,7 @@ pub struct Lexer<'a> {
     pos: usize,
     pos_skip_trivia: usize,
     pos_skip_trivia_1: usize,
+    pos_skip_trivia_2: usize,
 }
 
 impl<'a> Lexer<'a> {
@@ -209,12 +210,14 @@ impl<'a> Lexer<'a> {
 
         let pos_skip_trivia = Self::get_next_non_trivia_pos(&tokens, 0usize);
         let pos_skip_trivia_1 = Self::get_next_non_trivia_pos(&tokens, pos_skip_trivia + 1);
+        let pos_skip_trivia_2 = Self::get_next_non_trivia_pos(&tokens, pos_skip_trivia_1 + 1);
 
         Self {
             tokens,
             pos: 0,
             pos_skip_trivia,
             pos_skip_trivia_1,
+            pos_skip_trivia_2,
         }
     }
 
@@ -260,14 +263,23 @@ impl<'a> Lexer<'a> {
             .unwrap_or(SyntaxKind::EOF)
     }
 
+    /// 返回向前看两步的非空白 token 类型
+    pub fn current_without_trivia_2(&self) -> SyntaxKind {
+        self.tokens
+            .get(self.pos_skip_trivia_2)
+            .map(|t| t.0)
+            .unwrap_or(SyntaxKind::EOF)
+    }
+
     /// 移动到下一个 token
     pub fn bump(&mut self) {
         if self.pos < self.tokens.len() {
             self.pos += 1;
             if self.pos > self.pos_skip_trivia {
                 self.pos_skip_trivia = self.pos_skip_trivia_1;
-                self.pos_skip_trivia_1 =
-                    Self::get_next_non_trivia_pos(&self.tokens, self.pos_skip_trivia_1 + 1);
+                self.pos_skip_trivia_1 = self.pos_skip_trivia_2;
+                self.pos_skip_trivia_2 =
+                    Self::get_next_non_trivia_pos(&self.tokens, self.pos_skip_trivia_2 + 1);
             }
         }
     }

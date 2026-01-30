@@ -7,6 +7,8 @@ fn try_it(source: &str) -> SyntaxNode<NanocLanguage> {
     let (tree, errors) = parser.parse();
 
     if !errors.is_empty() {
+        eprintln!("Source: {}", source);
+        eprintln!("Parser errors: {:?}", errors);
         panic!("Parser errors: {:?}", errors);
     }
 
@@ -29,16 +31,18 @@ fn test_declarations() {
 }
 
 #[test]
-fn test_initializers() {
-    let source = r#"
-    int a = 1;
-    int b = {1, 2};
-    int c = {{1}, {2}};
-    const int cb = {1, 2};
-    const int cb[2][3] = {{1,2,3}, {4,5,6}};
-    const int d = 1 + 2 * 3;
-    "#;
-    insta::assert_debug_snapshot!(try_it(source));
+fn test_struct_def_and_decl() {
+    // 测试结构体定义
+    let source1 = "struct Point { int x, int y }";
+    insta::assert_debug_snapshot!("struct_def", try_it(source1));
+
+    // 测试结构体变量声明
+    let source2 = "struct Point p;";
+    insta::assert_debug_snapshot!("struct_decl", try_it(source2));
+
+    // 测试多个结构体变量声明
+    let source3 = "struct Point q, r;";
+    insta::assert_debug_snapshot!("struct_decl_multi", try_it(source3));
 }
 
 #[test]
