@@ -119,7 +119,24 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 Ok(inner.array_type(*count as u32).into())
             }
             NType::Pointer(_) => Ok(self.context.ptr_type(AddressSpace::default()).into()),
-            NType::Struct(_) => Err(CodegenError::NotImplemented("struct type")),
+            NType::Struct(struct_id) => {
+                // 获取 struct 定义
+                let struct_def = self
+                    .analyzer
+                    .get_struct(*struct_id)
+                    .ok_or(CodegenError::NotImplemented("undefined struct"))?;
+
+                // 转换字段类型
+                let field_types: Vec<_> = struct_def
+                    .fields
+                    .iter()
+                    .map(|f| self.convert_ntype_to_type(&f.ty))
+                    .collect::<Result<Vec<_>>>()?;
+
+                // 创建 LLVM struct 类型（匿名）
+                let struct_type = self.context.struct_type(&field_types, false);
+                Ok(struct_type.into())
+            }
             NType::Const(ntype) => self.convert_ntype_to_type(ntype),
         }
     }
@@ -348,7 +365,49 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             Value::Int(x) => Ok(self.context.i32_type().const_int(*x as u64, false).into()),
             Value::Float(x) => Ok(self.context.f32_type().const_float(*x as f64).into()),
             Value::Array(tree) => self.convert_array_tree_to_global_init(tree, ty.unwrap()),
-            Value::Struct(_) => Err(CodegenError::NotImplemented("struct constant")),
+            Value::Struct(fields) => {
+                // 生成 struct 常量
+                let struct_ty = ty
+                    .ok_or(CodegenError::NotImplemented("struct constant without type"))?
+                    .into_struct_type();
+
+                // 按字段顺序生成常量值
+                let field_values: Vec<_> = fields
+                    .values()
+                    .enumerate()
+                    .map(|(idx, v)| {
+                        let field_ty = struct_ty.get_field_type_at_index(idx as u32).unwrap();
+                        self.convert_value(v, Some(field_ty))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(struct_ty.const_named_struct(&field_values).into())
+            }
+            Value::StructZero(struct_id) => {
+                // 生成 struct 零值
+                let struct_def = self
+                    .analyzer
+                    .get_struct(*struct_id)
+                    .ok_or(CodegenError::NotImplemented("undefined struct"))?;
+
+                // 获取 struct 的 LLVM 类型
+                let struct_ntype = NType::Struct(*struct_id);
+                let struct_llvm_ty = self
+                    .convert_ntype_to_type(&struct_ntype)?
+                    .into_struct_type();
+
+                // 为每个字段生成零值
+                let field_values: Vec<_> = struct_def
+                    .fields
+                    .iter()
+                    .map(|f| {
+                        let field_llvm_ty = self.convert_ntype_to_type(&f.ty)?;
+                        Ok(field_llvm_ty.const_zero())
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(struct_llvm_ty.const_named_struct(&field_values).into())
+            }
             Value::Pointee(_, _) => Err(CodegenError::NotImplemented("pointer constant")),
         }
     }

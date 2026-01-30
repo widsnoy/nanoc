@@ -76,6 +76,27 @@ args = [
     "--verbose",
 ]
 
+[tasks.test-struct]
+description = "Run struct functionality tests"
+dependencies = ["build"]
+command = "cargo"
+args = [
+    "run",
+    "--release",
+    "-p",
+    "airyc-test",
+    "--",
+    "--test-dir",
+    "test/struct",
+    "--compiler",
+    "./target/release/airyc-compiler",
+    "--runtime",
+    "./target/release/libairyc_runtime.a",
+    "--timeout",
+    "10",
+    "--verbose",
+]
+
 [tasks.test-ci]
 description = "Run tests for CI"
-dependencies = ["test-pku-minic", "test-pointer"]
+dependencies = ["test-pku-minic", "test-pointer", "test-struct"]

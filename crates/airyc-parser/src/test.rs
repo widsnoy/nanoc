@@ -197,3 +197,56 @@ fn test_postfix_expressions() {
     "#;
     insta::assert_debug_snapshot!(try_it(source));
 }
+
+#[test]
+fn test_struct_ast_nodes() {
+    use crate::ast::*;
+
+    // 测试 StructDef AST 节点
+    let source = "struct Point { int x, int y }";
+    let syntax = try_it(source);
+    let root = CompUnit::cast(syntax).unwrap();
+
+    let struct_def = root
+        .global_decls()
+        .find_map(|decl| {
+            if let GlobalDecl::StructDef(s) = decl {
+                Some(s)
+            } else {
+                None
+            }
+        })
+        .expect("应该找到 StructDef");
+
+    // 验证 struct 名称
+    let name = struct_def.name().expect("应该有名称");
+    let name_text = name.ident().expect("应该有标识符").text().to_string();
+    assert_eq!(name_text, "Point");
+
+    // 验证字段
+    let fields: Vec<_> = struct_def.fields().collect();
+    assert_eq!(fields.len(), 2);
+
+    // 验证第一个字段
+    let field1 = &fields[0];
+    assert!(field1.ty().is_some());
+    let field1_index_val = field1.index_val().expect("字段应该有 index_val");
+    let field1_name = field1_index_val.name().expect("index_val 应该有名称");
+    let field1_text = field1_name
+        .ident()
+        .expect("应该有标识符")
+        .text()
+        .to_string();
+    assert_eq!(field1_text, "x");
+
+    // 验证第二个字段
+    let field2 = &fields[1];
+    let field2_index_val = field2.index_val().expect("字段应该有 index_val");
+    let field2_name = field2_index_val.name().expect("index_val 应该有名称");
+    let field2_text = field2_name
+        .ident()
+        .expect("应该有标识符")
+        .text()
+        .to_string();
+    assert_eq!(field2_text, "y");
+}

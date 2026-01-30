@@ -54,6 +54,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             match global {
                 GlobalDecl::VarDecl(decl) => self.compile_global_decl(decl)?,
                 GlobalDecl::FuncDef(func) => self.compile_func_def(func)?,
+                GlobalDecl::StructDef(_) => {}
             }
         }
         Ok(())

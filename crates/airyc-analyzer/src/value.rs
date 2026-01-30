@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::array::ArrayTree;
+use crate::{array::ArrayTree, module::StructID};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -8,6 +8,7 @@ pub enum Value {
     Float(f32),
     Array(ArrayTree),
     Struct(BTreeMap<String, Value>),
+    StructZero(StructID),
     Pointee(String, i32),
 }
 

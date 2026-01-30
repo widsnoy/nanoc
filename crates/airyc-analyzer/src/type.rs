@@ -1,4 +1,4 @@
-use crate::value::Value;
+use crate::{module::StructID, value::Value};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NType {
@@ -7,7 +7,7 @@ pub enum NType {
     Void,
     Array(Box<NType>, i32),
     Pointer(Box<NType>),
-    Struct(String),
+    Struct(StructID),
     Const(Box<NType>),
 }
 
@@ -49,6 +49,24 @@ impl NType {
         }
     }
 
+    /// 提取 struct ID（处理 Struct 和 Const(Struct) 两种情况）
+    pub fn as_struct_id(&self) -> Option<StructID> {
+        match self {
+            Self::Struct(id) => Some(*id),
+            Self::Const(inner) => inner.as_struct_id(),
+            _ => None,
+        }
+    }
+
+    /// 提取 struct 指针的 struct ID（处理 Pointer(Struct) 和 Const(Pointer(Struct))）
+    pub fn as_struct_pointer_id(&self) -> Option<StructID> {
+        match self {
+            Self::Pointer(inner) => inner.as_struct_id(),
+            Self::Const(inner) => inner.as_struct_pointer_id(),
+            _ => None,
+        }
+    }
+
     /// 返回标量零值（int / float）
     pub fn const_zero(&self) -> Value {
         match self {
@@ -57,7 +75,7 @@ impl NType {
             NType::Void => Value::Int(0),
             NType::Array(ntype, _) => ntype.const_zero(),
             NType::Pointer(_ntype) => Value::Int(0), // null pointer
-            NType::Struct(_) => todo!(),
+            NType::Struct(id) => Value::StructZero(*id),
             NType::Const(ntype) => ntype.const_zero(),
         }
     }

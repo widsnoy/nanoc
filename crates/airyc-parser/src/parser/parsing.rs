@@ -29,12 +29,15 @@ impl Parser<'_> {
 
         while self.peek() != SyntaxKind::R_BRACE {
             self.parse_struct_field();
-            if self.at(SyntaxKind::COMMA) {
+            if self.at(SyntaxKind::COMMA) || self.at(SyntaxKind::SEMI) {
                 self.bump();
             }
         }
 
         self.expect(SyntaxKind::R_BRACE);
+        if self.at(SyntaxKind::SEMI) {
+            self.bump();
+        }
         self.finish_node();
     }
 

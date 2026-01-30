@@ -3,14 +3,21 @@ use airyc_parser::ast::{AstNode as _, Expr, FuncType, Name, Pointer, Type};
 use crate::{module::Module, r#type::NType, value::Value};
 
 impl Module {
-    pub(crate) fn build_basic_type(node: &Type) -> NType {
+    pub(crate) fn build_basic_type(&self, node: &Type) -> NType {
         if node.int_token().is_some() {
             NType::Int
         } else if node.float_token().is_some() {
             NType::Float
         } else if node.struct_token().is_some() {
             let name = Self::extract_name(&node.name().unwrap());
-            NType::Struct(name)
+            // 查找 struct 定义
+            if let Some(struct_id) = self.find_struct(&name) {
+                NType::Struct(struct_id)
+            } else {
+                // 如果找不到，暂时返回一个占位符
+                // TODO: 这个错误会在 enter_struct_def 之后的类型检查中报告
+                NType::Struct(crate::module::StructID::none())
+            }
         } else {
             unreachable!("unknown type node")
         }
@@ -34,11 +41,11 @@ impl Module {
             .expect("failed to get identifier")
     }
 
-    pub(crate) fn build_func_type(node: &FuncType) -> NType {
+    pub(crate) fn build_func_type(&self, node: &FuncType) -> NType {
         if node.void_token().is_some() {
             NType::Void
         } else {
-            let base_type = Self::build_basic_type(&node.ty().unwrap());
+            let base_type = self.build_basic_type(&node.ty().unwrap());
 
             if let Some(pointer_node) = node.pointer() {
                 Self::build_pointer_type(&pointer_node, base_type)
