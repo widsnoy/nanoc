@@ -78,7 +78,6 @@ pub enum SyntaxKind {
     UNARY_EXPR,
     CALL_EXPR,
     PAREN_EXPR,
-    DEREF_EXPR,
 
     INDEX_VAL,
 
@@ -129,7 +128,11 @@ impl SyntaxKind {
     pub fn is_unary_op(self) -> bool {
         matches!(
             self,
-            SyntaxKind::PLUS | SyntaxKind::MINUS | SyntaxKind::BANG | SyntaxKind::AMP
+            SyntaxKind::PLUS
+                | SyntaxKind::MINUS
+                | SyntaxKind::BANG
+                | SyntaxKind::AMP
+                | SyntaxKind::STAR
         )
     }
 

@@ -39,25 +39,27 @@ BreakStmt   := 'break' ';'
 ContinueStmt:= 'continue' ';'
 ReturnStmt  := 'return' [Expr] ';'
 
-Expr        := LOrExpr
-LOrExpr     := LAndExpr {'||' LAndExpr}
-LAndExpr    := EqExpr {'&&' EqExpr}
-EqExpr      := RelExpr {('==' | '!=') RelExpr}
-RelExpr     := AddExpr {('<' | '>' | '<=' | '>=') AddExpr}
-AddExpr     := MulExpr {('+' | '-') MulExpr}
-MulExpr     := UnaryExpr {('*' | '/' | '%') UnaryExpr}
-
-UnaryExpr   := PrimaryExpr
-             | DerefExpr
-             | UnaryOp UnaryExpr
+Expr        := BinaryExpr
+             | UnaryExpr
              | CallExpr
-DerefExpr   := '*' UnaryExpr
-UnaryOp     := '+' | '-' | '!' | '&'
+             | ParenExpr
+             | DerefExpr
+             | IndexVal
+             | Literal
+
+BinaryExpr  := Expr BinaryOp Expr
+BinaryOp    := '||' | '&&' | '==' | '!=' 
+             | '<' | '>' | '<=' | '>=' 
+             | '+' | '-' | '*' | '/' | '%'
+
+UnaryExpr   := UnaryOp Expr
+UnaryOp     := '+' | '-' | '!' | '&' | '*'
+
 CallExpr    := Name '(' [FuncRParams] ')'
-PrimaryExpr := '(' Expr ')' | LVal | Literal
+ParenExpr   := '(' Expr ')'
+IndexVal    := Name {'[' Expr ']'}
 
 LVal        := IndexVal | DerefExpr
-IndexVal    := Name {'[' Expr ']'}
 
 FuncRParams := Expr {',' Expr}
 Literal     := IntConst | FloatConst

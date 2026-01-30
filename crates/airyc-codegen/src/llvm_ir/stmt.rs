@@ -1,4 +1,5 @@
 use airyc_parser::ast::*;
+use airyc_parser::syntax_kind::SyntaxKind;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
@@ -48,13 +49,19 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let lhs_node = stmt.lhs().ok_or(CodegenError::Missing("assign lhs"))?;
 
         let lhs_ptr = match lhs_node {
-            LVal::IndexVal(index_val) => {
+            Expr::IndexVal(index_val) => {
                 let (_, ptr, _) = self.get_element_ptr_by_index_val(&index_val)?;
                 ptr
             }
-            LVal::DerefExpr(deref) => self
-                .compile_expr(deref.expr().ok_or(CodegenError::Missing("deref operand"))?)?
-                .into_pointer_value(),
+            Expr::UnaryExpr(deref)
+                if deref.op().map(|x| x.op().kind()) == Some(SyntaxKind::STAR) =>
+            {
+                self.compile_expr(deref.expr().ok_or(CodegenError::Missing("deref operand"))?)?
+                    .into_pointer_value()
+            }
+            _ => {
+                todo!();
+            }
         };
 
         self.builder

@@ -1,5 +1,6 @@
 ---
 source: crates/airyc-parser/src/test.rs
+assertion_line: 69
 expression: try_it(source)
 ---
 COMP_UNIT@0..216
@@ -206,9 +207,10 @@ COMP_UNIT@0..216
       EQ@152..153 "="
       INIT_VAL@153..161
         BINARY_EXPR@153..161
-          DEREF_EXPR@153..156
-            WHITESPACE@153..154 " "
-            STAR@154..155 "*"
+          UNARY_EXPR@153..156
+            UNARY_OP@153..155
+              WHITESPACE@153..154 " "
+              STAR@154..155 "*"
             INDEX_VAL@155..156
               NAME@155..156
                 IDENT@155..156 "p"
