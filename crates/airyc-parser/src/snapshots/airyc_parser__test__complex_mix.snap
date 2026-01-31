@@ -1,5 +1,6 @@
 ---
 source: crates/airyc-parser/src/test.rs
+assertion_line: 88
 expression: try_it(source)
 ---
 COMP_UNIT@0..164
@@ -11,7 +12,7 @@ COMP_UNIT@0..164
       WHITESPACE@10..11 " "
       INT_KW@11..14 "int"
     VAR_DEF@14..24
-      INDEX_VAL@14..18
+      ARRAY_DECL@14..18
         NAME@14..18
           WHITESPACE@14..15 " "
           IDENT@15..18 "MAX"
@@ -31,7 +32,7 @@ COMP_UNIT@0..164
         WHITESPACE@36..37 " "
         IDENT@37..42 "Point"
     VAR_DEF@42..44
-      INDEX_VAL@42..44
+      ARRAY_DECL@42..44
         NAME@42..44
           WHITESPACE@42..43 " "
           IDENT@43..44 "p"
@@ -76,7 +77,7 @@ COMP_UNIT@0..164
           WHITESPACE@85..93 "        "
           INT_KW@93..96 "int"
         VAR_DEF@96..102
-          INDEX_VAL@96..98
+          ARRAY_DECL@96..98
             NAME@96..98
               WHITESPACE@96..97 " "
               IDENT@97..98 "a"
@@ -96,7 +97,7 @@ COMP_UNIT@0..164
           POINTER@115..117
             WHITESPACE@115..116 " "
             STAR@116..117 "*"
-          INDEX_VAL@117..120
+          ARRAY_DECL@117..120
             NAME@117..120
               IDENT@117..120 "ptr"
           WHITESPACE@120..121 " "
@@ -118,7 +119,7 @@ COMP_UNIT@0..164
           WHITESPACE@140..141 " "
           INT_KW@141..144 "int"
         VAR_DEF@144..152
-          INDEX_VAL@144..146
+          ARRAY_DECL@144..146
             NAME@144..146
               WHITESPACE@144..145 " "
               IDENT@145..146 "b"

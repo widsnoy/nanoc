@@ -1,3 +1,4 @@
+//! 主要进行类型推导和常量计算, 以及基本的检查
 use airyc_parser::ast::*;
 use airyc_parser::syntax_kind::SyntaxKind;
 use airyc_parser::visitor::Visitor;
@@ -13,7 +14,7 @@ impl Visitor for Module {
         self.global_scope = self.analyzing.current_scope;
     }
 
-    fn enter_struct_def(&mut self, node: StructDef) {
+    fn leave_struct_def(&mut self, node: StructDef) {
         let range = node.syntax().text_range();
 
         // 获取 struct 名称
@@ -41,8 +42,8 @@ impl Visitor for Module {
         let mut field_names = std::collections::HashSet::new();
 
         for field_node in node.fields() {
-            // 获取字段类型
-            let field_ty = if let Some(ty_node) = field_node.ty() {
+            // 获取字段基本类型
+            let base_ty = if let Some(ty_node) = field_node.ty() {
                 let base_ty = self.build_basic_type(&ty_node);
                 if let Some(pointer_node) = field_node.pointer() {
                     Self::build_pointer_type(&pointer_node, base_ty)
@@ -53,9 +54,9 @@ impl Visitor for Module {
                 continue;
             };
 
-            // 获取字段名称
-            if let Some(index_val) = field_node.index_val()
-                && let Some(field_name_node) = index_val.name()
+            // 获取字段名称和数组维度
+            if let Some(array_decl) = field_node.array_decl()
+                && let Some(field_name_node) = array_decl.name()
             {
                 let field_name = Self::extract_name(&field_name_node);
 
@@ -67,6 +68,16 @@ impl Visitor for Module {
                     });
                     continue;
                 }
+
+                // 处理数组维度，构建完整的字段类型
+                let field_ty = if let Some(ty) =
+                    self.build_array_type(base_ty.clone(), array_decl.dimensions())
+                {
+                    ty
+                } else {
+                    // 如果数组维度解析失败，使用基本类型
+                    base_ty
+                };
 
                 fields.push(crate::module::StructField {
                     name: field_name,
@@ -92,18 +103,17 @@ impl Visitor for Module {
 
     fn leave_var_def(&mut self, def: VarDef) {
         let base_type = self.analyzing.current_base_type.clone().unwrap();
-        let is_const = base_type.is_const();
         let var_type = if let Some(pointer_node) = def.pointer() {
             Self::build_pointer_type(&pointer_node, base_type)
         } else {
             base_type
         };
 
-        let index_val_node = def.index_val().unwrap();
+        let array_decl_node = def.array_decl().unwrap();
 
         // 检查数组维度是否为编译时常量
         // FIXME: 如果是局部变量也可以不是
-        for expr in index_val_node.indices() {
+        for expr in array_decl_node.dimensions() {
             let range = expr.syntax().text_range();
             if !self.is_compile_time_constant(range) {
                 self.analyzing
@@ -114,16 +124,17 @@ impl Visitor for Module {
         }
 
         let var_type = self
-            .build_array_type(var_type, index_val_node.indices())
+            .build_array_type(var_type, array_decl_node.dimensions())
             .unwrap();
-        let index_val_node = def.index_val().unwrap();
-        let name_node = index_val_node.name().unwrap();
+        let array_decl_node = def.array_decl().unwrap();
+        let name_node = array_decl_node.name().unwrap();
         let name = Self::extract_name(&name_node);
         let var_range = name_node.ident().unwrap().text_range();
 
         let current_scope = self.analyzing.current_scope;
         let scope = self.scopes.get_mut(*current_scope).unwrap();
         let is_global = current_scope == self.global_scope;
+        let is_const = var_type.is_const();
         if scope.have_variable(&name) {
             self.analyzing.errors.push(SemanticError::VariableDefined {
                 name,
@@ -132,8 +143,9 @@ impl Visitor for Module {
             return;
         }
 
+        // 处理初始值
         if let Some(init_val_node) = def.init() {
-            // 如果是表达式，已经在 expr 处理。这里只用考虑数组初始列表
+            // 如果是表达式，已经在 expr 处理
             let init_range = init_val_node.syntax().text_range();
             if var_type.is_array() {
                 let (array_tree, is_const_list) =
@@ -141,7 +153,7 @@ impl Visitor for Module {
                         Ok(s) => s,
                         Err(e) => {
                             self.analyzing.errors.push(SemanticError::ArrayError {
-                                message: e,
+                                message: Box::new(e),
                                 range: init_range,
                             });
                             return;
@@ -152,16 +164,40 @@ impl Visitor for Module {
                         .insert(init_range, Value::Array(array_tree.clone()));
                 }
                 self.expand_array.insert(init_range, array_tree);
+            } else if var_type.is_struct() {
+                let struct_id = var_type.as_struct_id().unwrap();
+                if self.is_const_list(&init_val_node) {
+                    match self.get_struct_init_value(struct_id, init_val_node) {
+                        Ok(value) => {
+                            self.value_table.insert(init_range, value);
+                        }
+                        Err(e) => {
+                            self.analyzing.errors.push(e);
+                            return;
+                        }
+                    }
+                }
             }
-            if let Some(value) = self.value_table.get(&init_range) {
-                self.value_table.insert(var_range, value.clone());
-            } else if is_global {
+
+            // 如果是 const ，设置一下值
+            let const_value = self.value_table.get(&init_range);
+            if is_global && const_value.is_none() {
                 self.analyzing
                     .errors
                     .push(SemanticError::ConstantExprExpected { range: init_range });
                 return;
             };
+            if is_const {
+                let Some(v) = const_value else {
+                    self.analyzing
+                        .errors
+                        .push(SemanticError::ConstantExprExpected { range: init_range });
+                    return;
+                };
+                self.value_table.insert(var_range, v.clone());
+            }
         } else if is_const {
+            // 如果是 const 必须要有初始化列表:w
             self.analyzing.errors.push(SemanticError::ExpectInitialVal {
                 name,
                 range: var_range,
@@ -385,22 +421,6 @@ impl Visitor for Module {
     }
 
     fn leave_index_val(&mut self, node: IndexVal) {
-        // 如果 IndexVal 是在变量声明中（父节点是 VarDef），则跳过
-        // 因为变量定义由 leave_var_def 处理
-        if let Some(parent) = node.syntax().parent()
-            && parent.kind() == SyntaxKind::VAR_DEF
-        {
-            return;
-        }
-
-        // 如果 IndexVal 是在 struct 字段定义中（父节点是 STRUCT_FIELD），则跳过
-        // 因为 struct 字段由 enter_struct_def 处理
-        if let Some(parent) = node.syntax().parent()
-            && parent.kind() == SyntaxKind::STRUCT_FIELD
-        {
-            return;
-        }
-
         let Some(name_node) = node.name() else {
             return;
         };
@@ -422,8 +442,10 @@ impl Visitor for Module {
 
         let var = self.variables.get(*vid).unwrap();
         let index_count = node.indices().count();
-        let result_ty = Self::compute_indexed_type(&var.ty, index_count);
-        let is_const = result_ty.is_const();
+        let Some(result_ty) = Self::compute_indexed_type(&var.ty, index_count) else {
+            return;
+        };
+        let is_const = result_ty.is_const(); // FIXME: 感觉有问题，不一定保证是常量; 不过只是数组没问题
         let var_range = var.range;
         let const_zero = var.ty.const_zero();
         self.set_expr_type(node.syntax().text_range(), result_ty);
@@ -456,7 +478,7 @@ impl Visitor for Module {
                 Ok(s) => s,
                 Err(e) => {
                     self.analyzing.errors.push(SemanticError::ArrayError {
-                        message: e,
+                        message: Box::new(e),
                         range: node.syntax().text_range(),
                     });
                     return;
@@ -465,6 +487,12 @@ impl Visitor for Module {
             value = match leaf {
                 ArrayTreeValue::Expr(expr) => {
                     let Some(v) = self.value_table.get(&expr.syntax().text_range()) else {
+                        return;
+                    };
+                    v
+                }
+                ArrayTreeValue::Struct(init_val_node) => {
+                    let Some(v) = self.value_table.get(&init_val_node.syntax().text_range()) else {
                         return;
                     };
                     v
@@ -485,8 +513,11 @@ impl Visitor for Module {
         };
         let op = op_node.op().kind();
 
-        // 获取成员名称
-        let Some(name_node) = node.name() else {
+        // 获取成员 FieldAccess（可能包含数组索引）
+        let Some(field_access_node) = node.field() else {
+            return;
+        };
+        let Some(name_node) = field_access_node.name() else {
             return;
         };
         let member_name = Self::extract_name(&name_node);
@@ -541,7 +572,48 @@ impl Visitor for Module {
 
         // 查找字段并设置类型
         if let Some(field) = struct_def.field(&member_name) {
-            self.set_expr_type(range, field.ty.clone());
+            // 计算索引后的类型（如果有数组索引）
+            let indices: Vec<_> = field_access_node.indices().collect();
+            let result_ty = if indices.is_empty() {
+                field.ty.clone()
+            } else {
+                // 有数组索引，需要计算索引后的类型
+                match Self::compute_indexed_type(&field.ty, indices.len()) {
+                    Some(ty) => ty,
+                    None => {
+                        // FIXME: 索引数量超过数组维度
+                        return;
+                    }
+                }
+            };
+            self.set_expr_type(range, result_ty.clone());
+
+            // 常量处理：如果基础表达式是常量 struct，提取字段值
+            if let Some(Value::Struct(_struct_id, field_values)) =
+                self.value_table.get(&base_range).cloned()
+                && let Some(field_idx) = struct_def.field_index(&member_name)
+                && let Some(field_value) = field_values.get(field_idx as usize)
+            {
+                if indices.is_empty() {
+                    self.value_table.insert(range, field_value.clone());
+                } else if let Value::Array(tree) = field_value {
+                    // 处理数组索引
+                    let mut idx_values = Vec::new();
+                    for idx_expr in field_access_node.indices() {
+                        let idx_range = idx_expr.syntax().text_range();
+                        if let Some(Value::Int(idx)) = self.get_value(idx_range) {
+                            idx_values.push(*idx);
+                        } else {
+                            return; // 索引不是常量
+                        }
+                    }
+                    if let Ok(leaf) = tree.get_leaf(&idx_values)
+                        && let Some(v) = leaf.get_const_value(&self.value_table)
+                    {
+                        self.value_table.insert(range, v.clone());
+                    }
+                }
+            }
         } else {
             self.analyzing.errors.push(SemanticError::FieldNotFound {
                 struct_name: struct_def.name.clone(),

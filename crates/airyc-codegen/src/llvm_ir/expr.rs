@@ -1,6 +1,7 @@
 use airyc_analyzer::r#type::NType;
 use airyc_parser::ast::*;
 use airyc_parser::syntax_kind::SyntaxKind;
+use inkwell::types::BasicTypeEnum;
 use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, PointerValue};
 
 use crate::error::{CodegenError, Result};
@@ -435,7 +436,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         base_ty: &NType,
         member_name: &str,
         is_pointer_access: bool,
-    ) -> Result<(PointerValue<'ctx>, NType)> {
+    ) -> Result<(PointerValue<'ctx>, BasicTypeEnum<'ctx>, NType)> {
         // 根据访问方式提取 struct ID
         let struct_id = if is_pointer_access {
             base_ty
@@ -465,17 +466,16 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .builder
             .build_struct_gep(struct_llvm_ty, base_ptr, field_idx, member_name)
             .map_err(|_| CodegenError::LlvmBuild("struct gep failed"))?;
+        let filed_llvm_ty = self.convert_ntype_to_type(&field_ty)?;
 
-        Ok((field_ptr, field_ty))
+        Ok((field_ptr, filed_llvm_ty, field_ty))
     }
 
     fn compile_postfix_expr(&mut self, expr: PostfixExpr) -> Result<BasicValueEnum<'ctx>> {
         let (field_ptr, field_ty) = self.get_postfix_expr_ptr(expr)?;
 
-        // Load 字段值
-        let field_llvm_ty = self.convert_ntype_to_type(&field_ty)?;
         self.builder
-            .build_load(field_llvm_ty, field_ptr, "field")
+            .build_load(field_ty, field_ptr, "field")
             .map_err(|_| CodegenError::LlvmBuild("load field failed"))
     }
 
@@ -483,13 +483,22 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     fn get_postfix_expr_ptr(
         &mut self,
         postfix: PostfixExpr,
-    ) -> Result<(PointerValue<'ctx>, airyc_analyzer::r#type::NType)> {
+    ) -> Result<(PointerValue<'ctx>, BasicTypeEnum<'ctx>)> {
         let op = postfix
             .op()
             .ok_or(CodegenError::Missing("postfix operator"))?;
         let op_kind = op.op().kind();
-        let member_name = name_text(&postfix.name().ok_or(CodegenError::Missing("member name"))?)
-            .ok_or(CodegenError::Missing("identifier"))?;
+
+        // 获取字段 FieldAccess（包含字段名和可能的数组索引）
+        let field_access = postfix
+            .field()
+            .ok_or(CodegenError::Missing("field access"))?;
+        let member_name = name_text(
+            &field_access
+                .name()
+                .ok_or(CodegenError::Missing("member name"))?,
+        )
+        .ok_or(CodegenError::Missing("identifier"))?;
 
         let base_expr = postfix
             .expr()
@@ -509,7 +518,21 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         };
 
         // 获取字段指针和类型
-        self.get_struct_field_ptr(base_ptr, &base_ty, &member_name, is_pointer_access)
+        let (mut field_ptr, mut field_llvm_ty, field_ty) =
+            self.get_struct_field_ptr(base_ptr, &base_ty, &member_name, is_pointer_access)?;
+
+        // 处理数组索引（如 arr[0] 或 arr[0][1]）
+        let indices: Vec<_> = field_access
+            .indices()
+            .map(|e| self.compile_expr(e).map(|v| v.into_int_value()))
+            .collect::<Result<Vec<_>>>()?;
+
+        (field_llvm_ty, field_ptr) =
+            self.calculate_index_op(field_ty, field_llvm_ty, field_ptr, indices)?;
+
+        // eprintln!("name: {member_name}, type: {field_llvm_ty}");
+
+        Ok((field_ptr, field_llvm_ty))
     }
 
     /// 编译表达式为左值（返回指针）

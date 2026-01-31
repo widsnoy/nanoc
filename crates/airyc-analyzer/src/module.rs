@@ -75,7 +75,7 @@ pub enum SemanticError {
         range: TextRange,
     },
     ArrayError {
-        message: ArrayInitError,
+        message: Box<ArrayInitError>,
         range: TextRange,
     },
     StructDefined {
@@ -97,6 +97,12 @@ pub enum SemanticError {
     },
     NotAStructPointer {
         ty: NType,
+        range: TextRange,
+    },
+    /// Struct 初始化列表字段数量不匹配
+    StructInitFieldCountMismatch {
+        expected: usize,
+        found: usize,
         range: TextRange,
     },
 }

@@ -45,7 +45,7 @@ enum TestStatus {
     Passed,
     Failed(String),
     Timeout,
-    CompileError,
+    CompileError(String),
 }
 
 struct TestResult {
@@ -165,7 +165,9 @@ fn run_test(case: &TestCase, args: &Args, tmp_dir: &Path) -> Result<TestResult> 
     if !clang_cmd.status.success() {
         return Ok(TestResult {
             case: case.clone(),
-            status: TestStatus::CompileError,
+            status: TestStatus::CompileError(
+                String::from_utf8_lossy(&clang_cmd.stderr).to_string(),
+            ),
             duration: start.elapsed(),
         });
     }
@@ -202,7 +204,9 @@ fn run_test(case: &TestCase, args: &Args, tmp_dir: &Path) -> Result<TestResult> 
     if !compile_cmd.status.success() {
         return Ok(TestResult {
             case: case.clone(),
-            status: TestStatus::CompileError,
+            status: TestStatus::CompileError(
+                String::from_utf8_lossy(&compile_cmd.stderr).to_string(),
+            ),
             duration: start.elapsed(),
         });
     }
@@ -211,7 +215,7 @@ fn run_test(case: &TestCase, args: &Args, tmp_dir: &Path) -> Result<TestResult> 
     if !my_exec_path.exists() {
         return Ok(TestResult {
             case: case.clone(),
-            status: TestStatus::CompileError,
+            status: TestStatus::CompileError(format!("{my_exec_path:?} not found")),
             duration: start.elapsed(),
         });
     }
@@ -265,8 +269,8 @@ fn print_result(result: &TestResult, verbose: bool) {
         TestStatus::Timeout => {
             format!("\x1b[33m⏱\x1b[0m {} - Timeout", result.case.name)
         }
-        TestStatus::CompileError => {
-            format!("\x1b[31m✗\x1b[0m {} - Compile error", result.case.name)
+        TestStatus::CompileError(e) => {
+            format!("\x1b[31m✗\x1b[0m {} - Compile error: {e}", result.case.name)
         }
         TestStatus::Failed(diff) => {
             if verbose {

@@ -11,13 +11,13 @@ COMP_UNIT@0..18
         WHITESPACE@6..7 " "
         IDENT@7..12 "Point"
     VAR_DEF@12..14
-      INDEX_VAL@12..14
+      ARRAY_DECL@12..14
         NAME@12..14
           WHITESPACE@12..13 " "
           IDENT@13..14 "q"
     COMMA@14..15 ","
     VAR_DEF@15..17
-      INDEX_VAL@15..17
+      ARRAY_DECL@15..17
         NAME@15..17
           WHITESPACE@15..16 " "
           IDENT@16..17 "r"

@@ -1,5 +1,6 @@
 ---
 source: crates/airyc-parser/src/test.rs
+assertion_line: 30
 expression: try_it(source)
 ---
 COMP_UNIT@0..162
@@ -11,7 +12,7 @@ COMP_UNIT@0..162
       WHITESPACE@10..11 " "
       INT_KW@11..14 "int"
     VAR_DEF@14..20
-      INDEX_VAL@14..16
+      ARRAY_DECL@14..16
         NAME@14..16
           WHITESPACE@14..15 " "
           IDENT@15..16 "A"
@@ -30,7 +31,7 @@ COMP_UNIT@0..162
       WHITESPACE@31..32 " "
       FLOAT_KW@32..37 "float"
     VAR_DEF@37..45
-      INDEX_VAL@37..39
+      ARRAY_DECL@37..39
         NAME@37..39
           WHITESPACE@37..38 " "
           IDENT@38..39 "B"
@@ -42,7 +43,7 @@ COMP_UNIT@0..162
           FLOAT_LITERAL@42..45 "2.0"
     COMMA@45..46 ","
     VAR_DEF@46..54
-      INDEX_VAL@46..48
+      ARRAY_DECL@46..48
         NAME@46..48
           WHITESPACE@46..47 " "
           IDENT@47..48 "C"
@@ -59,7 +60,7 @@ COMP_UNIT@0..162
     TYPE@60..63
       INT_KW@60..63 "int"
     VAR_DEF@63..65
-      INDEX_VAL@63..65
+      ARRAY_DECL@63..65
         NAME@63..65
           WHITESPACE@63..64 " "
           IDENT@64..65 "a"
@@ -70,7 +71,7 @@ COMP_UNIT@0..162
     TYPE@71..76
       FLOAT_KW@71..76 "float"
     VAR_DEF@76..84
-      INDEX_VAL@76..78
+      ARRAY_DECL@76..78
         NAME@76..78
           WHITESPACE@76..77 " "
           IDENT@77..78 "b"
@@ -90,7 +91,7 @@ COMP_UNIT@0..162
         WHITESPACE@96..97 " "
         IDENT@97..105 "MyStruct"
     VAR_DEF@105..107
-      INDEX_VAL@105..107
+      ARRAY_DECL@105..107
         NAME@105..107
           WHITESPACE@105..106 " "
           IDENT@106..107 "s"
@@ -104,7 +105,7 @@ COMP_UNIT@0..162
       POINTER@116..118
         WHITESPACE@116..117 " "
         STAR@117..118 "*"
-      INDEX_VAL@118..119
+      ARRAY_DECL@118..119
         NAME@118..119
           IDENT@118..119 "p"
     SEMI@119..120 ";"
@@ -114,7 +115,7 @@ COMP_UNIT@0..162
     TYPE@125..128
       INT_KW@125..128 "int"
     VAR_DEF@128..136
-      INDEX_VAL@128..136
+      ARRAY_DECL@128..136
         NAME@128..132
           WHITESPACE@128..129 " "
           IDENT@129..132 "arr"
@@ -129,7 +130,7 @@ COMP_UNIT@0..162
     TYPE@142..145
       INT_KW@142..145 "int"
     VAR_DEF@145..156
-      INDEX_VAL@145..156
+      ARRAY_DECL@145..156
         NAME@145..150
           WHITESPACE@145..146 " "
           IDENT@146..150 "arr2"
