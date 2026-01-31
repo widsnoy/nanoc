@@ -22,6 +22,11 @@ impl NType {
         self.pointer_inner().is_some()
     }
 
+    /// 检查是否为结构体类型
+    pub fn is_struct(&self) -> bool {
+        self.as_struct_id().is_some()
+    }
+
     /// 提取指针类型的内部类型，处理 Pointer(...) 和 Const(Pointer(...)) 两种情况
     pub fn pointer_inner(&self) -> Option<&NType> {
         match self {
@@ -38,7 +43,11 @@ impl NType {
     }
 
     pub fn is_const(&self) -> bool {
-        matches!(self, Self::Const(_))
+        match self {
+            Self::Array(inner, _) => inner.is_const(),
+            Self::Const(_) => true,
+            _ => false,
+        }
     }
 
     /// 去掉 Const 包装，返回内部类型

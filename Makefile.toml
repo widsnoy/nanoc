@@ -9,11 +9,11 @@ dependencies = ["build-compiler", "build-runtime"]
 
 [tasks.build-compiler]
 command = "cargo"
-args = ["build", "--release", "--bin", "airyc-compiler"]
+args = ["build", "--bin", "airyc-compiler"]
 
 [tasks.build-runtime]
 command = "cargo"
-args = ["build", "--release", "-p", "airyc-runtime"]
+args = ["build", "-p", "airyc-runtime"]
 
 [tasks.test]
 description = "Run all integration tests with coverage"
@@ -21,16 +21,15 @@ dependencies = ["build"]
 command = "cargo"
 args = [
     "run",
-    "--release",
     "-p",
     "airyc-test",
     "--",
     "--test-dir",
     "test/compiler-dev-test-cases/testcases",
     "--compiler",
-    "./target/release/airyc-compiler",
+    "./target/debug/airyc-compiler",
     "--runtime",
-    "./target/release/libairyc_runtime.a",
+    "./target/debug/libairyc_runtime.a",
     "--timeout",
     "10",
 ]
@@ -41,7 +40,6 @@ dependencies = ["build"]
 command = "cargo"
 args = [
     "run",
-    "--release",
     "-p",
     "airyc-test",
     "--",
@@ -50,9 +48,9 @@ args = [
     "--exclude",
     "perf",
     "--compiler",
-    "./target/release/airyc-compiler",
+    "./target/debug/airyc-compiler",
     "--runtime",
-    "./target/release/libairyc_runtime.a",
+    "./target/debug/libairyc_runtime.a",
 ]
 
 [tasks.test-pointer]
@@ -61,16 +59,15 @@ dependencies = ["build"]
 command = "cargo"
 args = [
     "run",
-    "--release",
     "-p",
     "airyc-test",
     "--",
     "--test-dir",
     "test/pointer_tests",
     "--compiler",
-    "./target/release/airyc-compiler",
+    "./target/debug/airyc-compiler",
     "--runtime",
-    "./target/release/libairyc_runtime.a",
+    "./target/debug/libairyc_runtime.a",
     "--timeout",
     "10",
     "--verbose",
@@ -82,16 +79,15 @@ dependencies = ["build"]
 command = "cargo"
 args = [
     "run",
-    "--release",
     "-p",
     "airyc-test",
     "--",
     "--test-dir",
     "test/struct",
     "--compiler",
-    "./target/release/airyc-compiler",
+    "./target/debug/airyc-compiler",
     "--runtime",
-    "./target/release/libairyc_runtime.a",
+    "./target/debug/libairyc_runtime.a",
     "--timeout",
     "10",
     "--verbose",

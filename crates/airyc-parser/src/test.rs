@@ -230,8 +230,8 @@ fn test_struct_ast_nodes() {
     // 验证第一个字段
     let field1 = &fields[0];
     assert!(field1.ty().is_some());
-    let field1_index_val = field1.index_val().expect("字段应该有 index_val");
-    let field1_name = field1_index_val.name().expect("index_val 应该有名称");
+    let field1_array_decl = field1.array_decl().expect("字段应该有 array_decl");
+    let field1_name = field1_array_decl.name().expect("array_decl 应该有名称");
     let field1_text = field1_name
         .ident()
         .expect("应该有标识符")
@@ -241,8 +241,8 @@ fn test_struct_ast_nodes() {
 
     // 验证第二个字段
     let field2 = &fields[1];
-    let field2_index_val = field2.index_val().expect("字段应该有 index_val");
-    let field2_name = field2_index_val.name().expect("index_val 应该有名称");
+    let field2_array_decl = field2.array_decl().expect("字段应该有 array_decl");
+    let field2_name = field2_array_decl.name().expect("array_decl 应该有名称");
     let field2_text = field2_name
         .ident()
         .expect("应该有标识符")

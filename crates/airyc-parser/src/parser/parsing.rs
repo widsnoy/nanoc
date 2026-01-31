@@ -45,7 +45,7 @@ impl Parser<'_> {
         self.start_node(SyntaxKind::STRUCT_FIELD);
         self.parse_type();
         self.parse_pointers();
-        self.parse_index_val();
+        self.parse_array_decl();
         self.finish_node();
     }
 
@@ -105,7 +105,7 @@ impl Parser<'_> {
 
             self.start_node_at(cp_vardef, SyntaxKind::VAR_DEF);
 
-            self.parse_index_val();
+            self.parse_array_decl();
 
             if self.at(SyntaxKind::EQ) {
                 self.bump();
@@ -150,7 +150,7 @@ impl Parser<'_> {
     fn parse_var_def(&mut self) {
         self.start_node(SyntaxKind::VAR_DEF);
         self.parse_pointers();
-        self.parse_index_val();
+        self.parse_array_decl();
         if self.at(SyntaxKind::EQ) {
             self.bump();
             self.parse_init_val();
@@ -257,7 +257,19 @@ impl Parser<'_> {
         self.finish_node();
     }
 
-    /// 解析 IndexVal: Name {'[' Expr ']'}
+    /// 解析 ArrayDecl: Name {'[' Expr ']'}（用于声明）
+    pub(super) fn parse_array_decl(&mut self) {
+        self.start_node(SyntaxKind::ARRAY_DECL);
+        self.parse_name();
+        while self.at(SyntaxKind::L_BRACK) {
+            self.bump();
+            self.parse_exp();
+            self.expect(SyntaxKind::R_BRACK);
+        }
+        self.finish_node();
+    }
+
+    /// 解析 IndexVal: Name {'[' Expr ']'}（用于表达式）
     pub(super) fn parse_index_val(&mut self) {
         self.start_node(SyntaxKind::INDEX_VAL);
         self.parse_name();

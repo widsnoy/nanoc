@@ -1,5 +1,6 @@
 ---
 source: crates/airyc-parser/src/test.rs
+assertion_line: 185
 expression: try_it(source)
 ---
 COMP_UNIT@0..82
@@ -11,7 +12,7 @@ COMP_UNIT@0..82
       WHITESPACE@10..11 " "
       INT_KW@11..14 "int"
     VAR_DEF@14..31
-      INDEX_VAL@14..19
+      ARRAY_DECL@14..19
         NAME@14..16
           WHITESPACE@14..15 " "
           IDENT@15..16 "a"
@@ -47,7 +48,7 @@ COMP_UNIT@0..82
       WHITESPACE@42..43 " "
       INT_KW@43..46 "int"
     VAR_DEF@46..76
-      INDEX_VAL@46..54
+      ARRAY_DECL@46..54
         NAME@46..48
           WHITESPACE@46..47 " "
           IDENT@47..48 "a"
