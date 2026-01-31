@@ -125,7 +125,7 @@ impl VarDecl {
 ast_node!(
     VarDef ~ VAR_DEF {
         pointer: node(Pointer),
-        index_val: node(IndexVal),
+        array_decl: node(ArrayDecl),
         init: node(InitVal),
     }
 );
@@ -154,7 +154,7 @@ ast_node!(
     StructField ~ STRUCT_FIELD {
         ty: node(Type),
         pointer: node(Pointer),
-        index_val: node(IndexVal),
+        array_decl: node(ArrayDecl),
     }
 );
 
@@ -285,7 +285,7 @@ ast_node!(
     PostfixExpr ~ POSTFIX_EXPR {
         expr: node(Expr),
         op: node(PostfixOp),
-        name: node(Name),
+        field: node(FieldAccess),
     }
 );
 
@@ -328,9 +328,25 @@ ast_node!(
     }
 );
 
-// 作为右值或声明
+// 声明中的数组维度
+ast_node!(
+    ArrayDecl ~ ARRAY_DECL {
+        name: node(Name),
+        dimensions: nodes(Expr),
+    }
+);
+
+// 表达式中的变量访问
 ast_node!(
     IndexVal ~ INDEX_VAL {
+        name: node(Name),
+        indices: nodes(Expr),
+    }
+);
+
+// PostfixExpr 中的字段访问
+ast_node!(
+    FieldAccess ~ FIELD_ACCESS {
         name: node(Name),
         indices: nodes(Expr),
     }

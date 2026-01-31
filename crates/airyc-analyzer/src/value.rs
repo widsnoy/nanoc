@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use crate::{array::ArrayTree, module::StructID};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -7,7 +5,8 @@ pub enum Value {
     Int(i32),
     Float(f32),
     Array(ArrayTree),
-    Struct(BTreeMap<String, Value>),
+    /// Struct 初始化值，按字段顺序存储
+    Struct(StructID, Vec<Value>),
     StructZero(StructID),
     Pointee(String, i32),
 }

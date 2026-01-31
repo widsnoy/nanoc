@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use airyc_analyzer::array::ArrayTree;
 use airyc_analyzer::r#type::NType;
 use airyc_analyzer::value::Value;
-use airyc_parser::ast::{AstNode, IndexVal, Name, SyntaxToken};
+use airyc_parser::ast::{ArrayDecl, AstNode, IndexVal, Name, SyntaxToken};
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, FloatValue, FunctionValue, IntValue, PointerValue};
@@ -12,9 +12,9 @@ use inkwell::{AddressSpace, FloatPredicate, IntPredicate};
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::{LoopContext, Program, Symbol, SymbolTable};
 
-/// Extract ident token from variable definition
-pub(crate) fn get_ident_node(index_val: &IndexVal) -> Option<SyntaxToken> {
-    index_val.name().and_then(|n| n.ident())
+/// Extract ident token from array declaration
+pub(crate) fn get_ident_node(array_decl: &ArrayDecl) -> Option<SyntaxToken> {
+    array_decl.name().and_then(|n| n.ident())
 }
 
 /// 提取名称文本
@@ -212,19 +212,29 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .symbols
             .lookup_var(&name)
             .ok_or_else(|| CodegenError::UndefinedVar(name.clone()))?;
-        let (mut ptr, mut cur_ntype) = (symbol.ptr, symbol.ty.clone());
+        let (mut ptr, cur_ntype) = (symbol.ptr, symbol.ty.clone());
         let mut cur_llvm_type = self.convert_ntype_to_type(&cur_ntype)?;
 
-        let user_indices: Vec<_> = index_val
+        let indices: Vec<_> = index_val
             .indices()
             .map(|e| self.compile_expr(e).map(|v| v.into_int_value()))
             .collect::<Result<Vec<_>>>()?;
 
-        if user_indices.is_empty() {
+        if indices.is_empty() {
             return Ok((cur_llvm_type, ptr, name));
         }
+        (cur_llvm_type, ptr) = self.calculate_index_op(cur_ntype, cur_llvm_type, ptr, indices)?;
+        Ok((cur_llvm_type, ptr, name))
+    }
 
-        let mut idx_iter = user_indices.into_iter().peekable();
+    pub(crate) fn calculate_index_op(
+        &self,
+        mut cur_ntype: NType,
+        mut cur_llvm_type: BasicTypeEnum<'ctx>,
+        mut ptr: PointerValue<'ctx>,
+        indices: Vec<IntValue<'ctx>>,
+    ) -> Result<(BasicTypeEnum<'ctx>, PointerValue<'ctx>)> {
+        let mut idx_iter = indices.into_iter().peekable();
         let ptr_ty = self.context.ptr_type(AddressSpace::default());
 
         while idx_iter.peek().is_some() {
@@ -289,8 +299,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 }
             }
         }
-
-        Ok((cur_llvm_type, ptr, name))
+        Ok((cur_llvm_type, ptr))
     }
 
     /// Get constant value from analyzer
@@ -365,15 +374,22 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             Value::Int(x) => Ok(self.context.i32_type().const_int(*x as u64, false).into()),
             Value::Float(x) => Ok(self.context.f32_type().const_float(*x as f64).into()),
             Value::Array(tree) => self.convert_array_tree_to_global_init(tree, ty.unwrap()),
-            Value::Struct(fields) => {
+            Value::Struct(struct_id, fields) => {
                 // 生成 struct 常量
+                // 获取 struct 的 LLVM 类型
+                let struct_ntype = NType::Struct(*struct_id);
                 let struct_ty = ty
-                    .ok_or(CodegenError::NotImplemented("struct constant without type"))?
-                    .into_struct_type();
+                    .map(|t| t.into_struct_type())
+                    .or_else(|| {
+                        self.convert_ntype_to_type(&struct_ntype)
+                            .ok()
+                            .map(|t| t.into_struct_type())
+                    })
+                    .ok_or(CodegenError::NotImplemented("struct constant without type"))?;
 
                 // 按字段顺序生成常量值
                 let field_values: Vec<_> = fields
-                    .values()
+                    .iter()
                     .enumerate()
                     .map(|(idx, v)| {
                         let field_ty = struct_ty.get_field_type_at_index(idx as u32).unwrap();

@@ -71,7 +71,9 @@ def_visitor! {
     CallExpr, CALL_EXPR, enter_call_expr, leave_call_expr;
     FuncRParams, FUNC_R_PARAMS, enter_func_r_params, leave_func_r_params;
     ParenExpr, PAREN_EXPR, enter_paren_expr, leave_paren_expr;
+    ArrayDecl, ARRAY_DECL, enter_array_decl, leave_array_decl;
     IndexVal, INDEX_VAL, enter_index_val, leave_index_val;
+    FieldAccess, FIELD_ACCESS, enter_field_access, leave_field_access;
     Literal, LITERAL, enter_literal, leave_literal;
     Type, TYPE, enter_type, leave_type;
     Name, NAME, enter_name, leave_name;

@@ -15,7 +15,7 @@ COMP_UNIT@0..29
       TYPE@14..18
         WHITESPACE@14..15 " "
         INT_KW@15..18 "int"
-      INDEX_VAL@18..20
+      ARRAY_DECL@18..20
         NAME@18..20
           WHITESPACE@18..19 " "
           IDENT@19..20 "x"
@@ -24,7 +24,7 @@ COMP_UNIT@0..29
       TYPE@21..25
         WHITESPACE@21..22 " "
         INT_KW@22..25 "int"
-      INDEX_VAL@25..27
+      ARRAY_DECL@25..27
         NAME@25..27
           WHITESPACE@25..26 " "
           IDENT@26..27 "y"

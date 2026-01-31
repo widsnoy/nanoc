@@ -11,7 +11,7 @@ COMP_UNIT@0..15
         WHITESPACE@6..7 " "
         IDENT@7..12 "Point"
     VAR_DEF@12..14
-      INDEX_VAL@12..14
+      ARRAY_DECL@12..14
         NAME@12..14
           WHITESPACE@12..13 " "
           IDENT@13..14 "p"

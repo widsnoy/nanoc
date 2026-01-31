@@ -1,3 +1,4 @@
+//! array 的初始化
 use std::collections::HashMap;
 
 use airyc_parser::{
@@ -6,11 +7,16 @@ use airyc_parser::{
 };
 use text_size::TextRange;
 
-use crate::{module::Module, r#type::NType, value::Value};
+use crate::{
+    module::{Module, SemanticError},
+    r#type::NType,
+    value::Value,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ArrayTreeValue {
     Expr(Expr),
+    Struct(InitVal),
     Empty,
 }
 
@@ -21,6 +27,7 @@ impl ArrayTreeValue {
     ) -> Option<&'a Value> {
         match self {
             Self::Expr(node) => value_table.get(&node.syntax().text_range()),
+            Self::Struct(node) => value_table.get(&node.syntax().text_range()),
             Self::Empty => None,
         }
     }
@@ -70,6 +77,7 @@ impl std::fmt::Display for ArrayTree {
                 ArrayTree::Val(v) => {
                     let text = match v {
                         ArrayTreeValue::Expr(e) => e.syntax().text(),
+                        ArrayTreeValue::Struct(e) => e.syntax().text(),
                         ArrayTreeValue::Empty => {
                             return writeln!(f, "{}{}Empty", prefix, connector);
                         }
@@ -128,13 +136,16 @@ pub enum ArrayInitError {
     IndexOutOfBound,
     /// 索引和类型不匹配
     MisMatchIndexAndType,
+    /// 初始化 struct 出错
+    InitialStructValue(SemanticError),
 }
 
 impl ArrayTree {
     pub fn new(
         m: &Module,
         ty: &NType,
-        init_val: impl ArrayTreeTrait,
+        init_val: InitVal,
+        struct_init_value: Option<&mut HashMap<TextRange, Value>>,
     ) -> Result<(ArrayTree, bool), ArrayInitError> {
         let Some(first_child) = init_val.first_child() else {
             return Ok((ArrayTree::Val(ArrayTreeValue::Empty), true));
@@ -149,8 +160,9 @@ impl ArrayTree {
     fn build(
         m: &Module,
         ty: &NType,
-        cursor: &mut Option<impl ArrayTreeTrait>,
+        cursor: &mut Option<InitVal>,
         is_const: &mut bool,
+        struct_init_value: Option<&mut HashMap<TextRange, Value>>,
     ) -> Result<ArrayTree, ArrayInitError> {
         match ty {
             NType::Int | NType::Float | NType::Pointer(_) => {
@@ -162,6 +174,13 @@ impl ArrayTree {
                     return Ok(ArrayTree::Val(expr));
                 }
                 Err(ArrayInitError::AssignArrayToNumber)
+            }
+            NType::Struct(_) => {
+                let Some(u) = cursor else {
+                    return Err(ArrayInitError::MisMatchIndexAndType);
+                };
+
+                Ok(ArrayTree::Val(ArrayTreeValue::Struct(u.clone())))
             }
             NType::Array(inner, count) => {
                 let mut children_vec = Vec::with_capacity(*count as usize);
@@ -191,7 +210,7 @@ impl ArrayTree {
                 Ok(ArrayTree::Children(children_vec))
             }
             NType::Const(inner) => Self::build(m, inner, cursor, is_const),
-            _ => unreachable!(),
+            NType::Void => unreachable!(),
         }
     }
 
@@ -222,7 +241,7 @@ impl ArrayTree {
 #[cfg(test)]
 mod test {
     use airyc_parser::{
-        ast::{AstNode, IndexVal, InitVal, SyntaxNode, Type},
+        ast::{ArrayDecl, AstNode, InitVal, SyntaxNode, Type},
         parser::Parser,
         syntax_kind::SyntaxKind,
         visitor::Visitor as _,
@@ -246,10 +265,10 @@ mod test {
         res.unwrap()
     }
 
-    fn get_index_val_node(root: &SyntaxNode) -> SyntaxNode {
+    fn get_array_decl_node(root: &SyntaxNode) -> SyntaxNode {
         let res = root
             .descendants()
-            .find(|x| x.kind() == SyntaxKind::INDEX_VAL);
+            .find(|x| x.kind() == SyntaxKind::ARRAY_DECL);
         res.unwrap()
     }
 
@@ -265,7 +284,9 @@ mod test {
         let ty = module
             .build_array_type(
                 basic_ty,
-                IndexVal::cast(get_index_val_node(&root)).unwrap().indices(),
+                ArrayDecl::cast(get_array_decl_node(&root))
+                    .unwrap()
+                    .dimensions(),
             )
             .unwrap();
         dbg!(&ty);

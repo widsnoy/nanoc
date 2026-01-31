@@ -94,7 +94,8 @@ impl Parser<'_> {
         while self.peek().is_postfix_op() {
             self.start_node_at(cp, SyntaxKind::POSTFIX_EXPR);
             self.parse_postfix_op();
-            self.parse_name();
+            // 解析字段名和可能的数组索引，如 arr[0] 或 arr[0][1]
+            self.parse_field_access();
             self.finish_node();
         }
     }
@@ -102,6 +103,18 @@ impl Parser<'_> {
     fn parse_postfix_op(&mut self) {
         self.start_node(SyntaxKind::POSTFIX_OP);
         self.bump(); // . or ->
+        self.finish_node();
+    }
+
+    /// 解析 FieldAccess: Name {'[' Expr ']'}（用于 PostfixExpr 字段访问）
+    fn parse_field_access(&mut self) {
+        self.start_node(SyntaxKind::FIELD_ACCESS);
+        self.parse_name();
+        while self.at(SyntaxKind::L_BRACK) {
+            self.bump();
+            self.parse_exp();
+            self.expect(SyntaxKind::R_BRACK);
+        }
         self.finish_node();
     }
 

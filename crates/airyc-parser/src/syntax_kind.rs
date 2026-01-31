@@ -83,7 +83,9 @@ pub enum SyntaxKind {
     CALL_EXPR,
     PAREN_EXPR,
 
+    ARRAY_DECL,
     INDEX_VAL,
+    FIELD_ACCESS,
 
     BLOCK,
     IF_STMT,
