@@ -200,9 +200,9 @@ impl From<SyntaxKind> for rowan::SyntaxKind {
 
 /// Airyc 语言定义
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum NanocLanguage {}
+pub enum AirycLanguage {}
 
-impl rowan::Language for NanocLanguage {
+impl rowan::Language for AirycLanguage {
     type Kind = SyntaxKind;
 
     fn kind_from_raw(raw: rowan::SyntaxKind) -> Self::Kind {

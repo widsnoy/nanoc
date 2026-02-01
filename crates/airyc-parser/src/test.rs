@@ -1,8 +1,8 @@
 use rowan::SyntaxNode;
 
-use crate::{parser::Parser, syntax_kind::NanocLanguage};
+use crate::{parser::Parser, syntax_kind::AirycLanguage};
 
-fn try_it(source: &str) -> SyntaxNode<NanocLanguage> {
+fn try_it(source: &str) -> SyntaxNode<AirycLanguage> {
     let parser = Parser::new(source);
     let (tree, errors) = parser.parse();
 
