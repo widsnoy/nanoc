@@ -181,6 +181,13 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .collect::<Vec<_>>();
                         int_type.const_array(&values).into()
                     }
+                    BasicTypeEnum::StructType(struct_ty) => {
+                        let values = value_vec
+                            .into_iter()
+                            .map(|x| x.into_struct_value())
+                            .collect::<Vec<_>>();
+                        struct_ty.const_array(&values).into()
+                    }
                     _ => {
                         return Err(CodegenError::Unsupported(
                             "unsupported array element type".into(),
@@ -192,6 +199,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 airyc_analyzer::array::ArrayTreeValue::Expr(expr) => {
                     self.get_const_var_value(expr, None)
                 }
+                airyc_analyzer::array::ArrayTreeValue::Struct {
+                    init_list: list, ..
+                } => self.get_const_var_value(list, None),
                 airyc_analyzer::array::ArrayTreeValue::Empty => Ok(ty.const_zero()),
             },
         }
@@ -306,12 +316,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     /// 如果是 Array，保证 ty.is_some() == true
     pub(crate) fn get_const_var_value(
         &self,
-        expr: &impl AstNode,
+        ast_node: &impl AstNode,
         ty: Option<BasicTypeEnum<'ctx>>,
     ) -> Result<BasicValueEnum<'ctx>> {
         let value = self
             .analyzer
-            .get_value(expr.syntax().text_range())
+            .get_value(ast_node.syntax().text_range())
             .ok_or(CodegenError::Missing("constant value"))?;
         self.convert_value(value, ty)
     }

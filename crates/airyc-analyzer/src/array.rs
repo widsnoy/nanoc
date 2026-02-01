@@ -8,7 +8,7 @@ use airyc_parser::{
 use text_size::TextRange;
 
 use crate::{
-    module::{Module, SemanticError},
+    module::{Module, SemanticError, StructID},
     r#type::NType,
     value::Value,
 };
@@ -16,7 +16,10 @@ use crate::{
 #[derive(Clone, Debug, PartialEq)]
 pub enum ArrayTreeValue {
     Expr(Expr),
-    Struct(InitVal),
+    Struct {
+        struct_id: StructID,
+        init_list: InitVal,
+    },
     Empty,
 }
 
@@ -27,7 +30,9 @@ impl ArrayTreeValue {
     ) -> Option<&'a Value> {
         match self {
             Self::Expr(node) => value_table.get(&node.syntax().text_range()),
-            Self::Struct(node) => value_table.get(&node.syntax().text_range()),
+            Self::Struct {
+                init_list: node, ..
+            } => value_table.get(&node.syntax().text_range()),
             Self::Empty => None,
         }
     }
@@ -77,7 +82,7 @@ impl std::fmt::Display for ArrayTree {
                 ArrayTree::Val(v) => {
                     let text = match v {
                         ArrayTreeValue::Expr(e) => e.syntax().text(),
-                        ArrayTreeValue::Struct(e) => e.syntax().text(),
+                        ArrayTreeValue::Struct { init_list: e, .. } => e.syntax().text(),
                         ArrayTreeValue::Empty => {
                             return writeln!(f, "{}{}Empty", prefix, connector);
                         }
@@ -141,28 +146,28 @@ pub enum ArrayInitError {
 }
 
 impl ArrayTree {
+    /// 由调用方处理常量表
     pub fn new(
-        m: &Module,
+        m: &mut Module,
         ty: &NType,
         init_val: InitVal,
-        struct_init_value: Option<&mut HashMap<TextRange, Value>>,
     ) -> Result<(ArrayTree, bool), ArrayInitError> {
         let Some(first_child) = init_val.first_child() else {
             return Ok((ArrayTree::Val(ArrayTreeValue::Empty), true));
         };
         let mut is_const = true;
+
         match Self::build(m, ty, &mut Some(first_child), &mut is_const) {
-            Ok(s) => Ok((s, is_const)),
+            Ok(array_tree) => Ok((array_tree, is_const)),
             Err(e) => Err(e),
         }
     }
 
     fn build(
-        m: &Module,
+        m: &mut Module,
         ty: &NType,
         cursor: &mut Option<InitVal>,
         is_const: &mut bool,
-        struct_init_value: Option<&mut HashMap<TextRange, Value>>,
     ) -> Result<ArrayTree, ArrayInitError> {
         match ty {
             NType::Int | NType::Float | NType::Pointer(_) => {
@@ -175,12 +180,22 @@ impl ArrayTree {
                 }
                 Err(ArrayInitError::AssignArrayToNumber)
             }
-            NType::Struct(_) => {
+            NType::Struct(struct_id) => {
                 let Some(u) = cursor else {
                     return Err(ArrayInitError::MisMatchIndexAndType);
                 };
 
-                Ok(ArrayTree::Val(ArrayTreeValue::Struct(u.clone())))
+                let v = m
+                    .process_struct_init_value(*struct_id, u.clone())
+                    .map_err(ArrayInitError::InitialStructValue)?;
+                *is_const &= v.is_some();
+                if let Some(v) = v {
+                    m.value_table.insert(u.syntax().text_range(), v);
+                }
+                Ok(ArrayTree::Val(ArrayTreeValue::Struct {
+                    init_list: u.clone(),
+                    struct_id: *struct_id,
+                }))
             }
             NType::Array(inner, count) => {
                 let mut children_vec = Vec::with_capacity(*count as usize);
@@ -189,11 +204,17 @@ impl ArrayTree {
                         break;
                     };
                     if u.is_subtree() {
-                        let mut first_child = u.first_child();
-                        // 可能有多余元素，直接忽略
-                        let subtree = Self::build(m, inner, &mut first_child, is_const)?;
+                        let sibling = u.next_sibling();
+                        let subtree = if inner.is_array() {
+                            let mut first_child = u.first_child();
+                            // 可能有多余元素，直接忽略
+                            Self::build(m, inner, &mut first_child, is_const)?
+                        } else {
+                            // 否则应该是 Struct
+                            Self::build(m, inner, cursor, is_const)?
+                        };
                         children_vec.push(subtree);
-                        *cursor = u.next_sibling();
+                        *cursor = sibling;
                     } else if u.try_expr().is_some() {
                         let subtree = Self::build(m, inner, cursor, is_const)?;
                         children_vec.push(subtree);
@@ -290,7 +311,7 @@ mod test {
             )
             .unwrap();
         dbg!(&ty);
-        let (array_tree, _) = ArrayTree::new(&module, &ty, init_val_node)?;
+        let (array_tree, _) = ArrayTree::new(&mut module, &ty, init_val_node)?;
         Ok((array_tree.to_string(), module, array_tree))
     }
 

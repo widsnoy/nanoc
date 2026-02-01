@@ -2,7 +2,7 @@ use airyc_parser::ast::{AstNode as _, Expr, FuncType, InitVal, Name, Pointer, Ty
 
 use crate::{
     array::ArrayTree,
-    module::{Module, SemanticError, StructID},
+    module::{Module, SemanticError, StructField, StructID},
     r#type::NType,
     value::Value,
 };
@@ -91,12 +91,14 @@ impl Module {
     }
 
     /// 解析 struct 初始化列表，返回 Value::Struct
-    /// 期望得到常量初始化列表
-    pub(crate) fn get_struct_init_value(
-        &self,
+    /// 如果非常量初始化列表，返回 None
+    /// 一定要遍历所有子树，目的是初始化 ArrayTree
+    /// 由调用方处理常量表
+    pub(crate) fn process_struct_init_value(
+        &mut self,
         struct_id: StructID,
         init_val_node: InitVal,
-    ) -> Result<Value, SemanticError> {
+    ) -> Result<Option<Value>, SemanticError> {
         let range = init_val_node.syntax().text_range();
         // 获取 struct 定义
         let struct_def = self
@@ -104,8 +106,7 @@ impl Module {
             .ok_or(SemanticError::StructUndefined {
                 name: format!("{:?}", struct_id),
                 range,
-            })?
-            .clone();
+            })?;
 
         // 否则是初始化列表 { init1, init2, ... }
         let inits: Vec<_> = init_val_node.inits().collect();
@@ -121,21 +122,33 @@ impl Module {
 
         // 按顺序解析每个字段的初始化值
         let mut field_values = Vec::with_capacity(struct_def.fields.len());
-        for (init, field) in inits.into_iter().zip(struct_def.fields.iter()) {
-            let value = self.get_field_init_value(&field.ty, init)?;
-            field_values.push(value);
+        let fields: *const [StructField] = &struct_def.fields[..];
+        let mut all_const = true;
+        for (init, field) in inits.into_iter().zip(unsafe { &*fields }.iter()) {
+            let value = self.process_field_init_value(&field.ty, init)?;
+            if let Some(v) = value
+                && all_const
+            {
+                field_values.push(v);
+            } else {
+                all_const = false;
+            }
         }
 
-        Ok(Value::Struct(struct_id, field_values))
+        if !all_const {
+            Ok(None)
+        } else {
+            let value = Value::Struct(struct_id, field_values);
+            Ok(Some(value))
+        }
     }
 
-    /// 解析单个字段的初始化值，支持标量、数组和嵌套 struct
     /// 根据字段类型决定如何解析初始化值
-    fn get_field_init_value(
-        &self,
+    fn process_field_init_value(
+        &mut self,
         field_ty: &NType,
         init_val_node: InitVal,
-    ) -> Result<Value, SemanticError> {
+    ) -> Result<Option<Value>, SemanticError> {
         let range = init_val_node.syntax().text_range();
         // 去掉 Const 包装
         let inner_ty = field_ty.unwrap_const();
@@ -148,41 +161,39 @@ impl Module {
                     return Err(SemanticError::ConstantExprExpected { range });
                 };
                 let expr_range = expr.syntax().text_range();
-                let Some(value) = self.value_table.get(&expr_range) else {
-                    return Err(SemanticError::ConstantExprExpected { range: expr_range });
-                };
-                Ok(value.clone())
+                Ok(self.value_table.get(&expr_range).cloned())
             }
 
             // 数组类型：使用 ArrayTree 解析
             NType::Array(_, _) => {
+                let range = init_val_node.syntax().text_range();
                 let (array_tree, is_const) = ArrayTree::new(self, field_ty, init_val_node)
-                    .map_err(|e| SemanticError::ArrayError { message: e, range })?;
+                    .map_err(|e| SemanticError::ArrayError {
+                        message: Box::new(e),
+                        range,
+                    })?;
+
                 if !is_const {
-                    return Err(SemanticError::ConstantExprExpected { range });
+                    self.expand_array.insert(range, array_tree);
+                    return Ok(None);
                 }
-                Ok(Value::Array(array_tree))
+                self.expand_array.insert(range, array_tree.clone());
+                self.value_table
+                    .insert(range, Value::Array(array_tree.clone()));
+
+                Ok(Some(Value::Array(array_tree)))
             }
 
             // Struct 类型：递归解析
             NType::Struct(nested_struct_id) => {
-                self.get_struct_init_value(*nested_struct_id, init_val_node)
+                let result = self.process_struct_init_value(*nested_struct_id, init_val_node);
+                if let Ok(Some(v)) = &result {
+                    self.value_table.insert(range, v.clone()); // 将常量加入表中
+                }
+                result
             }
 
             NType::Void | NType::Const(_) => unreachable!(),
         }
-    }
-
-    /// 检查 InitValue 是不是常量列表
-    pub(crate) fn is_const_list(&self, init_val_node: &InitVal) -> bool {
-        if let Some(expr) = init_val_node.expr() {
-            return self.is_compile_time_constant(expr.syntax().text_range());
-        }
-        for child in init_val_node.inits() {
-            if !self.is_const_list(&child) {
-                return false;
-            }
-        }
-        true
     }
 }

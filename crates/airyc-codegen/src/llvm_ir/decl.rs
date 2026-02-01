@@ -190,12 +190,11 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
             } else if inner_field_ty.is_array() {
                 // 数组字段：使用 ArrayTree 解析
-                let (array_tree, is_const) = ArrayTree::new(&mut self.analyzer, &field.ty, init)
-                    .map_err(|e| CodegenError::Unsupported(format!("array init error: {:?}", e)))?;
-
-                if is_const {
-                    let init_val =
-                        self.convert_array_tree_to_global_init(&array_tree, field_llvm_ty)?;
+                if self
+                    .analyzer
+                    .is_compile_time_constant(init.syntax().text_range())
+                {
+                    let init_val = self.get_const_var_value(&init, Some(field_llvm_ty))?;
                     self.builder
                         .build_store(field_ptr, init_val)
                         .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
@@ -205,7 +204,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         .build_store(field_ptr, field_llvm_ty.const_zero())
                         .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
                     let mut indices = vec![self.context.i32_type().const_zero()];
-                    self.store_on_array_tree(&array_tree, &mut indices, field_ptr, field_llvm_ty)?;
+                    let array_tree = self
+                        .analyzer
+                        .expand_array
+                        .get(&init.syntax().text_range())
+                        .unwrap();
+                    self.store_on_array_tree(array_tree, &mut indices, field_ptr, field_llvm_ty)?;
                 }
             } else if inner_field_ty.is_struct() {
                 // 嵌套 struct 字段：递归处理（不需要 zero init）
@@ -236,7 +240,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         array_tree: &ArrayTree,
         indices: &mut Vec<IntValue<'ctx>>,
         ptr: PointerValue<'ctx>,
-        elem_ty: BasicTypeEnum<'ctx>,
+        llvm_ty: BasicTypeEnum<'ctx>,
     ) -> Result<()> {
         match array_tree {
             ArrayTree::Val(ArrayTreeValue::Expr(expr)) => {
@@ -248,18 +252,38 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 };
                 let gep = unsafe {
                     self.builder
-                        .build_gep(elem_ty, ptr, indices, "idx.gep")
+                        .build_gep(llvm_ty, ptr, indices, "idx.gep")
                         .map_err(|_| CodegenError::LlvmBuild("gep failed"))?
                 };
                 self.builder
                     .build_store(gep, value)
                     .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
             }
+            ArrayTree::Val(ArrayTreeValue::Struct {
+                struct_id: id,
+                init_list: list,
+            }) => {
+                // 尝试获取编译时常量值，否则逐个 store
+                let struct_ty = NType::Struct(*id);
+                let llvm_ty = self.convert_ntype_to_type(&struct_ty)?;
+                let gep = unsafe {
+                    self.builder
+                        .build_gep(llvm_ty, ptr, indices, "idx.gep")
+                        .map_err(|_| CodegenError::LlvmBuild("gep failed"))?
+                };
+                if let Ok(const_val) = self.get_const_var_value(list, Some(llvm_ty)) {
+                    self.builder
+                        .build_store(gep, const_val)
+                        .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+                } else {
+                    self.store_struct_init(&struct_ty, list.clone(), gep, llvm_ty)?;
+                }
+            }
             ArrayTree::Children(children) => {
                 let i32_type = self.context.i32_type();
                 for (i, child) in children.iter().enumerate() {
                     indices.push(i32_type.const_int(i as u64, false));
-                    self.store_on_array_tree(child, indices, ptr, elem_ty)?;
+                    self.store_on_array_tree(child, indices, ptr, llvm_ty)?;
                     indices.pop();
                 }
             }

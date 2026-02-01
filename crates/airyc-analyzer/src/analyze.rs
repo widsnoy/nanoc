@@ -145,7 +145,7 @@ impl Visitor for Module {
 
         // 处理初始值
         if let Some(init_val_node) = def.init() {
-            // 如果是表达式，已经在 expr 处理
+            // 如果是表达式，已经在 expr 处理，所以只用考虑 Array 和 Struct 类型
             let init_range = init_val_node.syntax().text_range();
             if var_type.is_array() {
                 let (array_tree, is_const_list) =
@@ -166,15 +166,14 @@ impl Visitor for Module {
                 self.expand_array.insert(init_range, array_tree);
             } else if var_type.is_struct() {
                 let struct_id = var_type.as_struct_id().unwrap();
-                if self.is_const_list(&init_val_node) {
-                    match self.get_struct_init_value(struct_id, init_val_node) {
-                        Ok(value) => {
-                            self.value_table.insert(init_range, value);
-                        }
-                        Err(e) => {
-                            self.analyzing.errors.push(e);
-                            return;
-                        }
+                match self.process_struct_init_value(struct_id, init_val_node) {
+                    Ok(Some(value)) => {
+                        self.value_table.insert(init_range, value);
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        self.analyzing.errors.push(e);
+                        return;
                     }
                 }
             }
@@ -491,7 +490,10 @@ impl Visitor for Module {
                     };
                     v
                 }
-                ArrayTreeValue::Struct(init_val_node) => {
+                ArrayTreeValue::Struct {
+                    init_list: init_val_node,
+                    ..
+                } => {
                     let Some(v) = self.value_table.get(&init_val_node.syntax().text_range()) else {
                         return;
                     };

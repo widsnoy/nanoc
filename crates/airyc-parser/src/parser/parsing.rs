@@ -268,16 +268,4 @@ impl Parser<'_> {
         }
         self.finish_node();
     }
-
-    /// 解析 IndexVal: Name {'[' Expr ']'}（用于表达式）
-    pub(super) fn parse_index_val(&mut self) {
-        self.start_node(SyntaxKind::INDEX_VAL);
-        self.parse_name();
-        while self.at(SyntaxKind::L_BRACK) {
-            self.bump();
-            self.parse_exp();
-            self.expect(SyntaxKind::R_BRACK);
-        }
-        self.finish_node();
-    }
 }
