@@ -178,22 +178,22 @@ impl Visitor for Module {
                 }
             }
 
-            // 如果是 const ，设置一下值
-            let const_value = self.value_table.get(&init_range);
-            if is_global && const_value.is_none() {
-                self.analyzing
-                    .errors
-                    .push(SemanticError::ConstantExprExpected { range: init_range });
-                return;
-            };
-            if is_const {
-                let Some(v) = const_value else {
-                    self.analyzing
-                        .errors
-                        .push(SemanticError::ConstantExprExpected { range: init_range });
-                    return;
-                };
-                self.value_table.insert(var_range, v.clone());
+            match self.value_table.get(&init_range) {
+                Some(v) => {
+                    // 如果是 const ，给变量设置一下初值
+                    if is_const {
+                        self.value_table.insert(var_range, v.clone());
+                    }
+                }
+                None => {
+                    // global 变量必须编译时能求值
+                    if is_global {
+                        self.analyzing
+                            .errors
+                            .push(SemanticError::ConstantExprExpected { range: init_range });
+                        return;
+                    }
+                }
             }
         } else if is_const {
             // 如果是 const 必须要有初始化列表:w
