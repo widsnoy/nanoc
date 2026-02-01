@@ -1,10 +1,10 @@
 use crate::syntax_kind::{
-    NanocLanguage,
+    AirycLanguage,
     SyntaxKind::{self, *},
 };
 
-pub type SyntaxNode = rowan::SyntaxNode<NanocLanguage>;
-pub type SyntaxToken = rowan::SyntaxToken<NanocLanguage>;
+pub type SyntaxNode = rowan::SyntaxNode<AirycLanguage>;
+pub type SyntaxToken = rowan::SyntaxToken<AirycLanguage>;
 
 pub trait AstNode {
     type Language: rowan::Language;
@@ -24,7 +24,7 @@ macro_rules! ast_node {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $Name { syntax: SyntaxNode }
         impl AstNode for $Name {
-            type Language = NanocLanguage;
+            type Language = AirycLanguage;
             fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, $Kind) }
             fn cast(syntax: SyntaxNode) -> Option<Self> {
                 if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
@@ -73,7 +73,7 @@ macro_rules! ast_enum {
             $($Variant($Variant),)*
         }
         impl AstNode for $Name {
-            type Language = NanocLanguage;
+            type Language = AirycLanguage;
             fn can_cast(kind: SyntaxKind) -> bool {
                 $( $Variant::can_cast(kind) )||*
             }
@@ -293,7 +293,7 @@ ast_node!(BinaryOp ~ BINARY_OP {});
 ast_node!(UnaryOp ~ UNARY_OP {});
 ast_node!(PostfixOp ~ POSTFIX_OP {});
 
-pub trait OpNode: AstNode<Language = NanocLanguage> {
+pub trait OpNode: AstNode<Language = AirycLanguage> {
     fn op(&self) -> SyntaxToken {
         self.syntax()
             .children_with_tokens()

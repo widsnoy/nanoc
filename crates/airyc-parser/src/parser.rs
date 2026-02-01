@@ -3,7 +3,7 @@ mod parsing;
 mod statement;
 
 use crate::syntax_kind::SyntaxKind;
-use crate::{lexer::Lexer, syntax_kind::NanocLanguage};
+use crate::{lexer::Lexer, syntax_kind::AirycLanguage};
 use rowan::{Checkpoint, GreenNode, GreenNodeBuilder};
 
 /// 语法解析器
@@ -27,7 +27,7 @@ impl<'a> Parser<'a> {
         self.finish()
     }
 
-    pub fn new_root(green_node: GreenNode) -> rowan::SyntaxNode<NanocLanguage> {
+    pub fn new_root(green_node: GreenNode) -> rowan::SyntaxNode<AirycLanguage> {
         rowan::SyntaxNode::new_root(green_node)
     }
 

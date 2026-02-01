@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use airyc_parser::{
     ast::{AstNode, Expr, InitVal},
-    syntax_kind::NanocLanguage,
+    syntax_kind::AirycLanguage,
 };
 use text_size::TextRange;
 
@@ -104,7 +104,7 @@ impl std::fmt::Debug for ArrayTree {
     }
 }
 
-pub trait ArrayTreeTrait: AstNode<Language = NanocLanguage> + Sized {
+pub trait ArrayTreeTrait: AstNode<Language = AirycLanguage> + Sized {
     /// Node -> Expr
     fn try_expr(&self) -> Option<ArrayTreeValue>;
     /// Node -> {Node, Node, Node}，期望叶子节点
