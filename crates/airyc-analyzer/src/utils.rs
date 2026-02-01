@@ -82,7 +82,7 @@ impl Module {
         for _ in 0..index_count {
             current = match current {
                 Some(NType::Array(inner, _)) => Some(*inner),
-                // NType::Pointer(inner) => *inner,
+                Some(NType::Pointer(inner)) => Some(*inner),
                 Some(NType::Const(inner)) => Self::compute_indexed_type(&inner, 1),
                 _ => None,
             };
