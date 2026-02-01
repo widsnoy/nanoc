@@ -442,7 +442,8 @@ impl Visitor for Module {
         let var = self.variables.get(*vid).unwrap();
         let index_count = node.indices().count();
         let Some(result_ty) = Self::compute_indexed_type(&var.ty, index_count) else {
-            return;
+            // FIXME
+            panic!();
         };
         let is_const = result_ty.is_const(); // FIXME: 感觉有问题，不一定保证是常量; 不过只是数组没问题
         let var_range = var.range;
@@ -530,10 +531,7 @@ impl Visitor for Module {
         };
 
         let base_range = base_expr.syntax().text_range();
-        let Some(base_ty) = self.get_expr_type(base_range).cloned() else {
-            // 基础表达式类型未知，无法继续
-            return;
-        };
+        let base_ty = self.get_expr_type(base_range).unwrap();
 
         // 根据操作符提取 struct ID
         let struct_id = match op {
@@ -563,17 +561,20 @@ impl Visitor for Module {
                     return;
                 }
             }
-            _ => return,
+            _ => unreachable!(),
         };
 
         // 查找 struct 定义
-        let Some(struct_def) = self.get_struct(struct_id).cloned() else {
+        let Some(struct_def) = self.get_struct(struct_id) else {
             // Struct 未定义（可能是前向引用）
-            return;
+            // FIXME:
+            unreachable!();
         };
 
+        let struct_def: *const crate::module::StructDef = struct_def;
+
         // 查找字段并设置类型
-        if let Some(field) = struct_def.field(&member_name) {
+        if let Some(field) = unsafe { &*struct_def }.field(&member_name) {
             // 计算索引后的类型（如果有数组索引）
             let indices: Vec<_> = field_access_node.indices().collect();
             let result_ty = if indices.is_empty() {
@@ -584,7 +585,7 @@ impl Visitor for Module {
                     Some(ty) => ty,
                     None => {
                         // FIXME: 索引数量超过数组维度
-                        return;
+                        unreachable!();
                     }
                 }
             };
@@ -593,7 +594,7 @@ impl Visitor for Module {
             // 常量处理：如果基础表达式是常量 struct，提取字段值
             if let Some(Value::Struct(_struct_id, field_values)) =
                 self.value_table.get(&base_range).cloned()
-                && let Some(field_idx) = struct_def.field_index(&member_name)
+                && let Some(field_idx) = unsafe { &*struct_def }.field_index(&member_name)
                 && let Some(field_value) = field_values.get(field_idx as usize)
             {
                 if indices.is_empty() {
@@ -618,7 +619,7 @@ impl Visitor for Module {
             }
         } else {
             self.analyzing.errors.push(SemanticError::FieldNotFound {
-                struct_name: struct_def.name.clone(),
+                struct_name: unsafe { &*struct_def }.name.clone(),
                 field_name: member_name,
                 range,
             });

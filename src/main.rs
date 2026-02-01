@@ -40,6 +40,7 @@ struct Args {
 enum EmitTarget {
     Ir,
     Exe,
+    Ast,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
@@ -76,6 +77,12 @@ fn main() -> Result<()> {
             eprintln!("- {}", error);
         }
         std::process::exit(1);
+    }
+
+    if args.emit == EmitTarget::Ast {
+        // FIXME:
+        println!("{:#?}", airyc_parser::parser::Parser::new_root(green_node));
+        return Ok(());
     }
 
     // 2. Codegen (LLVM IR)
@@ -167,6 +174,7 @@ fn main() -> Result<()> {
                 bail!("linker returned non-zero status");
             }
         }
+        _ => {}
     }
 
     Ok(())
