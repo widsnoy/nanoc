@@ -1,6 +1,5 @@
 ---
-source: crates/airyc-codegen/src/test.rs
-assertion_line: 151
+source: crates/codegen/src/test.rs
 expression: try_it(code)
 ---
 ; ModuleID = 'main'
