@@ -1,8 +1,8 @@
 use analyzer::r#type::NType;
-use parser::ast::*;
-use parser::syntax_kind::SyntaxKind;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, PointerValue};
+use parser::ast::*;
+use parser::syntax_kind::SyntaxKind;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;

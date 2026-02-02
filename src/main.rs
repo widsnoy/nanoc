@@ -2,13 +2,13 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{Parser, ValueEnum};
 use codegen::llvm_ir::Program;
+use inkwell::OptimizationLevel;
 use inkwell::context::Context as LlvmContext;
 use inkwell::targets::TargetMachine;
 use inkwell::targets::{CodeModel, InitializationConfig, RelocMode, Target};
-use inkwell::OptimizationLevel;
 use parser::ast::{AstNode, CompUnit};
 use parser::visitor::Visitor as _;
 

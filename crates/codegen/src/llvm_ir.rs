@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use parser::ast::*;
 use inkwell::basic_block::BasicBlock;
 use inkwell::values::{FunctionValue, PointerValue};
 use inkwell::{builder::Builder, context::Context};
+use parser::ast::*;
 
 use crate::error::Result;
 
