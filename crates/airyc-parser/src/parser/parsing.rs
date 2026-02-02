@@ -23,9 +23,9 @@ impl Parser<'_> {
     /// 解析结构体申明
     fn parse_struct_def(&mut self) {
         self.start_node(SyntaxKind::STRUCT_DEF);
-        self.expect(SyntaxKind::STRUCT_KW);
+        self.expect_or_else_recovery(SyntaxKind::STRUCT_KW, SyntaxKind::is_decl_recovery);
         self.parse_name();
-        self.expect(SyntaxKind::L_BRACE);
+        self.expect_or_else_recovery(SyntaxKind::L_BRACE, SyntaxKind::is_decl_recovery);
 
         while self.peek() != SyntaxKind::R_BRACE {
             self.parse_struct_field();
@@ -34,7 +34,7 @@ impl Parser<'_> {
             }
         }
 
-        self.expect(SyntaxKind::R_BRACE);
+        self.expect_or_else_recovery(SyntaxKind::R_BRACE, SyntaxKind::is_decl_recovery);
         if self.at(SyntaxKind::SEMI) {
             self.bump();
         }
@@ -65,7 +65,7 @@ impl Parser<'_> {
             self.parse_var_def();
         }
 
-        self.expect(SyntaxKind::SEMI);
+        self.expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_decl_recovery);
         self.finish_node();
     }
 
@@ -119,7 +119,7 @@ impl Parser<'_> {
                 self.parse_var_def();
             }
 
-            self.expect(SyntaxKind::SEMI);
+            self.expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_decl_recovery);
             self.finish_node();
         }
     }
@@ -139,11 +139,11 @@ impl Parser<'_> {
     }
 
     fn parse_func_def_body(&mut self) {
-        self.expect(SyntaxKind::L_PAREN);
+        self.expect_or_else_recovery(SyntaxKind::L_PAREN, SyntaxKind::is_decl_recovery);
         if !self.at(SyntaxKind::R_PAREN) {
             self.parse_func_f_params();
         }
-        self.expect(SyntaxKind::R_PAREN);
+        self.expect_or_else_recovery(SyntaxKind::R_PAREN, SyntaxKind::is_decl_recovery);
         self.parse_block();
     }
 
@@ -167,7 +167,7 @@ impl Parser<'_> {
             self.bump();
             self.parse_name();
         } else {
-            self.error("Expected type");
+            self.expect_or_else_recovery(SyntaxKind::INT_KW, SyntaxKind::is_decl_recovery);
         }
         self.finish_node();
     }
@@ -182,7 +182,7 @@ impl Parser<'_> {
                     self.bump();
                 }
             }
-            self.expect(SyntaxKind::R_BRACE);
+            self.expect_or_else_recovery(SyntaxKind::R_BRACE, SyntaxKind::is_decl_recovery);
         } else {
             self.parse_exp();
         }
@@ -206,11 +206,11 @@ impl Parser<'_> {
         self.parse_name();
         if self.at(SyntaxKind::L_BRACK) {
             self.bump();
-            self.expect(SyntaxKind::R_BRACK);
+            self.expect_or_else_recovery(SyntaxKind::R_BRACK, SyntaxKind::is_decl_recovery);
             while self.at(SyntaxKind::L_BRACK) {
                 self.bump();
                 self.parse_exp();
-                self.expect(SyntaxKind::R_BRACK);
+                self.expect_or_else_recovery(SyntaxKind::R_BRACK, SyntaxKind::is_decl_recovery);
             }
         }
         self.finish_node();
@@ -228,11 +228,11 @@ impl Parser<'_> {
 
     pub(super) fn parse_block(&mut self) {
         self.start_node(SyntaxKind::BLOCK);
-        self.expect(SyntaxKind::L_BRACE);
+        self.expect_or_else_recovery(SyntaxKind::L_BRACE, SyntaxKind::is_decl_recovery);
         while !matches!(self.peek(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
             self.parse_block_item();
         }
-        self.expect(SyntaxKind::R_BRACE);
+        self.expect_or_else_recovery(SyntaxKind::R_BRACE, SyntaxKind::is_decl_recovery);
         self.finish_node();
     }
 
@@ -253,7 +253,7 @@ impl Parser<'_> {
 
     pub(super) fn parse_name(&mut self) {
         self.start_node(SyntaxKind::NAME);
-        self.expect(SyntaxKind::IDENT);
+        self.expect_or_else_recovery(SyntaxKind::IDENT, SyntaxKind::is_decl_recovery);
         self.finish_node();
     }
 
@@ -264,7 +264,7 @@ impl Parser<'_> {
         while self.at(SyntaxKind::L_BRACK) {
             self.bump();
             self.parse_exp();
-            self.expect(SyntaxKind::R_BRACK);
+            self.expect_or_else_recovery(SyntaxKind::R_BRACK, SyntaxKind::is_decl_recovery);
         }
         self.finish_node();
     }

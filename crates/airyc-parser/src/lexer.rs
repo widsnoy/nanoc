@@ -283,11 +283,6 @@ impl<'a> Lexer<'a> {
             }
         }
     }
-
-    /// 检查当前 token 是否匹配 `kind`
-    pub fn at(&self, kind: SyntaxKind) -> bool {
-        self.current() == kind
-    }
 }
 
 #[cfg(test)]
