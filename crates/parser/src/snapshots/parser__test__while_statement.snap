@@ -1,5 +1,5 @@
 ---
-source: crates/airyc-parser/src/test.rs
+source: crates/parser/src/test.rs
 expression: try_it(source)
 ---
 COMP_UNIT@0..100
