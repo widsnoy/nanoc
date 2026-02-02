@@ -8,12 +8,12 @@ Airyc is a compiler for a SysY-based language with structure and pointer support
 
 ### Crate Structure
 
-- `airyc-compiler` (root) - Main compiler binary with CLI
-- `crates/airyc-parser` - Lexer, parser, AST definitions using rowan
-- `crates/airyc-analyzer` - Semantic analysis, type checking, symbol resolution
-- `crates/airyc-codegen` - LLVM IR code generation using inkwell
-- `crates/airyc-runtime` - Runtime library (C code compiled to static lib)
-- `crates/airyc-test` - Integration test runner
+- `compiler` (root) - Main compiler binary with CLI
+- `crates/parser` - Lexer, parser, AST definitions using rowan
+- `crates/analyzer` - Semantic analysis, type checking, symbol resolution
+- `crates/codegen` - LLVM IR code generation using inkwell
+- `crates/runtime` - Runtime library (C code compiled to static lib)
+- `crates/test` - Integration test runner
 
 ## Build Commands
 
@@ -48,14 +48,14 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace
 
 # Run tests for a specific crate
-cargo test -p airyc-parser
-cargo test -p airyc-analyzer
-cargo test -p airyc-codegen
+cargo test -p parser
+cargo test -p analyzer
+cargo test -p codegen
 
 # Run a single test by name
-cargo test -p airyc-parser test_declarations
-cargo test -p airyc-parser test_if_statement
-cargo test -p airyc-codegen test_function_call
+cargo test -p parser test_declarations
+cargo test -p parser test_if_statement
+cargo test -p codegen test_function_call
 
 # Run tests with output
 cargo test --workspace -- --nocapture
@@ -68,7 +68,12 @@ cargo insta accept
 cargo make test              # All tests with coverage
 cargo make test-pku-minic    # Tests without perf
 cargo make test-pointer      # Pointer functionality tests
+cargo make test-struct       # Struct
 cargo make test-ci           # CI test suite
+
+# Run compiler manually
+cargo build
+./target/debug/airyc-compiler -i path/to/source
 ```
 
 ## Code Style Guidelines
