@@ -16,7 +16,7 @@ use crate::{
 pub struct Module {
     pub variables: Arena<Variable>,
     pub functions: Arena<Function>,
-    pub structs: Arena<StructDef>,
+    pub structs: Arena<Struct>,
     pub scopes: Arena<Scope>,
 
     pub global_scope: ScopeID,
@@ -171,8 +171,13 @@ impl Module {
     }
 
     /// 获取 struct 定义
-    pub fn get_struct(&self, id: StructID) -> Option<&StructDef> {
+    pub fn get_struct(&self, id: StructID) -> Option<&Struct> {
         self.structs.get(*id)
+    }
+
+    /// 获取可变 struct 定义
+    pub fn get_struct_mut(&mut self, id: StructID) -> Option<&mut Struct> {
+        self.structs.get_mut(*id)
     }
 
     /// 根据名称查找 struct
@@ -187,7 +192,7 @@ impl Module {
         fields: Vec<StructField>,
         range: TextRange,
     ) -> StructID {
-        let struct_def = StructDef {
+        let struct_def = Struct {
             name,
             fields,
             range,
@@ -265,13 +270,13 @@ pub struct Function {
 }
 
 #[derive(Debug, Clone)]
-pub struct StructDef {
+pub struct Struct {
     pub name: String,
     pub fields: Vec<StructField>,
     pub range: TextRange,
 }
 
-impl StructDef {
+impl Struct {
     /// 根据字段名查找字段索引
     pub fn field_index(&self, name: &str) -> Option<u32> {
         self.fields
