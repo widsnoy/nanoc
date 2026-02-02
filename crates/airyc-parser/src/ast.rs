@@ -1,3 +1,5 @@
+use rowan::TextRange;
+
 use crate::syntax_kind::{
     AirycLanguage,
     SyntaxKind::{self, *},
@@ -373,6 +375,15 @@ ast_node!(
         ident: token(IDENT),
     }
 );
+
+impl Name {
+    pub fn var_name(&self) -> Option<String> {
+        self.ident().map(|i| i.text().to_string())
+    }
+    pub fn var_range(&self) -> Option<TextRange> {
+        self.ident().map(|i| i.text_range())
+    }
+}
 
 ast_node!(Pointer ~ POINTER {});
 

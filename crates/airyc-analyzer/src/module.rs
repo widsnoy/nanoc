@@ -48,6 +48,12 @@ pub struct AnalyzeContext {
     pub current_var_type: Option<NType>,
 }
 
+impl AnalyzeContext {
+    pub(crate) fn new_error(&mut self, error: SemanticError) {
+        self.errors.push(error)
+    }
+}
+
 #[derive(Debug)]
 pub enum SemanticError {
     TypeMismatch {
@@ -82,8 +88,7 @@ pub enum SemanticError {
         name: String,
         range: TextRange,
     },
-    StructUndefined {
-        name: String,
+    TypeUndefined {
         range: TextRange,
     },
     FieldNotFound {
@@ -104,6 +109,11 @@ pub enum SemanticError {
         expected: usize,
         found: usize,
         range: TextRange,
+    },
+    /// 不能对 type 应用某种 op
+    CantApplyOpOnType {
+        ty: NType,
+        op: &'static str,
     },
 }
 

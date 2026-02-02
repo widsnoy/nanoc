@@ -13,10 +13,18 @@ macro_rules! def_visitor {
 
             /// 遍历语法树
             fn walk(&mut self, root: &SyntaxNode) {
+                let mut error_depth = 0usize;
                 for event in root.preorder() {
                     match event {
                         WalkEvent::Enter(node) => {
-                            match node.kind() {
+                            let kind = node.kind();
+                            if kind == SyntaxKind::ERROR {
+                                error_depth += 1;
+                            }
+                            if error_depth > 0 {
+                                continue;
+                            }
+                            match kind {
                                 $(
                                     SyntaxKind::$Kind => {
                                         if let Some(n) = $Node::cast(node.clone()) {
@@ -28,7 +36,14 @@ macro_rules! def_visitor {
                             }
                         }
                         WalkEvent::Leave(node) => {
-                            match node.kind() {
+                            let kind = node.kind();
+                            if kind == SyntaxKind::ERROR {
+                                error_depth -= 1;
+                            }
+                            if error_depth > 0 {
+                                continue;
+                            }
+                            match kind {
                                 $(
                                     SyntaxKind::$Kind => {
                                         if let Some(n) = $Node::cast(node.clone()) {

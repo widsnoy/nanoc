@@ -1,4 +1,4 @@
-use airyc_parser::ast::{AstNode as _, Expr, FuncType, InitVal, Name, Pointer, Type};
+use airyc_parser::ast::{AstNode as _, Expr, FuncType, InitVal, Pointer, Type};
 
 use crate::{
     array::ArrayTree,
@@ -8,23 +8,19 @@ use crate::{
 };
 
 impl Module {
-    pub(crate) fn build_basic_type(&self, node: &Type) -> NType {
+    pub(crate) fn build_basic_type(&self, node: &Type) -> Option<NType> {
         if node.int_token().is_some() {
-            NType::Int
+            Some(NType::Int)
         } else if node.float_token().is_some() {
-            NType::Float
+            Some(NType::Float)
         } else if node.struct_token().is_some() {
-            let name = Self::extract_name(&node.name().unwrap());
+            let Some(Some(name)) = node.name().map(|n| n.var_name()) else {
+                return None;
+            };
             // 查找 struct 定义
-            if let Some(struct_id) = self.find_struct(&name) {
-                NType::Struct(struct_id)
-            } else {
-                // 如果找不到，暂时返回一个占位符
-                // TODO: 这个错误会在 enter_struct_def 之后的类型检查中报告
-                NType::Struct(crate::module::StructID::none())
-            }
+            self.find_struct(&name).map(NType::Struct)
         } else {
-            unreachable!("unknown type node")
+            None
         }
     }
 
@@ -39,23 +35,18 @@ impl Module {
         }
         ty
     }
-    /// 从 Name 节点提取变量名
-    pub(crate) fn extract_name(node: &Name) -> String {
-        node.ident()
-            .map(|t| t.text().to_string())
-            .expect("failed to get identifier")
-    }
 
-    pub(crate) fn build_func_type(&self, node: &FuncType) -> NType {
+    pub(crate) fn build_func_type(&self, node: &FuncType) -> Option<NType> {
         if node.void_token().is_some() {
-            NType::Void
+            Some(NType::Void)
         } else {
-            let base_type = self.build_basic_type(&node.ty().unwrap());
+            let node_ty = node.ty()?;
+            let base_type = self.build_basic_type(&node_ty)?;
 
             if let Some(pointer_node) = node.pointer() {
-                Self::build_pointer_type(&pointer_node, base_type)
+                Some(Self::build_pointer_type(&pointer_node, base_type))
             } else {
-                base_type
+                Some(base_type)
             }
         }
     }
@@ -64,30 +55,45 @@ impl Module {
         &self,
         mut ty: NType,
         indices_iter: impl Iterator<Item = Expr>,
-    ) -> Option<NType> {
+    ) -> Result<NType, SemanticError> {
         let indices = indices_iter.collect::<Vec<Expr>>();
         for expr in indices.iter().rev() {
-            let x = self.get_value(expr.syntax().text_range()).cloned()?;
+            let range = expr.syntax().text_range();
+            let Some(x) = self.get_value(range).cloned() else {
+                return Err(SemanticError::ConstantExprExpected { range });
+            };
             let Value::Int(y) = x else {
-                return None;
+                return Err(SemanticError::TypeMismatch {
+                    expected: NType::Const(Box::new(NType::Int)),
+                    found: x.get_type(),
+                    range,
+                });
             };
             ty = NType::Array(Box::new(ty), y);
         }
-        Some(ty)
+        Ok(ty)
     }
 
     /// 计算索引后的类型：去掉 index_count 层数组/指针
-    pub(crate) fn compute_indexed_type(ty: &NType, index_count: usize) -> Option<NType> {
-        let mut current = Some(ty.clone());
+    pub(crate) fn compute_indexed_type(
+        ty: &NType,
+        index_count: usize,
+    ) -> Result<NType, SemanticError> {
+        let mut current = ty.clone();
         for _ in 0..index_count {
             current = match current {
-                Some(NType::Array(inner, _)) => Some(*inner),
-                Some(NType::Pointer(inner)) => Some(*inner),
-                Some(NType::Const(inner)) => Self::compute_indexed_type(&inner, 1),
-                _ => None,
+                NType::Array(inner, _) => *inner,
+                NType::Pointer(inner) => *inner,
+                NType::Const(inner) => Self::compute_indexed_type(&inner, 1)?,
+                _ => {
+                    return Err(SemanticError::CantApplyOpOnType {
+                        ty: current,
+                        op: "[]",
+                    });
+                }
             };
         }
-        current
+        Ok(current)
     }
 
     /// 解析 struct 初始化列表，返回 Value::Struct
@@ -103,10 +109,7 @@ impl Module {
         // 获取 struct 定义
         let struct_def = self
             .get_struct(struct_id)
-            .ok_or(SemanticError::StructUndefined {
-                name: format!("{:?}", struct_id),
-                range,
-            })?;
+            .ok_or(SemanticError::TypeUndefined { range })?;
 
         // 否则是初始化列表 { init1, init2, ... }
         let inits: Vec<_> = init_val_node.inits().collect();

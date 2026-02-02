@@ -18,16 +18,9 @@ impl Visitor for Module {
         let range = node.syntax().text_range();
 
         // 获取 struct 名称
-        let name = if let Some(name_node) = node.name() {
-            Self::extract_name(&name_node)
-        } else {
-            self.analyzing.errors.push(SemanticError::StructUndefined {
-                name: "<unnamed>".to_string(),
-                range,
-            });
+        let Some(Some(name)) = node.name().map(|n| n.var_name()) else {
             return;
         };
-
         // 检查是否重复定义
         if self.find_struct(&name).is_some() {
             self.analyzing.errors.push(SemanticError::StructDefined {
@@ -44,7 +37,12 @@ impl Visitor for Module {
         for field_node in node.fields() {
             // 获取字段基本类型
             let base_ty = if let Some(ty_node) = field_node.ty() {
-                let base_ty = self.build_basic_type(&ty_node);
+                let Some(base_ty) = self.build_basic_type(&ty_node) else {
+                    self.analyzing.errors.push(SemanticError::TypeUndefined {
+                        range: ty_node.syntax().text_range(),
+                    });
+                    continue;
+                };
                 if let Some(pointer_node) = field_node.pointer() {
                     Self::build_pointer_type(&pointer_node, base_ty)
                 } else {
@@ -58,7 +56,9 @@ impl Visitor for Module {
             if let Some(array_decl) = field_node.array_decl()
                 && let Some(field_name_node) = array_decl.name()
             {
-                let field_name = Self::extract_name(&field_name_node);
+                let Some(field_name) = field_name_node.var_name() else {
+                    return;
+                };
 
                 // 检查字段名是否重复
                 if !field_names.insert(field_name.clone()) {
@@ -70,13 +70,13 @@ impl Visitor for Module {
                 }
 
                 // 处理数组维度，构建完整的字段类型
-                let field_ty = if let Some(ty) =
-                    self.build_array_type(base_ty.clone(), array_decl.dimensions())
+                let field_ty = match self.build_array_type(base_ty.clone(), array_decl.dimensions())
                 {
-                    ty
-                } else {
-                    // 如果数组维度解析失败，使用基本类型
-                    base_ty
+                    Ok(ty) => ty,
+                    Err(e) => {
+                        self.analyzing.new_error(e);
+                        return;
+                    }
                 };
 
                 fields.push(crate::module::StructField {
@@ -92,7 +92,15 @@ impl Visitor for Module {
     }
 
     fn enter_var_decl(&mut self, node: VarDecl) {
-        let base_type = self.build_basic_type(&node.ty().unwrap());
+        let Some(ty_node) = node.ty() else {
+            return;
+        };
+        let Some(base_type) = self.build_basic_type(&ty_node) else {
+            self.analyzing.errors.push(SemanticError::TypeUndefined {
+                range: ty_node.syntax().text_range(),
+            });
+            return;
+        };
         // 如果是 const 声明，将类型包装为 Const
         self.analyzing.current_base_type = if node.is_const() {
             Some(NType::Const(Box::new(base_type)))
@@ -102,42 +110,43 @@ impl Visitor for Module {
     }
 
     fn leave_var_def(&mut self, def: VarDef) {
-        let base_type = self.analyzing.current_base_type.clone().unwrap();
+        let Some(base_type) = self.analyzing.current_base_type.clone() else {
+            return;
+        };
         let var_type = if let Some(pointer_node) = def.pointer() {
             Self::build_pointer_type(&pointer_node, base_type)
         } else {
             base_type
         };
 
-        let array_decl_node = def.array_decl().unwrap();
+        let Some(array_decl_node) = def.array_decl() else {
+            return;
+        };
 
-        // 检查数组维度是否为编译时常量
-        // FIXME: 如果是局部变量也可以不是
-        for expr in array_decl_node.dimensions() {
-            let range = expr.syntax().text_range();
-            if !self.is_compile_time_constant(range) {
-                self.analyzing
-                    .errors
-                    .push(SemanticError::ConstantExprExpected { range });
+        let var_type = match self.build_array_type(var_type, array_decl_node.dimensions()) {
+            Ok(ty) => ty,
+            Err(e) => {
+                self.analyzing.new_error(e);
                 return;
             }
-        }
-
-        let var_type = self
-            .build_array_type(var_type, array_decl_node.dimensions())
-            .unwrap();
-        let array_decl_node = def.array_decl().unwrap();
-        let name_node = array_decl_node.name().unwrap();
-        let name = Self::extract_name(&name_node);
-        let var_range = name_node.ident().unwrap().text_range();
+        };
+        let Some(name_node) = array_decl_node.name() else {
+            return;
+        };
+        let Some(var_name) = name_node.var_name() else {
+            return;
+        };
+        let Some(var_range) = name_node.var_range() else {
+            return;
+        };
 
         let current_scope = self.analyzing.current_scope;
         let scope = self.scopes.get_mut(*current_scope).unwrap();
         let is_global = current_scope == self.global_scope;
         let is_const = var_type.is_const();
-        if scope.have_variable(&name) {
+        if scope.have_variable(&var_name) {
             self.analyzing.errors.push(SemanticError::VariableDefined {
-                name,
+                name: var_name,
                 range: var_range,
             });
             return;
@@ -172,7 +181,7 @@ impl Visitor for Module {
                     }
                     Ok(None) => {}
                     Err(e) => {
-                        self.analyzing.errors.push(e);
+                        self.analyzing.new_error(e);
                         return;
                     }
                 }
@@ -198,7 +207,7 @@ impl Visitor for Module {
         } else if is_const {
             // 如果是 const 必须要有初始化列表:w
             self.analyzing.errors.push(SemanticError::ExpectInitialVal {
-                name,
+                name: var_name,
                 range: var_range,
             });
             return;
@@ -208,7 +217,7 @@ impl Visitor for Module {
         let _ = scope.new_variable(
             &mut self.variables,
             &mut self.variable_map,
-            name,
+            var_name,
             var_type,
             var_range,
             VariableTag::Define,
@@ -227,20 +236,35 @@ impl Visitor for Module {
 
         if let Some(params) = node.params() {
             for param in params.params() {
-                let name_node = param.name().unwrap();
-                let name = name_node.ident().unwrap();
-                let Some(v) = scope.look_up(self, name.text(), VariableTag::Define) else {
+                let Some(name_node) = param.name() else {
+                    return;
+                };
+                let Some(ident) = name_node.ident() else {
+                    return;
+                };
+                let name = ident.text();
+                let Some(v) = scope.look_up(self, name, VariableTag::Define) else {
                     return;
                 };
                 param_list.push(v);
             }
         }
 
-        let func_type_node = node.func_type().unwrap();
-        let ret_type = self.build_func_type(&func_type_node);
+        let Some(func_type_node) = node.func_type() else {
+            return;
+        };
+        let Some(ret_type) = self.build_func_type(&func_type_node) else {
+            return;
+        };
         self.set_expr_type(func_type_node.syntax().text_range(), ret_type.clone());
 
-        let name = node.name().unwrap().ident().unwrap().text().to_string();
+        let Some(name_node) = node.name() else {
+            return;
+        };
+        let Some(ident) = name_node.ident() else {
+            return;
+        };
+        let name = ident.text().to_string();
         self.functions.insert(Function {
             name,
             params: param_list,
@@ -251,7 +275,12 @@ impl Visitor for Module {
     }
 
     fn leave_func_f_param(&mut self, node: FuncFParam) {
-        let base_type = self.build_basic_type(&node.ty().unwrap());
+        let Some(ty_node) = node.ty() else {
+            return;
+        };
+        let Some(base_type) = self.build_basic_type(&ty_node) else {
+            return;
+        };
 
         let mut param_type = if let Some(pointer_node) = node.pointer() {
             Self::build_pointer_type(&pointer_node, base_type)
@@ -269,15 +298,26 @@ impl Visitor for Module {
                     return;
                 }
             }
-            let Some(ty) = self.build_array_type(param_type, node.indices()) else {
-                return;
+            let ty = match self.build_array_type(param_type, node.indices()) {
+                Ok(ty) => ty,
+                Err(e) => {
+                    self.analyzing.new_error(e);
+                    return;
+                }
             };
             param_type = NType::Pointer(Box::new(ty));
         }
 
-        let name_node = node.name().unwrap();
-        let name = Self::extract_name(&name_node);
-        let range = name_node.ident().unwrap().text_range();
+        let Some(name_node) = node.name() else {
+            return;
+        };
+        let Some(name) = name_node.var_name() else {
+            return;
+        };
+        let Some(ident) = name_node.ident() else {
+            return;
+        };
+        let range = ident.text_range();
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
         if scope.have_variable(&name) {
@@ -319,9 +359,15 @@ impl Visitor for Module {
     fn leave_return_stmt(&mut self, _node: ReturnStmt) {}
 
     fn leave_binary_expr(&mut self, node: BinaryExpr) {
-        let lhs = node.lhs().unwrap();
-        let rhs = node.rhs().unwrap();
-        let op = node.op().unwrap();
+        let Some(lhs) = node.lhs() else {
+            return;
+        };
+        let Some(rhs) = node.rhs() else {
+            return;
+        };
+        let Some(op) = node.op() else {
+            return;
+        };
         let op_kind = op.op().kind();
 
         let lhs_ty = self.get_expr_type(lhs.syntax().text_range()).cloned();
@@ -361,8 +407,12 @@ impl Visitor for Module {
     }
 
     fn leave_unary_expr(&mut self, node: UnaryExpr) {
-        let expr = node.expr().unwrap();
-        let op = node.op().unwrap();
+        let Some(expr) = node.expr() else {
+            return;
+        };
+        let Some(op) = node.op() else {
+            return;
+        };
         let op_kind = op.op().kind();
 
         if let Some(inner_ty) = self.get_expr_type(expr.syntax().text_range()) {
@@ -408,7 +458,9 @@ impl Visitor for Module {
     }
 
     fn leave_paren_expr(&mut self, node: ParenExpr) {
-        let expr = node.expr().unwrap();
+        let Some(expr) = node.expr() else {
+            return;
+        };
         if let Some(ty) = self.get_expr_type(expr.syntax().text_range()) {
             self.set_expr_type(node.syntax().text_range(), ty.clone());
         }
@@ -441,11 +493,14 @@ impl Visitor for Module {
 
         let var = self.variables.get(*vid).unwrap();
         let index_count = node.indices().count();
-        let Some(result_ty) = Self::compute_indexed_type(&var.ty, index_count) else {
-            // FIXME
-            panic!();
+        let result_ty = match Self::compute_indexed_type(&var.ty, index_count) {
+            Ok(ty) => ty,
+            Err(e) => {
+                self.analyzing.new_error(e);
+                return;
+            }
         };
-        let is_const = result_ty.is_const(); // FIXME: 感觉有问题，不一定保证是常量; 不过只是数组没问题
+        let is_const = var.ty.is_const() && result_ty.is_const();
         let var_range = var.range;
         let const_zero = var.ty.const_zero();
         self.set_expr_type(node.syntax().text_range(), result_ty);
@@ -523,7 +578,9 @@ impl Visitor for Module {
         let Some(name_node) = field_access_node.name() else {
             return;
         };
-        let member_name = Self::extract_name(&name_node);
+        let Some(member_name) = name_node.var_name() else {
+            return;
+        };
 
         // 获取左操作数的类型
         let Some(base_expr) = node.expr() else {
@@ -531,7 +588,9 @@ impl Visitor for Module {
         };
 
         let base_range = base_expr.syntax().text_range();
-        let base_ty = self.get_expr_type(base_range).unwrap();
+        let Some(base_ty) = self.get_expr_type(base_range) else {
+            return;
+        };
 
         // 根据操作符提取 struct ID
         let struct_id = match op {
@@ -565,11 +624,7 @@ impl Visitor for Module {
         };
 
         // 查找 struct 定义
-        let Some(struct_def) = self.get_struct(struct_id) else {
-            // Struct 未定义（可能是前向引用）
-            // FIXME:
-            unreachable!();
-        };
+        let struct_def = self.get_struct(struct_id).unwrap();
 
         let struct_def: *const crate::module::StructDef = struct_def;
 
@@ -582,10 +637,10 @@ impl Visitor for Module {
             } else {
                 // 有数组索引，需要计算索引后的类型
                 match Self::compute_indexed_type(&field.ty, indices.len()) {
-                    Some(ty) => ty,
-                    None => {
-                        // FIXME: 索引数量超过数组维度
-                        unreachable!();
+                    Ok(ty) => ty,
+                    Err(e) => {
+                        self.analyzing.new_error(e);
+                        return;
                     }
                 }
             };
@@ -633,7 +688,9 @@ impl Visitor for Module {
             self.set_expr_type(range, NType::Float);
             Value::Float(s.parse::<f32>().unwrap())
         } else {
-            let n = node.int_token().unwrap();
+            let Some(n) = node.int_token() else {
+                return;
+            };
             let s = n.text();
             let (num_str, radix) = match s.chars().next() {
                 Some('0') => match s.chars().nth(1) {
@@ -644,7 +701,10 @@ impl Visitor for Module {
                 _ => (s, 10),
             };
             self.set_expr_type(range, NType::Int);
-            Value::Int(i32::from_str_radix(num_str, radix).unwrap())
+            Value::Int(match i32::from_str_radix(num_str, radix) {
+                Ok(v) => v,
+                Err(_) => return,
+            })
         };
         self.value_table.insert(range, v);
     }
