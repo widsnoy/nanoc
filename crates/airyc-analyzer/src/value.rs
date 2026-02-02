@@ -1,4 +1,4 @@
-use crate::{array::ArrayTree, module::StructID};
+use crate::{array::ArrayTree, module::StructID, r#type::NType};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -17,6 +17,16 @@ pub enum EvalError {
 }
 
 impl Value {
+    pub fn get_type(&self) -> NType {
+        match self {
+            Value::Int(_) => NType::Int,
+            Value::Float(_) => NType::Float,
+            Value::Array(_) => NType::Array(Box::new(NType::Void), 0),
+            Value::Struct(struct_id, _) => NType::Struct(*struct_id),
+            Value::StructZero(struct_id) => NType::Struct(*struct_id),
+            Value::Pointee(_, _) => NType::Pointer(Box::new(NType::Void)),
+        }
+    }
     pub fn eval(lhs: &Value, rhs: &Value, op: &str) -> Result<Value, EvalError> {
         match (lhs, rhs) {
             (Value::Int(l), Value::Int(r)) => match op {
