@@ -13,7 +13,7 @@ args = ["build", "--bin", "airyc-compiler"]
 
 [tasks.build-runtime]
 command = "cargo"
-args = ["build", "-p", "airyc-runtime"]
+args = ["build", "-p", "runtime"]
 
 [tasks.test]
 description = "Run all integration tests with coverage"
@@ -22,14 +22,14 @@ command = "cargo"
 args = [
     "run",
     "-p",
-    "airyc-test",
+    "test",
     "--",
     "--test-dir",
     "test/compiler-dev-test-cases/testcases",
     "--compiler",
     "./target/debug/airyc-compiler",
     "--runtime",
-    "./target/debug/libairyc_runtime.a",
+    "./target/debug/libruntime.a",
     "--timeout",
     "10",
 ]
@@ -41,7 +41,7 @@ command = "cargo"
 args = [
     "run",
     "-p",
-    "airyc-test",
+    "test",
     "--",
     "--test-dir",
     "test/compiler-dev-test-cases/testcases",
@@ -50,7 +50,7 @@ args = [
     "--compiler",
     "./target/debug/airyc-compiler",
     "--runtime",
-    "./target/debug/libairyc_runtime.a",
+    "./target/debug/libruntime.a",
 ]
 
 [tasks.test-pointer]
@@ -60,14 +60,14 @@ command = "cargo"
 args = [
     "run",
     "-p",
-    "airyc-test",
+    "test",
     "--",
     "--test-dir",
     "test/pointer_tests",
     "--compiler",
     "./target/debug/airyc-compiler",
     "--runtime",
-    "./target/debug/libairyc_runtime.a",
+    "./target/debug/libruntime.a",
     "--timeout",
     "10",
     "--verbose",
@@ -80,14 +80,14 @@ command = "cargo"
 args = [
     "run",
     "-p",
-    "airyc-test",
+    "test",
     "--",
     "--test-dir",
     "test/struct",
     "--compiler",
     "./target/debug/airyc-compiler",
     "--runtime",
-    "./target/debug/libairyc_runtime.a",
+    "./target/debug/libruntime.a",
     "--timeout",
     "10",
     "--verbose",

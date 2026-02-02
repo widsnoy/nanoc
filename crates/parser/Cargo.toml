@@ -1,0 +1,11 @@
+[package]
+name = "parser"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+logos.workspace = true
+text-size.workspace = true
+thiserror.workspace = true
+rowan.workspace = true
+insta.workspace = true

@@ -1,0 +1,11 @@
+[package]
+name = "analyzer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+parser.workspace = true
+
+thunderdome.workspace = true
+text-size.workspace = true
+insta.workspace = true
