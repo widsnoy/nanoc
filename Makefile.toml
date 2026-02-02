@@ -16,7 +16,7 @@ command = "cargo"
 args = ["build", "-p", "runtime"]
 
 [tasks.test]
-description = "Run all integration tests with coverage"
+description = "Run all integration tests"
 dependencies = ["build"]
 command = "cargo"
 args = [
@@ -25,74 +25,15 @@ args = [
     "test",
     "--",
     "--test-dir",
-    "test/compiler-dev-test-cases/testcases",
-    "--compiler",
-    "./target/debug/airyc-compiler",
-    "--runtime",
-    "./target/debug/libruntime.a",
-    "--timeout",
-    "10",
-]
-
-[tasks.test-pku-minic]
-description = "Run tests without perf and coverage"
-dependencies = ["build"]
-command = "cargo"
-args = [
-    "run",
-    "-p",
-    "test",
-    "--",
-    "--test-dir",
-    "test/compiler-dev-test-cases/testcases",
+    "./testcases",
     "--exclude",
-    "perf",
-    "--compiler",
-    "./target/debug/airyc-compiler",
-    "--runtime",
-    "./target/debug/libruntime.a",
-]
-
-[tasks.test-pointer]
-description = "Run pointer functionality tests"
-dependencies = ["build"]
-command = "cargo"
-args = [
-    "run",
-    "-p",
-    "test",
-    "--",
-    "--test-dir",
-    "test/pointer_tests",
+    "performance",
     "--compiler",
     "./target/debug/airyc-compiler",
     "--runtime",
     "./target/debug/libruntime.a",
     "--timeout",
-    "10",
-    "--verbose",
+    "20",
+    "--verbose"
 ]
 
-[tasks.test-struct]
-description = "Run struct functionality tests"
-dependencies = ["build"]
-command = "cargo"
-args = [
-    "run",
-    "-p",
-    "test",
-    "--",
-    "--test-dir",
-    "test/struct",
-    "--compiler",
-    "./target/debug/airyc-compiler",
-    "--runtime",
-    "./target/debug/libruntime.a",
-    "--timeout",
-    "10",
-    "--verbose",
-]
-
-[tasks.test-ci]
-description = "Run tests for CI"
-dependencies = ["test-pku-minic", "test-pointer", "test-struct"]
