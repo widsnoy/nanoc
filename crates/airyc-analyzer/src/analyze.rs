@@ -30,6 +30,10 @@ impl Visitor for Module {
             return;
         }
 
+        // 占位, 为了处理自指
+        let struct_id = self.new_struct(name.clone(), vec![], range);
+        self.struct_map.insert(name.clone(), struct_id);
+
         // 收集字段
         let mut fields = Vec::new();
         let mut field_names = std::collections::HashSet::new();
@@ -79,6 +83,8 @@ impl Visitor for Module {
                     }
                 };
 
+                // TODO: 引入 layout 和 size 计算来判断是不是自指
+
                 fields.push(crate::module::StructField {
                     name: field_name,
                     ty: field_ty,
@@ -87,7 +93,8 @@ impl Visitor for Module {
         }
 
         // 添加 struct 定义
-        let struct_id = self.new_struct(name.clone(), fields, range);
+        let struct_def = self.get_struct_mut(struct_id).unwrap();
+        struct_def.fields = fields;
         self.struct_map.insert(name, struct_id);
     }
 
@@ -626,7 +633,7 @@ impl Visitor for Module {
         // 查找 struct 定义
         let struct_def = self.get_struct(struct_id).unwrap();
 
-        let struct_def: *const crate::module::StructDef = struct_def;
+        let struct_def: *const crate::module::Struct = struct_def;
 
         // 查找字段并设置类型
         if let Some(field) = unsafe { &*struct_def }.field(&member_name) {
