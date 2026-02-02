@@ -26,5 +26,5 @@ jobs:
         run: cargo build --verbose --workspace
       - name: Cargo test
         run: cargo test --verbose --workspace
-      - name: Integration tests with coverage
-        run: cargo make test-ci
+      - name: Integration tests 
+        run: cargo make test

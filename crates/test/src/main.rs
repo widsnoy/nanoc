@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
@@ -10,7 +10,7 @@ use clap::Parser;
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[arg(short, long, default_value = "test/compiler-dev-test-cases/testcases")]
+    #[arg(short, long, default_value = "testcases")]
     test_dir: Vec<PathBuf>,
 
     #[arg(short, long, default_value = "./target/release/airyc-compiler")]
@@ -117,18 +117,20 @@ fn run_with_timeout(
     }
 
     let start = Instant::now();
-    let stdout = Vec::new();
 
     loop {
         match child.try_wait() {
             Ok(Some(status)) => {
                 let return_code = status.code().unwrap_or(-1);
-                return Ok((stdout, return_code, false));
+                let mut std_out = child.stdout.take().unwrap();
+                let mut buf = vec![];
+                let _ = std::io::Read::read_to_end(&mut std_out, &mut buf);
+                return Ok((buf, return_code, false));
             }
             Ok(None) => {
                 if start.elapsed() >= timeout {
                     child.kill()?;
-                    return Ok((stdout, -1, true));
+                    return Ok((vec![], -1, true));
                 }
                 thread::sleep(Duration::from_millis(100));
             }
@@ -150,44 +152,22 @@ fn run_test(case: &TestCase, args: &Args, tmp_dir: &Path) -> Result<TestResult> 
     let runtime_lib = &args.runtime;
     let compiler = &args.compiler;
 
-    let std_out = tmp_dir.join("std_out.txt");
-    let std_exec = tmp_dir.join("std_exec");
+    let std_out = case.path.with_extension("out");
 
-    let clang_cmd = Command::new("clang")
-        .arg("-Wno-implicit-function-declaration")
-        .arg(&case.path)
-        .arg(runtime_lib)
-        .arg("-o")
-        .arg(&std_exec)
-        .output()
-        .context("clang compile failed")?;
-
-    if !clang_cmd.status.success() {
-        return Ok(TestResult {
-            case: case.clone(),
-            status: TestStatus::CompileError(
-                String::from_utf8_lossy(&clang_cmd.stderr).to_string(),
-            ),
-            duration: start.elapsed(),
-        });
-    }
-
-    let timeout = Duration::from_secs(args.timeout);
-    let (std_output, std_return, timed_out) =
-        run_with_timeout(&mut Command::new(&std_exec), &input, timeout)?;
-
-    if timed_out {
-        return Ok(TestResult {
-            case: case.clone(),
-            status: TestStatus::Timeout,
-            duration: start.elapsed(),
-        });
-    }
-
-    let mut std_content = String::from_utf8_lossy(&std_output).to_string();
-    std_content.push_str(&format!("return: {}\n", std_return));
+    let std_content = match fs::read_to_string(&std_out) {
+        Ok(content) => content,
+        Err(_) => {
+            return Ok(TestResult {
+                case: case.clone(),
+                status: TestStatus::CompileError(format!("{} not found", std_out.display())),
+                duration: start.elapsed(),
+            });
+        }
+    };
 
     let my_out = tmp_dir.join("my_out.txt");
+
+    let timeout = Duration::from_secs(args.timeout);
 
     let compile_cmd = Command::new(compiler)
         .arg("-i")
@@ -234,7 +214,6 @@ fn run_test(case: &TestCase, args: &Args, tmp_dir: &Path) -> Result<TestResult> 
     let mut my_content = String::from_utf8_lossy(&my_output).to_string();
     my_content.push_str(&format!("return: {}\n", my_return));
 
-    fs::write(&std_out, &std_content)?;
     fs::write(&my_out, &my_content)?;
 
     let status = if std_content == my_content {
