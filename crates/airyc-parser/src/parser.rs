@@ -1,16 +1,30 @@
 mod expression;
 mod parsing;
+mod recovery;
 mod statement;
 
 use crate::syntax_kind::SyntaxKind;
 use crate::{lexer::Lexer, syntax_kind::AirycLanguage};
 use rowan::{Checkpoint, GreenNode, GreenNodeBuilder};
 
+#[derive(Debug)]
+pub enum ParserError {
+    Expected(SyntaxKind),
+}
+
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParserError::Expected(kind) => write!(f, "expected token: {:?}", kind),
+        }
+    }
+}
+
 /// 语法解析器
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     builder: GreenNodeBuilder<'static>,
-    pub errors: Vec<String>,
+    pub errors: Vec<ParserError>,
 }
 
 impl<'a> Parser<'a> {
@@ -22,7 +36,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(mut self) -> (GreenNode, Vec<String>) {
+    pub fn parse(mut self) -> (GreenNode, Vec<ParserError>) {
         self.parse_root();
         self.finish()
     }
@@ -71,32 +85,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// 消费期望类型的 token，否则报错
-    pub(crate) fn expect(&mut self, kind: SyntaxKind) {
-        self.bump_trivia();
-        if self.lexer.at(kind) {
-            self.bump();
-        } else {
-            self.error(format!(
-                "Expected {:?}, but found {:?}",
-                kind,
-                self.lexer.current()
-            ));
-        }
-    }
-
-    /// 记录错误
-    pub(crate) fn error(&mut self, message: impl Into<String>) {
-        self.errors.push(message.into());
-        if !self.lexer.at(SyntaxKind::EOF) {
-            self.builder.start_node(SyntaxKind::ERROR.into());
-            self.bump();
-            self.builder.finish_node();
-        }
-    }
-
     /// 完成解析并返回 GreenNode
-    pub(crate) fn finish(self) -> (GreenNode, Vec<String>) {
+    pub(crate) fn finish(self) -> (GreenNode, Vec<ParserError>) {
         (self.builder.finish(), self.errors)
     }
 

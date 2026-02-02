@@ -113,7 +113,7 @@ impl Parser<'_> {
         while self.at(SyntaxKind::L_BRACK) {
             self.bump();
             self.parse_exp();
-            self.expect(SyntaxKind::R_BRACK);
+            self.expect_or_else_recovery(SyntaxKind::R_BRACK, SyntaxKind::is_expr_recovery);
         }
         self.finish_node();
     }
@@ -121,9 +121,9 @@ impl Parser<'_> {
     fn parse_primary_exp(&mut self) {
         if self.at(SyntaxKind::L_PAREN) {
             self.start_node(SyntaxKind::PAREN_EXPR);
-            self.expect(SyntaxKind::L_PAREN);
+            self.expect_or_else_recovery(SyntaxKind::L_PAREN, SyntaxKind::is_expr_recovery);
             self.parse_exp();
-            self.expect(SyntaxKind::R_PAREN);
+            self.expect_or_else_recovery(SyntaxKind::R_PAREN, SyntaxKind::is_expr_recovery);
             self.finish_node();
         } else if self.peek().is_number() {
             self.start_node(SyntaxKind::LITERAL);
@@ -139,18 +139,18 @@ impl Parser<'_> {
         self.parse_name();
         if self.at(SyntaxKind::L_PAREN) {
             self.start_node_at(cp, SyntaxKind::CALL_EXPR);
-            self.expect(SyntaxKind::L_PAREN);
+            self.expect_or_else_recovery(SyntaxKind::L_PAREN, SyntaxKind::is_expr_recovery);
             if !self.at(SyntaxKind::R_PAREN) {
                 self.parse_func_r_params();
             }
-            self.expect(SyntaxKind::R_PAREN);
+            self.expect_or_else_recovery(SyntaxKind::R_PAREN, SyntaxKind::is_expr_recovery);
             self.finish_node();
         } else {
             self.start_node_at(cp, SyntaxKind::INDEX_VAL);
             while self.at(SyntaxKind::L_BRACK) {
                 self.bump(); // `[`
                 self.parse_exp();
-                self.expect(SyntaxKind::R_BRACK);
+                self.expect_or_else_recovery(SyntaxKind::R_BRACK, SyntaxKind::is_expr_recovery);
             }
             self.finish_node();
         }
