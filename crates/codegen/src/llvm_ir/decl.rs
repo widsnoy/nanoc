@@ -1,0 +1,312 @@
+use analyzer::array::{ArrayTree, ArrayTreeValue};
+use analyzer::module::StructField;
+use analyzer::r#type::NType;
+use parser::ast::*;
+use inkwell::types::BasicTypeEnum;
+use inkwell::values::{BasicValueEnum, IntValue, PointerValue};
+
+use crate::error::{CodegenError, Result};
+use crate::llvm_ir::Program;
+use crate::utils::*;
+
+impl<'a, 'ctx> Program<'a, 'ctx> {
+    pub(super) fn compile_global_decl(&mut self, decl: VarDecl) -> Result<()> {
+        self.compile_var_decl(decl)
+    }
+
+    pub(super) fn compile_local_decl(&mut self, decl: VarDecl) -> Result<()> {
+        self.compile_var_decl(decl)
+    }
+
+    fn compile_var_decl(&mut self, decl: VarDecl) -> Result<()> {
+        let is_const = decl.is_const();
+        for def in decl.var_defs() {
+            self.compile_var_def(def, is_const)?;
+        }
+        Ok(())
+    }
+
+    fn compile_var_def(&mut self, def: VarDef, is_const: bool) -> Result<()> {
+        let name_token = get_ident_node(
+            &def.array_decl()
+                .ok_or(CodegenError::Missing("variable name"))?,
+        )
+        .ok_or(CodegenError::Missing("identifier"))?;
+
+        let var = self
+            .analyzer
+            .get_varaible(name_token.text_range())
+            .ok_or(CodegenError::Missing("variable info"))?;
+        let name = name_token.text();
+        let var_ty = &var.ty;
+        let basic_ty = self.convert_ntype_to_type(var_ty)?;
+
+        let is_global = self.symbols.current_function.is_none();
+
+        if is_global {
+            // 全局变量
+            let init_val = if is_const {
+                // const 变量必须有初始值
+                let init_node = def.init().ok_or(CodegenError::Missing("initial value"))?;
+                self.get_const_var_value(&init_node, Some(basic_ty))?
+            } else {
+                self.const_init_or_zero(def.init(), basic_ty)?
+            };
+
+            let global = self.module.add_global(basic_ty, None, name);
+            global.set_initializer(&init_val);
+            if is_const {
+                global.set_constant(true);
+            }
+            self.symbols.globals.insert(
+                name.to_string(),
+                crate::llvm_ir::Symbol::new(global.as_pointer_value(), var_ty),
+            );
+        } else {
+            // 局部变量
+            let func = self
+                .symbols
+                .current_function
+                .ok_or(CodegenError::Missing("current function"))?;
+            let alloca = self.create_entry_alloca(func, basic_ty, name)?;
+
+            // 判断变量类型
+            let inner_ty = var_ty.unwrap_const();
+
+            if let Some(init_node) = def.init() {
+                let range = init_node.syntax().text_range();
+
+                if let Some(expr) = init_node.expr() {
+                    // 单值初始化
+                    let init_val = if let Ok(const_val) = self.get_const_var_value(&expr, None) {
+                        const_val
+                    } else {
+                        self.compile_expr(expr)?
+                    };
+                    self.builder
+                        .build_store(alloca, init_val)
+                        .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+                } else if inner_ty.is_array() {
+                    // 数组初始化列表
+                    let array_tree = self
+                        .analyzer
+                        .expand_array
+                        .get(&range)
+                        .ok_or(CodegenError::Missing("array init info"))?;
+
+                    if self.analyzer.is_compile_time_constant(range) {
+                        let init_val =
+                            self.convert_array_tree_to_global_init(array_tree, basic_ty)?;
+                        self.builder
+                            .build_store(alloca, init_val)
+                            .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+                    } else {
+                        // 非常量数组：先 zero init，再逐个 store
+                        self.builder
+                            .build_store(alloca, basic_ty.const_zero())
+                            .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+                        let mut indices = vec![self.context.i32_type().const_zero()];
+                        self.store_on_array_tree(array_tree, &mut indices, alloca, basic_ty)?;
+                    }
+                } else if inner_ty.is_struct() {
+                    // Struct 初始化列表
+                    if self.analyzer.is_compile_time_constant(range) {
+                        // 常量 struct：直接 store
+                        let init_val = self.get_const_var_value(&init_node, Some(basic_ty))?;
+                        self.builder
+                            .build_store(alloca, init_val)
+                            .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+                    } else {
+                        // 非常量 struct：逐字段 store（struct 初始化要求完全覆盖，不需要 zero init）
+                        self.store_struct_init(var_ty, init_node, alloca, basic_ty)?;
+                    }
+                } else {
+                    return Err(CodegenError::Unsupported(
+                        "unsupported init list type".into(),
+                    ));
+                }
+            } else if is_const {
+                return Err(CodegenError::Missing("const requires initial value"));
+            } else {
+                // 无初始值，zero init
+                self.builder
+                    .build_store(alloca, basic_ty.const_zero())
+                    .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+            }
+
+            self.symbols.insert_var(name.to_string(), alloca, var_ty);
+        }
+        Ok(())
+    }
+
+    /// 处理非常量 struct 初始化，逐个字段 store
+    fn store_struct_init(
+        &mut self,
+        struct_ty: &NType,
+        init_node: InitVal,
+        ptr: PointerValue<'ctx>,
+        llvm_ty: BasicTypeEnum<'ctx>,
+    ) -> Result<()> {
+        let struct_id = struct_ty
+            .as_struct_id()
+            .ok_or(CodegenError::TypeMismatch("expected struct type".into()))?;
+        let struct_def = self
+            .analyzer
+            .get_struct(struct_id)
+            .ok_or(CodegenError::NotImplemented("undefined struct"))?;
+
+        // Safety: struct_def 的生命周期与 self.analyzer 相同，
+        // 而 self.analyzer 在整个编译过程中都是有效的。
+        // 这里用裸指针避免 clone 开销，因为我们只需要读取 fields。
+        let fields: *const [StructField] = &struct_def.fields[..];
+
+        let inits: Vec<_> = init_node.inits().collect();
+
+        for (idx, (init, field)) in inits
+            .into_iter()
+            .zip(unsafe { &*fields }.iter())
+            .enumerate()
+        {
+            let field_llvm_ty = self.convert_ntype_to_type(&field.ty)?;
+
+            // 获取字段指针
+            let field_ptr = self
+                .builder
+                .build_struct_gep(llvm_ty, ptr, idx as u32, &format!("field.{}", field.name))
+                .map_err(|_| CodegenError::LlvmBuild("struct gep failed"))?;
+
+            // 根据字段类型处理初始化
+            let inner_field_ty = field.ty.unwrap_const();
+
+            if let Some(expr) = init.expr() {
+                // 单值表达式
+                let value = if let Ok(const_val) = self.get_const_var_value(&expr, None) {
+                    const_val
+                } else {
+                    self.compile_expr(expr)?
+                };
+                self.builder
+                    .build_store(field_ptr, value)
+                    .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+            } else if inner_field_ty.is_array() {
+                // 数组字段：使用 ArrayTree 解析
+                if self
+                    .analyzer
+                    .is_compile_time_constant(init.syntax().text_range())
+                {
+                    let init_val = self.get_const_var_value(&init, Some(field_llvm_ty))?;
+                    self.builder
+                        .build_store(field_ptr, init_val)
+                        .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+                } else {
+                    // 非常量数组需要先 zero init
+                    self.builder
+                        .build_store(field_ptr, field_llvm_ty.const_zero())
+                        .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+                    let mut indices = vec![self.context.i32_type().const_zero()];
+                    let array_tree = self
+                        .analyzer
+                        .expand_array
+                        .get(&init.syntax().text_range())
+                        .unwrap();
+                    self.store_on_array_tree(array_tree, &mut indices, field_ptr, field_llvm_ty)?;
+                }
+            } else if inner_field_ty.is_struct() {
+                // 嵌套 struct 字段：递归处理（不需要 zero init）
+                if self
+                    .analyzer
+                    .is_compile_time_constant(init.syntax().text_range())
+                {
+                    let init_val = self.get_const_var_value(&init, Some(field_llvm_ty))?;
+                    self.builder
+                        .build_store(field_ptr, init_val)
+                        .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+                } else {
+                    self.store_struct_init(&field.ty, init, field_ptr, field_llvm_ty)?;
+                }
+            } else {
+                return Err(CodegenError::Unsupported(
+                    "unsupported field init type".into(),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// 遍历 ArrayTree 叶子节点并存储初始化值
+    fn store_on_array_tree(
+        &mut self,
+        array_tree: &ArrayTree,
+        indices: &mut Vec<IntValue<'ctx>>,
+        ptr: PointerValue<'ctx>,
+        llvm_ty: BasicTypeEnum<'ctx>,
+    ) -> Result<()> {
+        match array_tree {
+            ArrayTree::Val(ArrayTreeValue::Expr(expr)) => {
+                // 尝试获取编译时常量值，否则编译表达式
+                let value = if let Ok(const_val) = self.get_const_var_value(expr, None) {
+                    const_val
+                } else {
+                    self.compile_expr(expr.clone())?
+                };
+                let gep = unsafe {
+                    self.builder
+                        .build_gep(llvm_ty, ptr, indices, "idx.gep")
+                        .map_err(|_| CodegenError::LlvmBuild("gep failed"))?
+                };
+                self.builder
+                    .build_store(gep, value)
+                    .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+            }
+            ArrayTree::Val(ArrayTreeValue::Struct {
+                struct_id: id,
+                init_list: list,
+            }) => {
+                // 尝试获取编译时常量值，否则逐个 store
+                let struct_ty = NType::Struct(*id);
+                let llvm_ty = self.convert_ntype_to_type(&struct_ty)?;
+                let gep = unsafe {
+                    self.builder
+                        .build_gep(llvm_ty, ptr, indices, "idx.gep")
+                        .map_err(|_| CodegenError::LlvmBuild("gep failed"))?
+                };
+                if let Ok(const_val) = self.get_const_var_value(list, Some(llvm_ty)) {
+                    self.builder
+                        .build_store(gep, const_val)
+                        .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
+                } else {
+                    self.store_struct_init(&struct_ty, list.clone(), gep, llvm_ty)?;
+                }
+            }
+            ArrayTree::Children(children) => {
+                let i32_type = self.context.i32_type();
+                for (i, child) in children.iter().enumerate() {
+                    indices.push(i32_type.const_int(i as u64, false));
+                    self.store_on_array_tree(child, indices, ptr, llvm_ty)?;
+                    indices.pop();
+                }
+            }
+            ArrayTree::Val(ArrayTreeValue::Empty) => {
+                // Empty 值已经被 zeroinitializer 处理，不需要额外操作
+            }
+        }
+        Ok(())
+    }
+
+    /// Global variable initialization (default 0)
+    fn const_init_or_zero(
+        &mut self,
+        init: Option<InitVal>,
+        ty: BasicTypeEnum<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let Some(init) = init else {
+            return Ok(ty.const_zero());
+        };
+        let range = init.syntax().text_range();
+        if let Some(value) = self.analyzer.get_value(range) {
+            return self.convert_value(value, Some(ty));
+        }
+        Err(CodegenError::Missing("init value"))
+    }
+}

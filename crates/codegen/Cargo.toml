@@ -1,0 +1,13 @@
+[package]
+name = "codegen"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+parser.workspace = true
+analyzer.workspace = true
+
+inkwell.workspace = true
+rowan.workspace = true
+insta.workspace = true
+thiserror.workspace = true

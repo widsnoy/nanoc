@@ -2,15 +2,15 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use airyc_codegen::llvm_ir::Program;
-use airyc_parser::ast::{AstNode, CompUnit};
-use airyc_parser::visitor::Visitor as _;
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use clap::{Parser, ValueEnum};
-use inkwell::OptimizationLevel;
+use codegen::llvm_ir::Program;
 use inkwell::context::Context as LlvmContext;
 use inkwell::targets::TargetMachine;
 use inkwell::targets::{CodeModel, InitializationConfig, RelocMode, Target};
+use inkwell::OptimizationLevel;
+use parser::ast::{AstNode, CompUnit};
+use parser::visitor::Visitor as _;
 
 #[derive(Parser, Debug)]
 #[command(name = "airyc", version = "0.0.1", about = "airyc compiler")]
@@ -69,7 +69,7 @@ fn main() -> Result<()> {
     let input = fs::read_to_string(&input_path).context("failed to read input file")?;
 
     // 1. Parse
-    let parser = airyc_parser::parser::Parser::new(&input);
+    let parser = parser::parse::Parser::new(&input);
     let (green_node, errors) = parser.parse();
     if !errors.is_empty() {
         eprintln!("Parser errors:");
@@ -81,7 +81,7 @@ fn main() -> Result<()> {
 
     if args.emit == EmitTarget::Ast {
         // FIXME:
-        println!("{:#?}", airyc_parser::parser::Parser::new_root(green_node));
+        println!("{:#?}", parser::parse::Parser::new_root(green_node));
         return Ok(());
     }
 
@@ -95,8 +95,8 @@ fn main() -> Result<()> {
     let builder = context.create_builder();
 
     // analyzer
-    let root = airyc_parser::parser::Parser::new_root(green_node);
-    let mut analyzer = airyc_analyzer::module::Module::default();
+    let root = parser::parse::Parser::new_root(green_node);
+    let mut analyzer = analyzer::module::Module::default();
     analyzer.walk(&root);
 
     if !analyzer.analyzing.errors.is_empty() {

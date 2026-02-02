@@ -3,63 +3,25 @@
 version = 4
 
 [[package]]
-name = "airyc-analyzer"
-version = "0.1.0"
-dependencies = [
- "airyc-parser",
- "insta",
- "text-size",
- "thunderdome",
-]
-
-[[package]]
-name = "airyc-codegen"
-version = "0.1.0"
-dependencies = [
- "airyc-analyzer",
- "airyc-parser",
- "inkwell",
- "insta",
- "rowan",
- "thiserror",
-]
-
-[[package]]
 name = "airyc-compiler"
 version = "0.1.0"
 dependencies = [
- "airyc-analyzer",
- "airyc-codegen",
- "airyc-parser",
+ "analyzer",
  "anyhow",
  "clap",
+ "codegen",
  "inkwell",
+ "parser",
 ]
 
 [[package]]
-name = "airyc-parser"
+name = "analyzer"
 version = "0.1.0"
 dependencies = [
  "insta",
- "logos",
- "rowan",
+ "parser",
  "text-size",
- "thiserror",
-]
-
-[[package]]
-name = "airyc-runtime"
-version = "0.1.0"
-dependencies = [
- "cc",
-]
-
-[[package]]
-name = "airyc-test"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
+ "thunderdome",
 ]
 
 [[package]]
@@ -185,6 +147,18 @@ name = "clap_lex"
 version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3e64b0cc0439b12df2fa678eae89a1c56a529fd067a9115f7827f1fffd22b32"
+
+[[package]]
+name = "codegen"
+version = "0.1.0"
+dependencies = [
+ "analyzer",
+ "inkwell",
+ "insta",
+ "parser",
+ "rowan",
+ "thiserror",
+]
 
 [[package]]
 name = "colorchoice"
@@ -389,6 +363,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
+name = "parser"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "logos",
+ "rowan",
+ "text-size",
+ "thiserror",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -434,6 +419,13 @@ dependencies = [
  "hashbrown",
  "rustc-hash",
  "text-size",
+]
+
+[[package]]
+name = "runtime"
+version = "0.1.0"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -510,6 +502,14 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "test"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
 ]
 
 [[package]]

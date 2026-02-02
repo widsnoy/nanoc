@@ -1,17 +1,21 @@
 [package]
 name = "airyc-compiler"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
 [workspace]
 members = [
-    "crates/airyc-codegen",
-    "crates/airyc-analyzer",
-    "crates/airyc-parser",
-    "crates/airyc-runtime",
-    "crates/airyc-test",
+    "crates/codegen",
+    "crates/analyzer",
+    "crates/parser",
+    "crates/runtime",
+    "crates/test",
 ]
 resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
 
 [workspace.dependencies]
 logos = "0.15.1"
@@ -25,14 +29,14 @@ thunderdome = "0.6.1"
 anyhow = "1.0"
 clap = { version = "4.5.54", features = ["derive"] }
 
-airyc-parser = { path = "crates/airyc-parser" }
-airyc-codegen = { path = "crates/airyc-codegen" }
-airyc-analyzer = { path = "crates/airyc-analyzer" }
+parser = { path = "crates/parser" }
+codegen = { path = "crates/codegen" }
+analyzer = { path = "crates/analyzer" }
 
 [dependencies]
-airyc-parser.workspace = true
-airyc-codegen.workspace = true
-airyc-analyzer.workspace = true
+parser.workspace = true
+codegen.workspace = true
+analyzer.workspace = true
 inkwell.workspace = true
 anyhow.workspace = true
 clap.workspace = true
