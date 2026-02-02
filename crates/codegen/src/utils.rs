@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use analyzer::array::ArrayTree;
 use analyzer::r#type::NType;
 use analyzer::value::Value;
-use parser::ast::{ArrayDecl, AstNode, IndexVal, Name, SyntaxToken};
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, FloatValue, FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, FloatPredicate, IntPredicate};
+use parser::ast::{ArrayDecl, AstNode, IndexVal, Name, SyntaxToken};
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::{LoopContext, Program, Symbol, SymbolTable};
@@ -196,9 +196,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 })
             }
             ArrayTree::Val(array_tree_value) => match array_tree_value {
-                analyzer::array::ArrayTreeValue::Expr(expr) => {
-                    self.get_const_var_value(expr, None)
-                }
+                analyzer::array::ArrayTreeValue::Expr(expr) => self.get_const_var_value(expr, None),
                 analyzer::array::ArrayTreeValue::Struct {
                     init_list: list, ..
                 } => self.get_const_var_value(list, None),

@@ -1,6 +1,6 @@
 use analyzer::r#type::NType;
-use parser::ast::*;
 use inkwell::types::BasicType;
+use parser::ast::*;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
