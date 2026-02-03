@@ -1,6 +1,6 @@
 fn main() -> i32 {
   let a: i32 = 10;
-  let p: const *mut i32 = &a;
+  let p: *mut i32 = &a;
 
   let v1: i32 = *p;
 

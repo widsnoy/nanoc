@@ -50,6 +50,7 @@ impl NType {
         match self {
             Self::Array(inner, _) => inner.is_const(),
             Self::Const(_) => true,
+            Self::Pointer { is_const, .. } => *is_const,
             _ => false,
         }
     }
@@ -90,6 +91,24 @@ impl NType {
             NType::Pointer { .. } => Value::Int(0), // null pointer
             NType::Struct(id) => Value::StructZero(*id),
             NType::Const(ntype) => ntype.const_zero(),
+        }
+    }
+
+    /// 判断两种类型是否兼容
+    pub fn assign_to_me_is_ok(&self, other: &Self) -> bool {
+        match (self, other) {
+            (NType::Void, NType::Void) => true,
+            (NType::Int, NType::Int) => true,
+            (NType::Float, NType::Float) => true,
+            (NType::Int, NType::Float) => true,
+            (NType::Float, NType::Int) => true,
+            (NType::Pointer { .. }, NType::Pointer { .. }) => true,
+            (NType::Pointer { .. }, NType::Int) => true,
+            (NType::Struct(id1), NType::Struct(id2)) => id1 == id2,
+            (NType::Const(inner), NType::Const(r_inner)) => inner.assign_to_me_is_ok(r_inner),
+            (NType::Const(inner), _) => inner.assign_to_me_is_ok(other),
+            (_, NType::Const(inner)) => self.assign_to_me_is_ok(inner),
+            _ => false,
         }
     }
 }

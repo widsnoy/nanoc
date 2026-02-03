@@ -4,7 +4,7 @@ fn main() -> i32 {
   let p1: *mut i32 = &a;
   let p2: *mut i32 = &b;
 
-  let pp: const *mut *mut i32 = &p1;
+  let pp: *mut *mut i32 = &p1;
 
   let v1: i32 = **pp;
 

@@ -67,7 +67,6 @@ pub enum SyntaxKind {
 
     PRIMIT_TYPE,
     TYPE,
-    BASE_TYPE,
 
     POINTER,
     NAME,

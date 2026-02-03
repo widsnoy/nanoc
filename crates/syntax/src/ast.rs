@@ -337,16 +337,9 @@ ast_node!(
 ast_node!(
     Type ~ TYPE {
         const_token: token(CONST_KW),
-        base_type: node(BaseType),
-    }
-);
-
-ast_node!(
-    BaseType ~ BASE_TYPE {
         primit_type: node(PrimitType),
         pointer: node(Pointer),
-        inner_type: node(BaseType),
-        inner_type_full: node(Type),
+        inner_type: node(Type),
         size_expr: node(Expr),
         l_brack_token: token(L_BRACK),
     }
