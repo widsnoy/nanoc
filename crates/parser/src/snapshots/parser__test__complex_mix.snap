@@ -14,10 +14,9 @@ COMP_UNIT@0..214
     TYPE@13..23
       WHITESPACE@13..14 " "
       CONST_KW@14..19 "const"
-      BASE_TYPE@19..23
-        PRIMIT_TYPE@19..23
-          WHITESPACE@19..20 " "
-          INT_KW@20..23 "i32"
+      PRIMIT_TYPE@19..23
+        WHITESPACE@19..20 " "
+        INT_KW@20..23 "i32"
     WHITESPACE@23..24 " "
     EQ@24..25 "="
     INIT_VAL@25..29
@@ -34,13 +33,12 @@ COMP_UNIT@0..214
       IDENT@39..40 "p"
     COLON@40..41 ":"
     TYPE@41..54
-      BASE_TYPE@41..54
-        PRIMIT_TYPE@41..54
-          WHITESPACE@41..42 " "
-          STRUCT_KW@42..48 "struct"
-          NAME@48..54
-            WHITESPACE@48..49 " "
-            IDENT@49..54 "Point"
+      PRIMIT_TYPE@41..54
+        WHITESPACE@41..42 " "
+        STRUCT_KW@42..48 "struct"
+        NAME@48..54
+          WHITESPACE@48..49 " "
+          IDENT@49..54 "Point"
     SEMI@54..55 ";"
   NEWLINE@55..56 "\n"
   NEWLINE@56..57 "\n"
@@ -57,10 +55,9 @@ COMP_UNIT@0..214
           IDENT@69..73 "argc"
         COLON@73..74 ":"
         TYPE@74..78
-          BASE_TYPE@74..78
-            PRIMIT_TYPE@74..78
-              WHITESPACE@74..75 " "
-              INT_KW@75..78 "i32"
+          PRIMIT_TYPE@74..78
+            WHITESPACE@74..75 " "
+            INT_KW@75..78 "i32"
       COMMA@78..79 ","
       FUNC_F_PARAM@79..105
         NAME@79..84
@@ -68,36 +65,33 @@ COMP_UNIT@0..214
           IDENT@80..84 "argv"
         COLON@84..85 ":"
         TYPE@85..105
-          BASE_TYPE@85..105
-            POINTER@85..90
-              WHITESPACE@85..86 " "
-              STAR@86..87 "*"
-              MUT_KW@87..90 "mut"
-            BASE_TYPE@90..105
-              WHITESPACE@90..91 " "
-              L_BRACK@91..92 "["
-              TYPE@92..100
-                BASE_TYPE@92..100
-                  POINTER@92..96
-                    STAR@92..93 "*"
-                    MUT_KW@93..96 "mut"
-                  BASE_TYPE@96..100
-                    PRIMIT_TYPE@96..100
-                      WHITESPACE@96..97 " "
-                      INT_KW@97..100 "i32"
-              SEMI@100..101 ";"
-              LITERAL@101..104
-                WHITESPACE@101..102 " "
-                INT_LITERAL@102..104 "10"
-              R_BRACK@104..105 "]"
+          POINTER@85..90
+            WHITESPACE@85..86 " "
+            STAR@86..87 "*"
+            MUT_KW@87..90 "mut"
+          TYPE@90..105
+            WHITESPACE@90..91 " "
+            L_BRACK@91..92 "["
+            TYPE@92..100
+              POINTER@92..96
+                STAR@92..93 "*"
+                MUT_KW@93..96 "mut"
+              TYPE@96..100
+                PRIMIT_TYPE@96..100
+                  WHITESPACE@96..97 " "
+                  INT_KW@97..100 "i32"
+            SEMI@100..101 ";"
+            LITERAL@101..104
+              WHITESPACE@101..102 " "
+              INT_LITERAL@102..104 "10"
+            R_BRACK@104..105 "]"
     R_PAREN@105..106 ")"
     WHITESPACE@106..107 " "
     ARROW@107..109 "->"
     TYPE@109..113
-      BASE_TYPE@109..113
-        PRIMIT_TYPE@109..113
-          WHITESPACE@109..110 " "
-          INT_KW@110..113 "i32"
+      PRIMIT_TYPE@109..113
+        WHITESPACE@109..110 " "
+        INT_KW@110..113 "i32"
     BLOCK@113..209
       WHITESPACE@113..114 " "
       L_BRACE@114..115 "{"
@@ -110,10 +104,9 @@ COMP_UNIT@0..214
           IDENT@128..129 "a"
         COLON@129..130 ":"
         TYPE@130..134
-          BASE_TYPE@130..134
-            PRIMIT_TYPE@130..134
-              WHITESPACE@130..131 " "
-              INT_KW@131..134 "i32"
+          PRIMIT_TYPE@130..134
+            WHITESPACE@130..131 " "
+            INT_KW@131..134 "i32"
         WHITESPACE@134..135 " "
         EQ@135..136 "="
         INIT_VAL@136..138
@@ -130,15 +123,14 @@ COMP_UNIT@0..214
           IDENT@152..155 "ptr"
         COLON@155..156 ":"
         TYPE@156..165
-          BASE_TYPE@156..165
-            POINTER@156..161
-              WHITESPACE@156..157 " "
-              STAR@157..158 "*"
-              MUT_KW@158..161 "mut"
-            BASE_TYPE@161..165
-              PRIMIT_TYPE@161..165
-                WHITESPACE@161..162 " "
-                INT_KW@162..165 "i32"
+          POINTER@156..161
+            WHITESPACE@156..157 " "
+            STAR@157..158 "*"
+            MUT_KW@158..161 "mut"
+          TYPE@161..165
+            PRIMIT_TYPE@161..165
+              WHITESPACE@161..162 " "
+              INT_KW@162..165 "i32"
         WHITESPACE@165..166 " "
         EQ@166..167 "="
         INIT_VAL@167..170
@@ -161,10 +153,9 @@ COMP_UNIT@0..214
         TYPE@186..196
           WHITESPACE@186..187 " "
           CONST_KW@187..192 "const"
-          BASE_TYPE@192..196
-            PRIMIT_TYPE@192..196
-              WHITESPACE@192..193 " "
-              INT_KW@193..196 "i32"
+          PRIMIT_TYPE@192..196
+            WHITESPACE@192..193 " "
+            INT_KW@193..196 "i32"
         WHITESPACE@196..197 " "
         EQ@197..198 "="
         INIT_VAL@198..202

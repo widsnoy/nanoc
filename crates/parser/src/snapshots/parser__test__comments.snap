@@ -33,10 +33,9 @@ COMP_UNIT@0..178
       IDENT@162..163 "a"
     COLON@163..164 ":"
     TYPE@164..168
-      BASE_TYPE@164..168
-        PRIMIT_TYPE@164..168
-          WHITESPACE@164..165 " "
-          INT_KW@165..168 "i32"
+      PRIMIT_TYPE@164..168
+        WHITESPACE@164..165 " "
+        INT_KW@165..168 "i32"
     WHITESPACE@168..169 " "
     EQ@169..170 "="
     INIT_VAL@170..172

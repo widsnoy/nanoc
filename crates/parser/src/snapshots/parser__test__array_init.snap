@@ -12,18 +12,16 @@ COMP_UNIT@0..86
       IDENT@9..10 "a"
     COLON@10..11 ":"
     TYPE@11..20
-      BASE_TYPE@11..20
-        WHITESPACE@11..12 " "
-        L_BRACK@12..13 "["
-        TYPE@13..16
-          BASE_TYPE@13..16
-            PRIMIT_TYPE@13..16
-              INT_KW@13..16 "i32"
-        SEMI@16..17 ";"
-        LITERAL@17..19
-          WHITESPACE@17..18 " "
-          INT_LITERAL@18..19 "3"
-        R_BRACK@19..20 "]"
+      WHITESPACE@11..12 " "
+      L_BRACK@12..13 "["
+      TYPE@13..16
+        PRIMIT_TYPE@13..16
+          INT_KW@13..16 "i32"
+      SEMI@16..17 ";"
+      LITERAL@17..19
+        WHITESPACE@17..18 " "
+        INT_LITERAL@18..19 "3"
+      R_BRACK@19..20 "]"
     WHITESPACE@20..21 " "
     EQ@21..22 "="
     INIT_VAL@22..32
@@ -53,26 +51,23 @@ COMP_UNIT@0..86
       IDENT@42..43 "b"
     COLON@43..44 ":"
     TYPE@44..58
-      BASE_TYPE@44..58
-        WHITESPACE@44..45 " "
-        L_BRACK@45..46 "["
-        TYPE@46..54
-          BASE_TYPE@46..54
-            L_BRACK@46..47 "["
-            TYPE@47..50
-              BASE_TYPE@47..50
-                PRIMIT_TYPE@47..50
-                  INT_KW@47..50 "i32"
-            SEMI@50..51 ";"
-            LITERAL@51..53
-              WHITESPACE@51..52 " "
-              INT_LITERAL@52..53 "3"
-            R_BRACK@53..54 "]"
-        SEMI@54..55 ";"
-        LITERAL@55..57
-          WHITESPACE@55..56 " "
-          INT_LITERAL@56..57 "2"
-        R_BRACK@57..58 "]"
+      WHITESPACE@44..45 " "
+      L_BRACK@45..46 "["
+      TYPE@46..54
+        L_BRACK@46..47 "["
+        TYPE@47..50
+          PRIMIT_TYPE@47..50
+            INT_KW@47..50 "i32"
+        SEMI@50..51 ";"
+        LITERAL@51..53
+          WHITESPACE@51..52 " "
+          INT_LITERAL@52..53 "3"
+        R_BRACK@53..54 "]"
+      SEMI@54..55 ";"
+      LITERAL@55..57
+        WHITESPACE@55..56 " "
+        INT_LITERAL@56..57 "2"
+      R_BRACK@57..58 "]"
     WHITESPACE@58..59 " "
     EQ@59..60 "="
     INIT_VAL@60..80

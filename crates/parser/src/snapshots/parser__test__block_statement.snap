@@ -28,10 +28,9 @@ COMP_UNIT@0..76
             IDENT@43..49 "nested"
           COLON@49..50 ":"
           TYPE@50..54
-            BASE_TYPE@50..54
-              PRIMIT_TYPE@50..54
-                WHITESPACE@50..51 " "
-                INT_KW@51..54 "i32"
+            PRIMIT_TYPE@50..54
+              WHITESPACE@50..51 " "
+              INT_KW@51..54 "i32"
           SEMI@54..55 ";"
         NEWLINE@55..56 "\n"
         WHITESPACE@56..64 "        "
