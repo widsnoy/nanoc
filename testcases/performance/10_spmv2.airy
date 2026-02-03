@@ -1,0 +1,57 @@
+fn spmv(n: i32, xptr: *mut i32, yidx: *mut i32, vals: *mut i32, b: *mut i32, x: *mut i32) {
+    let i: i32;
+    let j: i32;
+    let k: i32;
+    i = 0;
+    while (i < n){
+        x[i] = 0;
+        i = i + 1;
+    }
+
+    i = 0;
+    while (i < n){
+        j = xptr[i];
+        while (j < xptr[i + 1]){
+            x[yidx[j]] = x[yidx[j]] + vals[j];
+            j = j + 1;
+        }
+
+        j = xptr[i];
+        while (j < xptr[i + 1]){
+            x[yidx[j]] = x[yidx[j]] + vals[j] * (b[i] - 1);
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+}
+
+let N: const i32 = 100010;
+let M: const i32 = 3000000;
+
+let x: [i32; N];
+let y: [i32; M];
+let v: [i32; M];
+let a: [i32; N];
+let b: [i32; N];
+let c: [i32; N];
+
+fn main() -> i32 {
+    let n: i32 = getarray(x) - 1;
+    let m: i32 = getarray(y);
+    getarray(v);
+
+    getarray(a);
+
+    starttime();
+
+    let i: i32 = 0;
+    while (i < 100){
+        spmv(n, x, y, v, a, b);
+        spmv(n, x, y, v, b, a);
+        i=i+1;
+    }
+    stoptime();
+    putarray(n, b);
+    return 0;
+}
+

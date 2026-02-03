@@ -306,3 +306,246 @@ fn test_global_const_propagation() {
     dbg!(&module.value_table);
     assert!(module.analyzing.errors.is_empty());
 }
+
+#[test]
+fn test_break_inside_loop() {
+    let source = r#"
+    fn main() -> i32 {
+        while (1) {
+            break;
+        }
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(module.analyzing.errors.is_empty());
+}
+
+#[test]
+fn test_break_outside_loop_error() {
+    let source = r#"
+    fn main() -> i32 {
+        break;
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.analyzing.errors.is_empty());
+    match &module.analyzing.errors[0] {
+        SemanticError::BreakOutsideLoop { .. } => {}
+        _ => panic!("Expected BreakOutsideLoop error"),
+    }
+}
+
+#[test]
+fn test_continue_outside_loop_error() {
+    let source = r#"
+    fn main() -> i32 {
+        continue;
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.analyzing.errors.is_empty());
+    match &module.analyzing.errors[0] {
+        SemanticError::ContinueOutsideLoop { .. } => {}
+        _ => panic!("Expected ContinueOutsideLoop error"),
+    }
+}
+
+#[test]
+fn test_nested_loop_break() {
+    let source = r#"
+    fn main() -> i32 {
+        while (1) {
+            while (1) {
+                break;
+            }
+            continue;
+        }
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(module.analyzing.errors.is_empty());
+}
+
+#[test]
+fn test_function_call_valid() {
+    let source = r#"
+    fn add(a: i32, b: i32) -> i32 {
+        return a + b;
+    }
+    fn main() -> i32 {
+        let x: i32 = add(1, 2);
+        return x;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(module.analyzing.errors.is_empty());
+}
+
+#[test]
+fn test_function_undefined_error() {
+    let source = r#"
+    fn main() -> i32 {
+        let x: i32 = undefined_func(1, 2);
+        return x;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.analyzing.errors.is_empty());
+    match &module.analyzing.errors[0] {
+        SemanticError::FunctionUndefined { name, .. } => {
+            assert_eq!(name, "undefined_func");
+        }
+        _ => panic!("Expected FunctionUndefined error"),
+    }
+}
+
+#[test]
+fn test_function_argument_count_mismatch() {
+    let source = r#"
+    fn add(a: i32, b: i32) -> i32 {
+        return a + b;
+    }
+    fn main() -> i32 {
+        let x: i32 = add(1);
+        return x;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.analyzing.errors.is_empty());
+    match &module.analyzing.errors[0] {
+        SemanticError::ArgumentCountMismatch {
+            function_name,
+            expected,
+            found,
+            ..
+        } => {
+            assert_eq!(function_name, "add");
+            assert_eq!(*expected, 2);
+            assert_eq!(*found, 1);
+        }
+        _ => panic!("Expected ArgumentCountMismatch error"),
+    }
+}
+
+#[test]
+fn test_builtin_function_call() {
+    let source = r#"
+    fn main() -> i32 {
+        let x: i32 = getint();
+        putint(x);
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(module.analyzing.errors.is_empty());
+}
+
+#[test]
+fn test_assign_to_const_error() {
+    let source = r#"
+    fn main() -> i32 {
+        let x: const i32 = 1;
+        x = 2;
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.analyzing.errors.is_empty());
+    match &module.analyzing.errors[0] {
+        SemanticError::AssignToConst { name, .. } => {
+            assert_eq!(name, "x");
+        }
+        _ => panic!("Expected AssignToConst error"),
+    }
+}
+
+#[test]
+fn test_assign_to_mutable_variable() {
+    let source = r#"
+    fn main() -> i32 {
+        let x: i32 = 1;
+        x = 2;
+        return x;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(module.analyzing.errors.is_empty());
+}
+
+#[test]
+fn test_return_type_match() {
+    let source = r#"
+    fn foo() -> i32 {
+        return 42;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(module.analyzing.errors.is_empty());
+}
+
+#[test]
+fn test_return_void_from_void_function() {
+    let source = r#"
+    fn foo() {
+        return;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(module.analyzing.errors.is_empty());
+}
+
+#[test]
+fn test_variable_read_reference() {
+    let source = r#"
+    fn main() -> i32 {
+        let x: i32 = 1;
+        let y: i32 = x + 1;
+        return y;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(module.analyzing.errors.is_empty());
+    // 检查 variable_map 中有多个条目（定义 + 引用）
+    assert!(module.variable_map.len() >= 2);
+}
+
+// FIXME:
+// #[test]
+// fn test_variable_write_reference() {
+//     let source = r#"
+//     fn main() -> i32 {
+//         let x: i32 = 1;
+//         x = 2;
+//         return x;
+//     }
+//     "#;
+//     let module = analyze(source);
+//     assert!(module.analyzing.errors.is_empty());
+//     // 检查有 Write 引用被记录
+//     let has_write = module
+//         .variables
+//         .iter()
+//         .any(|(_, v)| v.tag == crate::module::VariableTag::Write);
+//     assert!(has_write, "Should have Write reference recorded");
+// }
+
+#[test]
+fn test_undefined_variable_error() {
+    let source = r#"
+    fn main() -> i32 {
+        return undefined_var;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.analyzing.errors.is_empty());
+    match &module.analyzing.errors[0] {
+        SemanticError::VariableUndefined { name, .. } => {
+            assert_eq!(name, "undefined_var");
+        }
+        _ => panic!("Expected VariableUndefined error"),
+    }
+}

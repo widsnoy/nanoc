@@ -73,12 +73,11 @@ const int *p;
 
 // Airyc
 let p: *mut i32;           // mutable pointer to mutable i32
-let p: const *mut i32;     // immutable pointer to mutable i32
-let p: *const i32;         // mutable pointer to immutable i32
-let p: const *const i32;   // immutable pointer to immutable i32
+let p: *mut const i32;     // mutable pointer to immutable i32
+let p: *const i32;         // mutable pointer to immutable i32 (shorthand)
 ```
 
-Note: `*` must be followed by `mut` or `const` to specify pointer mutability.
+Note: `*` must be followed by `mut` or `const` to specify pointee mutability.
 
 #### Function Definitions
 ```c

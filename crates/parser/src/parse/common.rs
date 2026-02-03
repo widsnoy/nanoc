@@ -8,23 +8,12 @@ impl Parser<'_> {
         self.finish_node();
     }
 
-    /// 解析类型: ['const'] BaseType
+    /// 解析基础类型: [const] PrimitType | Pointer Type | '[' Type ';' Expr ']'
     pub(super) fn parse_type(&mut self) {
         self.start_node(SyntaxKind::TYPE);
-        // 处理可选的 const 前缀
-        if self.at(SyntaxKind::CONST_KW) {
-            self.bump();
-        }
-        self.parse_base_type();
-        self.finish_node();
-    }
-
-    /// 解析基础类型: PrimitType | Pointer BaseType | '[' Type ';' Expr ']'
-    pub(super) fn parse_base_type(&mut self) {
-        self.start_node(SyntaxKind::BASE_TYPE);
         if self.at(SyntaxKind::STAR) {
             self.parse_pointer();
-            self.parse_base_type();
+            self.parse_type();
         } else if self.at(SyntaxKind::L_BRACK) {
             self.bump();
             self.parse_type(); // 数组内部是 Type，允许 const
@@ -32,6 +21,10 @@ impl Parser<'_> {
             self.parse_exp();
             self.expect_or_else_recovery(SyntaxKind::R_BRACK, SyntaxKind::is_decl_recovery);
         } else {
+            // 处理可选的 const 前缀
+            if self.at(SyntaxKind::CONST_KW) {
+                self.bump();
+            }
             self.parse_primitive_type();
         }
         self.finish_node();

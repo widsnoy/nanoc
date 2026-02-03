@@ -1,7 +1,7 @@
 fn main() -> i32 {
   let a: i32 = 10;
   let b: i32 = 20;
-  let p: *const i32 = &a;
+  let p: *mut const i32 = &a;
 
   let v1: i32 = *p;
 

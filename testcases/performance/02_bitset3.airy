@@ -1,0 +1,68 @@
+fn set(a: *mut i32, pos: i32, d: i32) -> i32 {
+    let bitcount: const i32 = 30;
+    let x: [i32; bitcount + 1] = {};
+
+    x[0] = 1;
+    x[1] = x[0] * 2;
+    x[2] = x[1] * 2;
+    x[3] = x[2] * 2;
+    x[4] = x[3] * 2;
+    x[5] = x[4] * 2;
+    x[6] = x[5] * 2;
+    x[7] = x[6] * 2;
+    x[8] = x[7] * 2;
+    x[9] = x[8] * 2;
+    x[10] = x[9] * 2;
+    
+    let i: i32 = 10;
+    while (i < bitcount){
+        i = i + 1;
+        x[i] = x[i - 1] * 2;
+    }
+
+    let v: i32 = 0;
+
+    if (pos / bitcount >= 10000) return 0;
+    
+    if (a[pos / bitcount] / (x[pos % bitcount]) % 2 != d){
+        if (a[pos / bitcount] / (x[pos % bitcount]) % 2 == 0)
+            if (d == 1)
+                v = x[pos % bitcount];
+        
+        if (a[pos / bitcount] / x[pos % bitcount] % 2 == 1)
+            if (d == 0)
+                v = v - x[pos % bitcount];
+    }
+
+    a[pos / bitcount] = a[pos / bitcount] + v;
+    return 0;
+}
+
+let seed: [i32; 3] = {19971231, 19981013, 1000000000 + 7};
+let staticvalue: i32 = 0;
+
+fn rand() -> i32 {
+    staticvalue = staticvalue * seed[0] + seed[1];
+    staticvalue = staticvalue % seed[2];
+    if (staticvalue < 0) staticvalue = seed[2] + staticvalue;
+    return staticvalue;
+}
+
+let a: [i32; 10000] = {};
+fn main() -> i32 {
+    
+    let n: i32 = getint();
+    staticvalue = getint();
+    starttime();
+    let x: i32;
+    let y: i32;
+    while (n > 0){
+        n = n - 1;
+        x = rand() % 300000;
+        y = rand() % 2;
+        set(a, x, y);
+    }
+    stoptime();
+    putarray(10000, a);
+    return 0;
+}

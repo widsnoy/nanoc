@@ -1,4 +1,5 @@
 use parser::ast::{AstNode as _, InitVal};
+use syntax::{Expr, IndexVal, OpNode, PostfixExpr, SyntaxKind, UnaryExpr};
 
 use crate::{
     array::ArrayTree,
@@ -21,9 +22,9 @@ impl Module {
                 NType::Pointer { pointee, .. } => *pointee,
                 NType::Const(inner) => Self::compute_indexed_type(&inner, 1)?,
                 _ => {
-                    return Err(SemanticError::CantApplyOpOnType {
+                    return Err(SemanticError::ApplyOpOnType {
                         ty: current,
-                        op: "[]",
+                        op: "[]".to_string(),
                     });
                 }
             };
@@ -32,7 +33,7 @@ impl Module {
         if let NType::Array(inner, _) = current {
             Ok(NType::Pointer {
                 pointee: inner,
-                is_const: false,
+                is_const: true,
             })
         } else {
             Ok(current)
@@ -140,6 +141,101 @@ impl Module {
             }
 
             NType::Void | NType::Const(_) => unreachable!(),
+        }
+    }
+
+    /// 返回 true 如果是有效的左值
+    pub(crate) fn is_lvalue_expr(&self, expr: &Expr) -> bool {
+        match expr {
+            Expr::IndexVal(_) => true,
+            Expr::PostfixExpr(_) => true,
+            Expr::UnaryExpr(unary) => unary.op().map(|x| x.op().kind()) == Some(SyntaxKind::STAR),
+            // 其他表达式类型不是有效的左值（字面量、函数调用、二元表达式等）
+            _ => false,
+        }
+    }
+
+    /// 检查左值是否可赋值（检测 const 并报错）
+    pub(crate) fn check_lvalue_assignable(&mut self, expr: &Expr) -> bool {
+        match expr {
+            Expr::IndexVal(index_val) => self.check_index_val_assignable(index_val),
+            Expr::PostfixExpr(postfix) => self.check_postfix_assignable(postfix),
+            Expr::UnaryExpr(unary) => self.check_unary_assignable(unary),
+            _ => false,
+        }
+    }
+
+    /// 检查 IndexVal 是否可赋值（检测 const 并报错）
+    fn check_index_val_assignable(&mut self, node: &IndexVal) -> bool {
+        let Some(name_node) = node.name() else {
+            return false;
+        };
+        let Some(ident_token) = name_node.ident() else {
+            return false;
+        };
+        let var_name = ident_token.text();
+        let var_range = ident_token.text_range();
+
+        let Some(def_id) = self.find_variable_def(var_name) else {
+            return false;
+        };
+
+        let var = self.variables.get(*def_id).unwrap();
+
+        let Some(result_ty) = self.get_expr_type(node.syntax().text_range()) else {
+            return false;
+        };
+
+        // const 不可被赋值
+        if var.ty.is_const() || result_ty.is_const() {
+            self.analyzing.new_error(SemanticError::AssignToConst {
+                name: var_name.to_string(),
+                range: var_range,
+            });
+            return false;
+        }
+        true
+    }
+
+    /// 检查 PostfixExpr 是否可赋值（检测 const 并报错）
+    fn check_postfix_assignable(&mut self, node: &PostfixExpr) -> bool {
+        if let Some(ty) = self.get_expr_type(node.syntax().text_range()) {
+            if ty.is_const() {
+                self.analyzing.new_error(SemanticError::AssignToConst {
+                    name: "field".to_string(),
+                    range: node.syntax().text_range(),
+                });
+                return false;
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    /// 检查 UnaryExpr（解引用 *ptr）是否可赋值（检测 const 并报错）
+    fn check_unary_assignable(&mut self, node: &UnaryExpr) -> bool {
+        let Some(op) = node.op() else {
+            return true;
+        };
+
+        // 只检查解引用操作
+        if op.op().kind() != SyntaxKind::STAR {
+            return true;
+        }
+
+        let Some(expr_ty) = self.get_expr_type(node.syntax().text_range()) else {
+            return false;
+        };
+
+        if expr_ty.is_const() {
+            self.analyzing.new_error(SemanticError::AssignToConst {
+                name: "*ptr".to_string(),
+                range: node.syntax().text_range(),
+            });
+            false
+        } else {
+            true
         }
     }
 }

@@ -1,0 +1,122 @@
+// Brainfuck Interpreter
+// Reads program from stdin, interprets and outputs to stdout.
+//
+// Main optimization targets:
+// jump table, inline variables, etc.
+
+let program_length: i32 = 0;
+let program: [i32; 65536] = {};
+let tape: [i32; 65536] = {};
+let input: [i32; 65536] = {};
+let input_length: i32 = 0;
+let output: [i32; 65536] = {};
+let output_length: i32 = 0;
+
+fn get_bf_char() -> i32 {
+  let get: i32 = getch();
+  while (get != 62 && get != 60 && get != 43 && get != 45 && get != 91 &&
+         get != 93 && get != 46 && get != 44 && get != 35) {
+    get = getch();
+  }
+  return get;
+}
+
+fn read_program() {
+  let get: i32 = get_bf_char();
+  while (get != 35) {
+    program[program_length] = get;
+    get = get_bf_char();
+    program_length = program_length + 1;
+  }
+
+  // read input
+  // input starts with an `i`
+  let verify: i32 = getch();
+  if (verify != 105) {
+    return;
+  }
+  // and a length
+  input_length = getint();
+  // and a random char
+  getch();
+  let i: i32 = 0;
+  while (i < input_length) {
+    input[i] = getch();
+    i = i + 1;
+  }
+}
+
+fn run_program() {
+  let ip: i32 = 0;
+  let read_head: i32 = 0;
+  let input_head: i32 = 0;
+  let return_address: [i32; 512] = {};
+  let return_address_top: i32 = 0;
+  output_length = 0;
+  while (ip < program_length) {
+    let code: i32 = program[ip];
+    if (code == 62) {
+      read_head = read_head + 1;
+    } else if (code == 60) {
+      read_head = read_head - 1;
+    } else if (code == 43) {
+      tape[read_head] = tape[read_head] + 1;
+    } else if (code == 45) {
+      tape[read_head] = tape[read_head] - 1;
+    } else if (code == 91) {
+      let val: i32 = tape[read_head];
+      if (val != 0) {
+        return_address[return_address_top] = ip;
+        return_address_top = return_address_top + 1;
+      } else {
+        // find the matching ]
+        let loop: i32 = 1;
+        while (loop > 0) {
+          ip = ip + 1;
+          if (program[ip] == 93) {
+            loop = loop - 1;
+          }
+          if (program[ip] == 91) {
+            loop = loop + 1;
+          }
+        }
+      }
+    } else if (code == 93) {
+      let val: i32 = tape[read_head];
+      if (val == 0) {
+        return_address_top = return_address_top - 1;
+      } else {
+        ip = return_address[return_address_top - 1];
+      }
+    } else if (code == 46) {
+      output[output_length] = tape[read_head];
+      output_length = output_length + 1;
+    } else if (code == 44) {
+      if (input_head >= input_length) {
+        tape[read_head] = 0;
+      } else {
+        tape[read_head] = input[input_head];
+        input_head = input_head + 1;
+      }
+    }
+    ip = ip + 1;
+  }
+}
+
+fn output_() {
+  let i: i32 = 0;
+  while (i < output_length) {
+    putch(output[i]);
+    i = i + 1;
+  }
+}
+
+fn main() -> i32 {
+  read_program();
+  starttime();
+  run_program();
+  stoptime();
+  output_();
+  return 0;
+}
+

@@ -1,0 +1,51 @@
+let matrix: [i32; 20000000];
+let a: [i32; 100000];
+
+fn transpose(n: i32, matrix: *mut i32, rowsize: i32) -> i32 {
+    let colsize: i32 = n / rowsize;
+    let i: i32 = 0;
+    let j: i32 = 0;
+    while (i < colsize){
+        j = 0;
+        while (j < rowsize){
+            if (i < j){
+                j = j + 1;
+                continue;
+            }
+            let curr: i32 = matrix[i * rowsize + j];
+            matrix[j * colsize + i] = matrix[i * rowsize + j];
+            matrix[i * rowsize + j] = curr;
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    return -1;
+}
+
+fn main() -> i32 {
+    let n: i32 = getint();
+    let len: i32 = getarray(a);
+    starttime();
+    let i: i32 = 0;
+    while (i < n){
+        matrix[i] = i;
+        i = i + 1;
+    }
+    i = 0;
+    while (i < len){
+        transpose(n, matrix, a[i]);
+        i = i + 1;
+    }
+
+    let ans: i32 = 0;
+    i = 0;
+    while (i < len){
+        ans = ans + i * i * matrix[i];
+        i = i + 1;
+    }
+    if (ans < 0) ans = -ans;
+    stoptime();
+    putint(ans);
+    putch(10);
+    return 0;
+}

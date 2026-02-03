@@ -8,8 +8,7 @@ A toy programming language
 CompUnit    := {GlobalDecl}
 GlobalDecl  := VarDef | FuncDef | StructDef
 
-Type        := ['const'] BaseType
-BaseType    := PrimitType | Pointer BaseType | '[' Type ';' Expr ']'
+Type        := ['const'] PrimitType | Pointer Type | '[' Type ';' Expr ']'
 PrimitType  := 'void' | 'i32' | 'f32' | 'struct' Name
 Pointer     := '*' ('mut' | 'const')
 

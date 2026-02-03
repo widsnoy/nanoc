@@ -87,7 +87,6 @@ def_visitor! {
     FieldAccess, FIELD_ACCESS, enter_field_access, leave_field_access;
     Literal, LITERAL, enter_literal, leave_literal;
     Type, TYPE, enter_type, leave_type;
-    BaseType, BASE_TYPE, enter_base_type, leave_base_type;
     Name, NAME, enter_name, leave_name;
     Pointer, POINTER, enter_pointer, leave_pointer;
 }

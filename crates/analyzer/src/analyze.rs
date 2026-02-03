@@ -22,7 +22,7 @@ impl Visitor for Module {
         };
         // 检查是否重复定义
         if self.find_struct(&name).is_some() {
-            self.analyzing.errors.push(SemanticError::StructDefined {
+            self.analyzing.new_error(SemanticError::StructDefined {
                 name: name.clone(),
                 range,
             });
@@ -61,7 +61,7 @@ impl Visitor for Module {
 
             // 检查字段名是否重复
             if !field_names.insert(field_name.clone()) {
-                self.analyzing.errors.push(SemanticError::VariableDefined {
+                self.analyzing.new_error(SemanticError::VariableDefined {
                     name: field_name.clone(),
                     range: field_name_node.syntax().text_range(),
                 });
@@ -72,7 +72,7 @@ impl Visitor for Module {
             let field_ty = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
                 ty.clone()
             } else {
-                self.analyzing.errors.push(SemanticError::TypeUndefined {
+                self.analyzing.new_error(SemanticError::TypeUndefined {
                     range: ty_node.syntax().text_range(),
                 });
                 continue;
@@ -106,7 +106,7 @@ impl Visitor for Module {
         let var_type = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
             ty.clone()
         } else {
-            self.analyzing.errors.push(SemanticError::TypeUndefined {
+            self.analyzing.new_error(SemanticError::TypeUndefined {
                 range: ty_node.syntax().text_range(),
             });
             return;
@@ -116,8 +116,8 @@ impl Visitor for Module {
         let scope = self.scopes.get_mut(*current_scope).unwrap();
         let is_global = current_scope == self.global_scope;
         let is_const = var_type.is_const();
-        if scope.have_variable(&var_name) {
-            self.analyzing.errors.push(SemanticError::VariableDefined {
+        if scope.have_variable_def(&self.variables, &var_name) {
+            self.analyzing.new_error(SemanticError::VariableDefined {
                 name: var_name,
                 range: var_range,
             });
@@ -138,7 +138,7 @@ impl Visitor for Module {
                     match ArrayTree::new(self, &var_type, init_val_node) {
                         Ok(s) => s,
                         Err(e) => {
-                            self.analyzing.errors.push(SemanticError::ArrayError {
+                            self.analyzing.new_error(SemanticError::ArrayError {
                                 message: Box::new(e),
                                 range: init_range,
                             });
@@ -175,15 +175,14 @@ impl Visitor for Module {
                     // global 变量必须编译时能求值
                     if is_global {
                         self.analyzing
-                            .errors
-                            .push(SemanticError::ConstantExprExpected { range: init_range });
+                            .new_error(SemanticError::ConstantExprExpected { range: init_range });
                         return;
                     }
                 }
             }
         } else if is_const {
             // 如果是 const 必须要有初始化列表:w
-            self.analyzing.errors.push(SemanticError::ExpectInitialVal {
+            self.analyzing.new_error(SemanticError::ExpectInitialVal {
                 name: var_name,
                 range: var_range,
             });
@@ -201,8 +200,42 @@ impl Visitor for Module {
         );
     }
 
-    fn enter_func_def(&mut self, _node: FuncDef) {
+    fn enter_func_def(&mut self, node: FuncDef) {
+        // 获取函数名称
+        let Some(name_node) = node.name() else {
+            return;
+        };
+        let Some(ident) = name_node.ident() else {
+            return;
+        };
+        let name = ident.text().to_string();
+
+        // 检查函数是否重复定义
+        if self.function_map.contains_key(&name) {
+            self.analyzing.new_error(SemanticError::FunctionDefined {
+                name,
+                range: ident.text_range(),
+            });
+            return;
+        }
+
+        // 提前创建占位，以支持递归函数
+        let func_id = self.new_function(name.clone(), vec![], NType::Void);
+        self.function_map.insert(name.clone(), func_id);
+
+        // 记录当前正在定义的函数名称
+        self.analyzing.current_func_name = Some(name);
+
         self.analyzing.current_scope = self.new_scope(Some(self.analyzing.current_scope));
+        self.analyzing.in_func_def = true;
+
+        // 记录返回类型的范围，用于在 leave_type 中识别
+        if let Some(ty_node) = node.ret_type() {
+            self.analyzing.func_ret_type_range = Some(ty_node.syntax().text_range());
+        }
+
+        // 默认返回类型为 Void（如果没有声明返回类型）
+        self.analyzing.current_function_ret_type = Some(NType::Void);
     }
 
     fn leave_func_def(&mut self, node: FuncDef) {
@@ -231,7 +264,7 @@ impl Visitor for Module {
             if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
                 ty.clone()
             } else {
-                self.analyzing.errors.push(SemanticError::TypeUndefined {
+                self.analyzing.new_error(SemanticError::TypeUndefined {
                     range: ty_node.syntax().text_range(),
                 });
                 return;
@@ -248,20 +281,16 @@ impl Visitor for Module {
         };
         let name = ident.text().to_string();
 
-        // 检查函数是否重复定义
-        if self.function_map.contains_key(&name) {
-            self.analyzing.errors.push(SemanticError::FunctionDefined {
-                name,
-                range: ident.text_range(),
-            });
-            self.analyzing.current_scope = parent_scope;
-            return;
+        // 获取已创建的函数 ID（在 enter_func_def 中创建）并更新
+        if let Some(func_id) = self.find_function(&name) {
+            self.update_function(func_id, param_list, ret_type);
         }
 
-        let func_id = self.new_function(name.clone(), param_list, ret_type);
-        self.function_map.insert(name, func_id);
-
         self.analyzing.current_scope = parent_scope;
+        self.analyzing.current_function_ret_type = None;
+        self.analyzing.in_func_def = false;
+        self.analyzing.func_ret_type_range = None;
+        self.analyzing.current_func_name = None;
     }
 
     fn leave_func_f_param(&mut self, node: FuncFParam) {
@@ -272,7 +301,7 @@ impl Visitor for Module {
         let param_type = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
             ty.clone()
         } else {
-            self.analyzing.errors.push(SemanticError::TypeUndefined {
+            self.analyzing.new_error(SemanticError::TypeUndefined {
                 range: ty_node.syntax().text_range(),
             });
             return;
@@ -290,10 +319,9 @@ impl Visitor for Module {
         let range = ident.text_range();
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
-        if scope.have_variable(&name) {
+        if scope.have_variable_def(&self.variables, &name) {
             self.analyzing
-                .errors
-                .push(SemanticError::VariableDefined { name, range });
+                .new_error(SemanticError::VariableDefined { name, range });
             return;
         }
 
@@ -320,13 +348,197 @@ impl Visitor for Module {
             .unwrap();
     }
 
-    fn enter_assign_stmt(&mut self, _node: AssignStmt) {}
-    fn leave_assign_stmt(&mut self, _node: AssignStmt) {}
-    fn enter_break_stmt(&mut self, _node: BreakStmt) {}
-    fn leave_break_stmt(&mut self, _node: BreakStmt) {}
-    fn enter_continue_stmt(&mut self, _node: ContinueStmt) {}
-    fn leave_continue_stmt(&mut self, _node: ContinueStmt) {}
-    fn leave_return_stmt(&mut self, _node: ReturnStmt) {}
+    fn enter_while_stmt(&mut self, _node: WhileStmt) {
+        self.analyzing.loop_depth += 1;
+    }
+
+    fn leave_while_stmt(&mut self, _node: WhileStmt) {
+        self.analyzing.loop_depth -= 1;
+    }
+
+    fn leave_assign_stmt(&mut self, node: AssignStmt) {
+        let Some(lhs) = node.lhs() else {
+            return;
+        };
+        let Some(rhs) = node.rhs() else {
+            return;
+        };
+
+        let lhs_range = lhs.syntax().text_range();
+        let rhs_range = rhs.syntax().text_range();
+
+        // 检查是否是左值
+        let is_valid_lvalue = self.is_lvalue_expr(&lhs);
+        if !is_valid_lvalue {
+            self.analyzing
+                .new_error(SemanticError::InvalidLValue { range: lhs_range });
+            return;
+        }
+
+        // 检查左值是否可赋值（const 检测）
+        if !self.check_lvalue_assignable(&lhs) {
+            return;
+        }
+
+        // 类型检查
+        let Some(lhs_ty) = self.get_expr_type(lhs_range) else {
+            return;
+        };
+        let Some(rhs_ty) = self.get_expr_type(rhs_range) else {
+            return;
+        };
+
+        if !lhs_ty.assign_to_me_is_ok(rhs_ty) {
+            self.analyzing.new_error(SemanticError::TypeMismatch {
+                expected: lhs_ty.clone(),
+                found: rhs_ty.clone(),
+                range: rhs_range,
+            });
+        }
+
+        // FIXME: 字段的 ref
+    }
+    fn enter_break_stmt(&mut self, node: BreakStmt) {
+        if self.analyzing.loop_depth == 0 {
+            self.analyzing.new_error(SemanticError::BreakOutsideLoop {
+                range: node.syntax().text_range(),
+            });
+        }
+    }
+
+    fn enter_continue_stmt(&mut self, node: ContinueStmt) {
+        if self.analyzing.loop_depth == 0 {
+            self.analyzing
+                .new_error(SemanticError::ContinueOutsideLoop {
+                    range: node.syntax().text_range(),
+                });
+        }
+    }
+
+    fn leave_return_stmt(&mut self, node: ReturnStmt) {
+        let range = node.syntax().text_range();
+
+        // 获取当前函数的返回类型
+        let Some(expected_ret_type) = &self.analyzing.current_function_ret_type else {
+            return;
+        };
+
+        // 获取 return 表达式的类型
+        let actual_ret_type = if let Some(expr) = node.expr() {
+            let expr_range = expr.syntax().text_range();
+            match self.get_expr_type(expr_range) {
+                Some(v) => v,
+                None => return,
+            }
+        } else {
+            &NType::Void
+        };
+
+        // 检查返回类型是否匹配
+        if !expected_ret_type.assign_to_me_is_ok(actual_ret_type) {
+            self.analyzing.new_error(SemanticError::ReturnTypeMismatch {
+                expected: expected_ret_type.clone(),
+                found: actual_ret_type.clone(),
+                range,
+            });
+        }
+    }
+
+    fn leave_call_expr(&mut self, node: CallExpr) {
+        let Some(name_node) = node.name() else {
+            return;
+        };
+        let Some(func_name) = name_node.var_name() else {
+            return;
+        };
+        let func_range = name_node.syntax().text_range();
+
+        // FIXME: 内置函数列表（运行时库提供）
+        let builtin_functions = [
+            ("getint", 0, NType::Int),
+            ("getch", 0, NType::Int),
+            ("getfloat", 0, NType::Float),
+            ("getarray", 1, NType::Int),
+            ("getfarray", 1, NType::Int),
+            ("putint", 1, NType::Void),
+            ("putch", 1, NType::Void),
+            ("putfloat", 1, NType::Void),
+            ("putarray", 2, NType::Void),
+            ("putfarray", 2, NType::Void),
+            ("putf", -1, NType::Void), // 可变参数
+            ("starttime", 0, NType::Void),
+            ("stoptime", 0, NType::Void),
+            ("_sysy_starttime", 1, NType::Void),
+            ("_sysy_stoptime", 1, NType::Void),
+        ];
+
+        // 获取实际参数数量
+        let arg_count = node.args().map(|args| args.args().count()).unwrap_or(0);
+
+        // 检查是否为内置函数
+        if let Some((_, expected_args, ret_type)) = builtin_functions
+            .iter()
+            .find(|(name, _, _)| *name == func_name)
+        {
+            // 设置返回类型
+            self.set_expr_type(node.syntax().text_range(), ret_type.clone());
+
+            // 检查参数数量（-1 表示可变参数，不检查）
+            if *expected_args >= 0 && arg_count != *expected_args as usize {
+                self.analyzing
+                    .new_error(SemanticError::ArgumentCountMismatch {
+                        function_name: func_name.clone(),
+                        expected: *expected_args as usize,
+                        found: arg_count,
+                        range: func_range,
+                    });
+            }
+            return;
+        }
+
+        // 查找用户定义的函数
+        let Some(func_id) = self.find_function(&func_name) else {
+            self.analyzing.new_error(SemanticError::FunctionUndefined {
+                name: func_name,
+                range: func_range,
+            });
+            return;
+        };
+
+        let func = self.get_function(func_id).unwrap();
+        let expected_arg_count = func.params.len();
+
+        // 检查是否是正在定义的函数（递归调用）
+        let is_current_func = self
+            .analyzing
+            .current_func_name
+            .as_ref()
+            .is_some_and(|n| n == &func_name);
+
+        // 获取返回类型：如果是递归调用，使用 current_function_ret_type
+        let ret_type = if is_current_func {
+            self.analyzing
+                .current_function_ret_type
+                .clone()
+                .unwrap_or(NType::Void)
+        } else {
+            func.ret_type.clone()
+        };
+
+        // 设置返回类型
+        self.set_expr_type(node.syntax().text_range(), ret_type);
+
+        // 检查参数数量（跳过正在定义的函数，因为参数列表还未完成）
+        if !is_current_func && arg_count != expected_arg_count {
+            self.analyzing
+                .new_error(SemanticError::ArgumentCountMismatch {
+                    function_name: func_name,
+                    expected: expected_arg_count,
+                    found: arg_count,
+                    range: func_range,
+                });
+        }
+    }
 
     fn leave_binary_expr(&mut self, node: BinaryExpr) {
         let Some(lhs) = node.lhs() else {
@@ -387,6 +599,13 @@ impl Visitor for Module {
 
         if let Some(inner_ty) = self.get_expr_type(expr.syntax().text_range()) {
             let result_ty = if op_kind == SyntaxKind::AMP {
+                if !self.is_lvalue_expr(&expr) {
+                    self.analyzing.new_error(SemanticError::AddressOfNonLvalue {
+                        range: expr.syntax().text_range(),
+                    });
+
+                    return;
+                }
                 // 取地址操作，默认生成 *mut 指针
                 NType::Pointer {
                     pointee: Box::new(inner_ty.clone()),
@@ -407,7 +626,11 @@ impl Visitor for Module {
                 if let Some(pointee) = pointee {
                     pointee
                 } else {
-                    unreachable!("");
+                    self.analyzing.new_error(SemanticError::ApplyOpOnType {
+                        ty: inner_ty.clone(),
+                        op: "*".to_string(),
+                    });
+                    return;
                 }
             } else {
                 inner_ty.clone()
@@ -454,18 +677,20 @@ impl Visitor for Module {
         };
         let var_range = ident_token.text_range();
         let var_name = ident_token.text();
-        let scope = self.scopes.get(*self.analyzing.current_scope).unwrap();
-        let Some(vid) = scope.look_up(self, var_name, VariableTag::Define) else {
-            self.analyzing
-                .errors
-                .push(SemanticError::VariableUndefined {
-                    name: var_name.to_string(),
-                    range: var_range,
-                });
+
+        // 查找变量定义
+        let Some(def_id) = self.find_variable_def(var_name) else {
+            self.analyzing.new_error(SemanticError::VariableUndefined {
+                name: var_name.to_string(),
+                range: var_range,
+            });
             return;
         };
 
-        let var = self.variables.get(*vid).unwrap();
+        // 记录 Read 引用
+        self.record_variable_reference(var_name, var_range, VariableTag::Read);
+
+        let var = self.variables.get(*def_id).unwrap();
         let index_count = node.indices().count();
         let result_ty = match Self::compute_indexed_type(&var.ty, index_count) {
             Ok(ty) => ty,
@@ -494,7 +719,7 @@ impl Visitor for Module {
                     return;
                 };
                 let Value::Int(index) = v else {
-                    self.analyzing.errors.push(SemanticError::TypeMismatch {
+                    self.analyzing.new_error(SemanticError::TypeMismatch {
                         expected: NType::Int,
                         found: NType::Float,
                         range,
@@ -506,7 +731,7 @@ impl Visitor for Module {
             let leaf = match tree.get_leaf(&indices) {
                 Ok(s) => s,
                 Err(e) => {
-                    self.analyzing.errors.push(SemanticError::ArrayError {
+                    self.analyzing.new_error(SemanticError::ArrayError {
                         message: Box::new(e),
                         range: node.syntax().text_range(),
                     });
@@ -543,7 +768,7 @@ impl Visitor for Module {
         let Some(op_node) = node.op() else {
             return;
         };
-        let op = op_node.op().kind();
+        let op_kind = op_node.op().kind();
 
         // 获取成员 FieldAccess（可能包含数组索引）
         let Some(field_access_node) = node.field() else {
@@ -567,13 +792,13 @@ impl Visitor for Module {
         };
 
         // 根据操作符提取 struct ID
-        let struct_id = match op {
+        let struct_id = match op_kind {
             SyntaxKind::DOT => {
                 // 直接成员访问：左操作数必须是 struct 类型
                 if let Some(id) = base_ty.as_struct_id() {
                     id
                 } else {
-                    self.analyzing.errors.push(SemanticError::NotAStruct {
+                    self.analyzing.new_error(SemanticError::NotAStruct {
                         ty: base_ty.clone(),
                         range: base_range,
                     });
@@ -585,16 +810,20 @@ impl Visitor for Module {
                 if let Some(id) = base_ty.as_struct_pointer_id() {
                     id
                 } else {
-                    self.analyzing
-                        .errors
-                        .push(SemanticError::NotAStructPointer {
-                            ty: base_ty.clone(),
-                            range: base_range,
-                        });
+                    self.analyzing.new_error(SemanticError::NotAStructPointer {
+                        ty: base_ty.clone(),
+                        range: base_range,
+                    });
                     return;
                 }
             }
-            _ => unreachable!(),
+            _ => {
+                self.analyzing.new_error(SemanticError::ApplyOpOnType {
+                    ty: base_ty.clone(),
+                    op: op_node.op().text().to_string(),
+                });
+                return;
+            }
         };
 
         // 查找 struct 定义
@@ -618,7 +847,14 @@ impl Visitor for Module {
                     }
                 }
             };
-            self.set_expr_type(range, result_ty.clone());
+            // 如果 base_ty 是 const，需要继承
+            let result_ty = if base_ty.is_const() && !result_ty.is_const() {
+                NType::Const(Box::new(result_ty))
+            } else {
+                result_ty
+            };
+
+            self.set_expr_type(range, result_ty);
 
             // 常量处理：如果基础表达式是常量 struct，提取字段值
             if let Some(Value::Struct(_struct_id, field_values)) =
@@ -647,7 +883,7 @@ impl Visitor for Module {
                 }
             }
         } else {
-            self.analyzing.errors.push(SemanticError::FieldNotFound {
+            self.analyzing.new_error(SemanticError::FieldNotFound {
                 struct_name: unsafe { &*struct_def }.name.clone(),
                 field_name: member_name,
                 range,
@@ -686,30 +922,9 @@ impl Visitor for Module {
     fn leave_type(&mut self, node: Type) {
         let range = node.syntax().text_range();
 
-        // 获取 BaseType 的类型
-        let Some(base_type_node) = node.base_type() else {
-            return;
-        };
-        let Some(base_ntype) = self.get_expr_type(base_type_node.syntax().text_range()) else {
-            return;
-        };
-
-        // 如果有 const 前缀，包装成 Const
-        let ntype = if node.const_token().is_some() {
-            NType::Const(Box::new(base_ntype.clone()))
-        } else {
-            base_ntype.clone()
-        };
-
-        self.set_expr_type(range, ntype);
-    }
-
-    fn leave_base_type(&mut self, node: BaseType) {
-        let range = node.syntax().text_range();
-
         let ntype = if node.l_brack_token().is_some() {
             // 数组类型: [Type; Expr]
-            let inner_type_node = node.inner_type_full(); // 使用 Type 而不是 BaseType
+            let inner_type_node = node.inner_type();
             let size_expr_node = node.size_expr();
 
             let inner = if let Some(inner_node) = inner_type_node {
@@ -728,7 +943,7 @@ impl Visitor for Module {
                     if let Value::Int(n) = x {
                         n
                     } else {
-                        self.analyzing.errors.push(SemanticError::TypeMismatch {
+                        self.analyzing.new_error(SemanticError::TypeMismatch {
                             expected: NType::Const(Box::new(NType::Int)),
                             found: x.get_type(),
                             range: expr_range,
@@ -765,7 +980,7 @@ impl Visitor for Module {
             // 原始类型: PrimitType
             let primit_type_node = node.primit_type();
 
-            if let Some(pt_node) = primit_type_node {
+            let ntype = if let Some(pt_node) = primit_type_node {
                 if pt_node.int_token().is_some() {
                     NType::Int
                 } else if pt_node.float_token().is_some() {
@@ -779,8 +994,7 @@ impl Visitor for Module {
                             NType::Struct(sid)
                         } else {
                             self.analyzing
-                                .errors
-                                .push(SemanticError::TypeUndefined { range });
+                                .new_error(SemanticError::TypeUndefined { range });
                             return;
                         }
                     } else {
@@ -791,9 +1005,24 @@ impl Visitor for Module {
                 }
             } else {
                 return;
+            };
+
+            if node.const_token().is_some() {
+                NType::Const(Box::new(ntype))
+            } else {
+                ntype
             }
         };
 
-        self.set_expr_type(range, ntype);
+        self.set_expr_type(range, ntype.clone());
+
+        // 如果这是函数返回类型，更新 current_function_ret_type
+        if self.analyzing.in_func_def
+            && let Some(ret_range) = self.analyzing.func_ret_type_range
+            && ret_range == range
+        {
+            self.analyzing.current_function_ret_type = Some(ntype);
+            self.analyzing.func_ret_type_range = None;
+        }
     }
 }

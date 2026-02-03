@@ -1,0 +1,74 @@
+let x: i32;
+
+let N: const i32 = 2010;
+
+fn mv(n: i32, A: *mut [i32; N], b: *mut i32, res: *mut i32) {
+    let x: i32;
+    let y: i32;
+    y = 0;
+    x = 11;
+    let i: i32;
+    let j: i32;
+
+    i = 0;
+    while(i < n){    
+        res[i] = 0;        
+        i = i + 1;
+    }
+
+    i = 0;
+    j = 0;
+    while (i < n){
+        j = 0;
+        while (j < n){
+            if (A[i][j] == 0){
+                x = x * b[i] + b[j];
+                y = y - x;
+            }else{
+                res[i] = res[i] + A[i][j] * b[j];
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }    
+}
+
+let A: [[i32; N]; N];
+let B: [i32; N];
+let C: [i32; N];
+
+fn main() -> i32 {
+    let n: i32 = getint();
+    let i: i32;
+    let j: i32;
+
+    i = 0;
+
+    while (i < n){
+        j = 0;
+        while (j < n){
+            A[i][j] = getint();
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+
+    i = 0;
+    while (i < n){
+        B[i] = getint();
+        i = i + 1;
+    }
+
+    starttime();
+
+    i = 0;
+    while (i < 50){
+        mv(n, A, B, C);
+        mv(n, A, C, B);
+        i = i + 1;
+    }
+    stoptime();
+
+    putarray(n, C);
+    return 0;
+}

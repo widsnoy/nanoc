@@ -1,6 +1,6 @@
 fn main() -> i32 {
   let a: i32 = 42;
-  let p: const *const i32 = &a;
+  let p: *const i32 = &a;
 
   let v: i32 = *p;
 

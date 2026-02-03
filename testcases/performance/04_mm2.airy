@@ -1,0 +1,93 @@
+let N: const i32 = 1024;
+
+fn mm(n: i32, A: *mut [i32; N], B: *mut [i32; N], C: *mut [i32; N]) {
+    let i: i32;
+    let j: i32;
+    let k: i32;
+
+    i = 0; j = 0;
+    while (i < n){
+        j = 0;
+        while (j < n){
+            C[i][j] = 0;
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+
+    i = 0; j = 0; k = 0;
+
+    while (k < n){
+        i = 0;
+        while (i < n){
+            if (A[i][k] == 0){
+                i = i + 1;
+                continue;
+            }
+            j = 0;
+            while (j < n){
+                C[i][j] = C[i][j] + A[i][k] * B[k][j];
+                j = j + 1;
+            }
+            i = i + 1;
+        }
+        k = k + 1;
+    }
+}
+
+let A: [[i32; N]; N];
+let B: [[i32; N]; N];
+let C: [[i32; N]; N];
+
+fn main() -> i32 {
+    let n: i32 = getint();
+    let i: i32;
+    let j: i32;
+
+    i = 0;
+    j = 0;
+    while (i < n){
+        j = 0;
+        while (j < n){
+            A[i][j] = getint();
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    i = 0;
+    j = 0;
+    while (i < n){
+        j = 0;
+        while (j < n){
+            B[i][j] = getint();
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+
+    starttime();
+
+    i = 0;
+    while (i < 5){    
+        mm(n, A, B, C);
+        mm(n, A, C, B);
+        i = i + 1;
+    }
+
+    let ans: i32 = 0;
+    i = 0;
+    while (i < n){
+        j = 0;
+        while (j < n){
+            ans = ans + B[i][j];
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    stoptime();
+    putint(ans);
+    putch(10);
+
+    return 0;
+}
+
