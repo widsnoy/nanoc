@@ -12,10 +12,9 @@ COMP_UNIT@0..182
       IDENT@9..10 "x"
     COLON@10..11 ":"
     TYPE@11..15
-      BASE_TYPE@11..15
-        PRIMIT_TYPE@11..15
-          WHITESPACE@11..12 " "
-          INT_KW@12..15 "i32"
+      PRIMIT_TYPE@11..15
+        WHITESPACE@11..12 " "
+        INT_KW@12..15 "i32"
     WHITESPACE@15..16 " "
     EQ@16..17 "="
     INIT_VAL@17..25
@@ -39,10 +38,9 @@ COMP_UNIT@0..182
       IDENT@35..36 "y"
     COLON@36..37 ":"
     TYPE@37..41
-      BASE_TYPE@37..41
-        PRIMIT_TYPE@37..41
-          WHITESPACE@37..38 " "
-          INT_KW@38..41 "i32"
+      PRIMIT_TYPE@37..41
+        WHITESPACE@37..38 " "
+        INT_KW@38..41 "i32"
     WHITESPACE@41..42 " "
     EQ@42..43 "="
     INIT_VAL@43..53
@@ -66,10 +64,9 @@ COMP_UNIT@0..182
       IDENT@63..64 "z"
     COLON@64..65 ":"
     TYPE@65..69
-      BASE_TYPE@65..69
-        PRIMIT_TYPE@65..69
-          WHITESPACE@65..66 " "
-          INT_KW@66..69 "i32"
+      PRIMIT_TYPE@65..69
+        WHITESPACE@65..66 " "
+        INT_KW@66..69 "i32"
     WHITESPACE@69..70 " "
     EQ@70..71 "="
     INIT_VAL@71..77
@@ -99,10 +96,9 @@ COMP_UNIT@0..182
       IDENT@87..88 "w"
     COLON@88..89 ":"
     TYPE@89..93
-      BASE_TYPE@89..93
-        PRIMIT_TYPE@89..93
-          WHITESPACE@89..90 " "
-          INT_KW@90..93 "i32"
+      PRIMIT_TYPE@89..93
+        WHITESPACE@89..90 " "
+        INT_KW@90..93 "i32"
     WHITESPACE@93..94 " "
     EQ@94..95 "="
     INIT_VAL@95..103
@@ -132,10 +128,9 @@ COMP_UNIT@0..182
       IDENT@113..118 "mixed"
     COLON@118..119 ":"
     TYPE@119..123
-      BASE_TYPE@119..123
-        PRIMIT_TYPE@119..123
-          WHITESPACE@119..120 " "
-          INT_KW@120..123 "i32"
+      PRIMIT_TYPE@119..123
+        WHITESPACE@119..120 " "
+        INT_KW@120..123 "i32"
     WHITESPACE@123..124 " "
     EQ@124..125 "="
     INIT_VAL@125..138
@@ -163,10 +158,9 @@ COMP_UNIT@0..182
       IDENT@148..155 "complex"
     COLON@155..156 ":"
     TYPE@156..160
-      BASE_TYPE@156..160
-        PRIMIT_TYPE@156..160
-          WHITESPACE@156..157 " "
-          INT_KW@157..160 "i32"
+      PRIMIT_TYPE@156..160
+        WHITESPACE@156..157 " "
+        INT_KW@157..160 "i32"
     WHITESPACE@160..161 " "
     EQ@161..162 "="
     INIT_VAL@162..176

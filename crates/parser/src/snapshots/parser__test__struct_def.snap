@@ -16,10 +16,9 @@ COMP_UNIT@0..31
         IDENT@15..16 "x"
       COLON@16..17 ":"
       TYPE@17..21
-        BASE_TYPE@17..21
-          PRIMIT_TYPE@17..21
-            WHITESPACE@17..18 " "
-            INT_KW@18..21 "i32"
+        PRIMIT_TYPE@17..21
+          WHITESPACE@17..18 " "
+          INT_KW@18..21 "i32"
     COMMA@21..22 ","
     STRUCT_FIELD@22..29
       NAME@22..24
@@ -27,9 +26,8 @@ COMP_UNIT@0..31
         IDENT@23..24 "y"
       COLON@24..25 ":"
       TYPE@25..29
-        BASE_TYPE@25..29
-          PRIMIT_TYPE@25..29
-            WHITESPACE@25..26 " "
-            INT_KW@26..29 "i32"
+        PRIMIT_TYPE@25..29
+          WHITESPACE@25..26 " "
+          INT_KW@26..29 "i32"
     WHITESPACE@29..30 " "
     R_BRACE@30..31 "}"
