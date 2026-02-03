@@ -7,20 +7,10 @@ use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, FloatValue, FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, FloatPredicate, IntPredicate};
-use parser::ast::{ArrayDecl, AstNode, IndexVal, Name, SyntaxToken};
+use parser::ast::AstNode;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::{LoopContext, Program, Symbol, SymbolTable};
-
-/// Extract ident token from array declaration
-pub(crate) fn get_ident_node(array_decl: &ArrayDecl) -> Option<SyntaxToken> {
-    array_decl.name().and_then(|n| n.ident())
-}
-
-/// 提取名称文本
-pub(crate) fn name_text(name: &Name) -> Option<String> {
-    name.ident().map(|t| t.text().to_string())
-}
 
 impl<'a, 'ctx> SymbolTable<'a, 'ctx> {
     /// Push new scope
@@ -118,7 +108,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let inner = self.convert_ntype_to_type(ntype)?;
                 Ok(inner.array_type(*count as u32).into())
             }
-            NType::Pointer(_) => Ok(self.context.ptr_type(AddressSpace::default()).into()),
+            NType::Pointer { .. } => Ok(self.context.ptr_type(AddressSpace::default()).into()),
             NType::Struct(struct_id) => {
                 // 获取 struct 定义
                 let struct_def = self
@@ -205,36 +195,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         }
     }
 
-    /// Get (type, ptr) from IndexVal
-    pub(crate) fn get_element_ptr_by_index_val(
-        &mut self,
-        index_val: &IndexVal,
-    ) -> Result<(BasicTypeEnum<'ctx>, PointerValue<'ctx>, String)> {
-        let name = name_text(
-            &index_val
-                .name()
-                .ok_or(CodegenError::Missing("variable name"))?,
-        )
-        .ok_or(CodegenError::Missing("identifier"))?;
-        let symbol = self
-            .symbols
-            .lookup_var(&name)
-            .ok_or_else(|| CodegenError::UndefinedVar(name.clone()))?;
-        let (mut ptr, cur_ntype) = (symbol.ptr, symbol.ty.clone());
-        let mut cur_llvm_type = self.convert_ntype_to_type(&cur_ntype)?;
-
-        let indices: Vec<_> = index_val
-            .indices()
-            .map(|e| self.compile_expr(e).map(|v| v.into_int_value()))
-            .collect::<Result<Vec<_>>>()?;
-
-        if indices.is_empty() {
-            return Ok((cur_llvm_type, ptr, name));
-        }
-        (cur_llvm_type, ptr) = self.calculate_index_op(cur_ntype, cur_llvm_type, ptr, indices)?;
-        Ok((cur_llvm_type, ptr, name))
-    }
-
     pub(crate) fn calculate_index_op(
         &self,
         mut cur_ntype: NType,
@@ -278,9 +238,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         }
                     }
                 }
-                NType::Pointer(inner) => {
+                NType::Pointer { pointee, .. } => {
                     // 指针：load 后 GEP 一个索引
-                    let pointee_ty = self.convert_ntype_to_type(inner)?;
+                    let pointee_ty = self.convert_ntype_to_type(pointee)?;
                     let loaded_ptr = self
                         .builder
                         .build_load(ptr_ty, ptr, "ptr.load")
@@ -294,7 +254,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .map_err(|_| CodegenError::LlvmBuild("gep failed"))?
                     };
 
-                    cur_ntype = *inner.clone();
+                    cur_ntype = *pointee.clone();
                     cur_llvm_type = pointee_ty;
                 }
                 NType::Const(inner) => {
@@ -492,7 +452,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         match ty {
             NType::Int => Ok(4),
             NType::Float => Ok(4),
-            NType::Pointer(_) => Ok(8),
+            NType::Pointer { .. } => Ok(8),
             NType::Array(inner, count) => Ok(self.get_type_size(inner)? * (*count as u64)),
             NType::Const(inner) => self.get_type_size(inner),
             _ => Err(CodegenError::Unsupported("unknown type size".into())),

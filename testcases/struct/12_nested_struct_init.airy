@@ -1,0 +1,8 @@
+struct Inner { a: i32, b: i32 }
+
+struct Outer { inner: struct Inner, c: i32 }
+
+fn main() -> i32 {
+  let o: const struct Outer = {{10, 20}, 30};
+  return o.inner.a + o.inner.b + o.c;
+}

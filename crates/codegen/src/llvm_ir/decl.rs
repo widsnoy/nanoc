@@ -7,31 +7,30 @@ use parser::ast::*;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
-use crate::utils::*;
 
 impl<'a, 'ctx> Program<'a, 'ctx> {
-    pub(super) fn compile_global_decl(&mut self, decl: VarDecl) -> Result<()> {
-        self.compile_var_decl(decl)
+    pub(super) fn compile_global_decl(&mut self, decl: VarDef) -> Result<()> {
+        let name_node = decl.name().ok_or(CodegenError::Missing("variable name"))?;
+        let name_token = name_node
+            .ident()
+            .ok_or(CodegenError::Missing("identifier"))?;
+        let var = self
+            .analyzer
+            .get_varaible(name_token.text_range())
+            .ok_or(CodegenError::Missing("variable info"))?;
+        let is_const = var.ty.is_const();
+        self.compile_var_def(decl, is_const)
     }
 
-    pub(super) fn compile_local_decl(&mut self, decl: VarDecl) -> Result<()> {
-        self.compile_var_decl(decl)
-    }
-
-    fn compile_var_decl(&mut self, decl: VarDecl) -> Result<()> {
-        let is_const = decl.is_const();
-        for def in decl.var_defs() {
-            self.compile_var_def(def, is_const)?;
-        }
-        Ok(())
+    pub(super) fn compile_local_decl(&mut self, decl: VarDef) -> Result<()> {
+        self.compile_var_def(decl, false)
     }
 
     fn compile_var_def(&mut self, def: VarDef, is_const: bool) -> Result<()> {
-        let name_token = get_ident_node(
-            &def.array_decl()
-                .ok_or(CodegenError::Missing("variable name"))?,
-        )
-        .ok_or(CodegenError::Missing("identifier"))?;
+        let name_node = def.name().ok_or(CodegenError::Missing("variable name"))?;
+        let name_token = name_node
+            .ident()
+            .ok_or(CodegenError::Missing("identifier"))?;
 
         let var = self
             .analyzer
@@ -39,7 +38,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .ok_or(CodegenError::Missing("variable info"))?;
         let name = name_token.text();
         let var_ty = &var.ty;
-        let basic_ty = self.convert_ntype_to_type(var_ty)?;
+        let llvm_ty = self.convert_ntype_to_type(var_ty)?;
 
         let is_global = self.symbols.current_function.is_none();
 
@@ -48,12 +47,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             let init_val = if is_const {
                 // const 变量必须有初始值
                 let init_node = def.init().ok_or(CodegenError::Missing("initial value"))?;
-                self.get_const_var_value(&init_node, Some(basic_ty))?
+                self.get_const_var_value(&init_node, Some(llvm_ty))?
             } else {
-                self.const_init_or_zero(def.init(), basic_ty)?
+                self.const_init_or_zero(def.init(), llvm_ty)?
             };
 
-            let global = self.module.add_global(basic_ty, None, name);
+            let global = self.module.add_global(llvm_ty, None, name);
             global.set_initializer(&init_val);
             if is_const {
                 global.set_constant(true);
@@ -68,10 +67,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .symbols
                 .current_function
                 .ok_or(CodegenError::Missing("current function"))?;
-            let alloca = self.create_entry_alloca(func, basic_ty, name)?;
+            let alloca = self.create_entry_alloca(func, llvm_ty, name)?;
 
             // 判断变量类型
-            let inner_ty = var_ty.unwrap_const();
+            let ty = var_ty.unwrap_const();
 
             if let Some(init_node) = def.init() {
                 let range = init_node.syntax().text_range();
@@ -86,7 +85,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     self.builder
                         .build_store(alloca, init_val)
                         .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
-                } else if inner_ty.is_array() {
+                } else if ty.is_array() {
                     // 数组初始化列表
                     let array_tree = self
                         .analyzer
@@ -96,29 +95,29 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
                     if self.analyzer.is_compile_time_constant(range) {
                         let init_val =
-                            self.convert_array_tree_to_global_init(array_tree, basic_ty)?;
+                            self.convert_array_tree_to_global_init(array_tree, llvm_ty)?;
                         self.builder
                             .build_store(alloca, init_val)
                             .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
                     } else {
                         // 非常量数组：先 zero init，再逐个 store
                         self.builder
-                            .build_store(alloca, basic_ty.const_zero())
+                            .build_store(alloca, llvm_ty.const_zero())
                             .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
                         let mut indices = vec![self.context.i32_type().const_zero()];
-                        self.store_on_array_tree(array_tree, &mut indices, alloca, basic_ty)?;
+                        self.store_on_array_tree(array_tree, &mut indices, alloca, llvm_ty)?;
                     }
-                } else if inner_ty.is_struct() {
+                } else if ty.is_struct() {
                     // Struct 初始化列表
                     if self.analyzer.is_compile_time_constant(range) {
                         // 常量 struct：直接 store
-                        let init_val = self.get_const_var_value(&init_node, Some(basic_ty))?;
+                        let init_val = self.get_const_var_value(&init_node, Some(llvm_ty))?;
                         self.builder
                             .build_store(alloca, init_val)
                             .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
                     } else {
                         // 非常量 struct：逐字段 store（struct 初始化要求完全覆盖，不需要 zero init）
-                        self.store_struct_init(var_ty, init_node, alloca, basic_ty)?;
+                        self.store_struct_init(var_ty, init_node, alloca, llvm_ty)?;
                     }
                 } else {
                     return Err(CodegenError::Unsupported(
@@ -130,7 +129,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             } else {
                 // 无初始值，zero init
                 self.builder
-                    .build_store(alloca, basic_ty.const_zero())
+                    .build_store(alloca, llvm_ty.const_zero())
                     .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
             }
 

@@ -21,8 +21,9 @@ fn analyze(source: &str) -> Module {
 #[test]
 fn test_variable_declaration() {
     let source = r#"
-    int main() {
-        const int x = 1, y = x + 1;
+    fn main() -> i32 {
+        let x: const i32 = 1;
+        let y: const i32 = x + 1;
     }
     "#;
     let module = analyze(source);
@@ -32,9 +33,9 @@ fn test_variable_declaration() {
 #[test]
 fn test_duplicate_variable_error() {
     let source = r#"
-    int main() {
-        int a;
-        int a;
+    fn main() -> i32 {
+        let a: i32;
+        let a: i32;
     }
     "#;
     let module = analyze(source);
@@ -50,11 +51,11 @@ fn test_duplicate_variable_error() {
 #[test]
 fn test_const_binary_operations() {
     let source = r#"
-    int main() {
-        const int a = 5 + 3;
-        const int b = 10 - 2;
-        const int c = 4 * 3;
-        const int d = 12 / 4;
+    fn main() -> i32 {
+        let a: const i32 = 5 + 3;
+        let b: const i32 = 10 - 2;
+        let c: const i32 = 4 * 3;
+        let d: const i32 = 12 / 4;
     }
     "#;
     let module = analyze(source);
@@ -64,10 +65,10 @@ fn test_const_binary_operations() {
 #[test]
 fn test_const_comparison_operations() {
     let source = r#"
-    int main() {
-        const int a = 5 > 3;
-        const int b = 10 == 10;
-        const int c = 2 < 8;
+    fn main() -> i32 {
+        let a: const i32 = 5 > 3;
+        let b: const i32 = 10 == 10;
+        let c: const i32 = 2 < 8;
     }
     "#;
     let module = analyze(source);
@@ -77,9 +78,9 @@ fn test_const_comparison_operations() {
 #[test]
 fn test_const_logical_operations() {
     let source = r#"
-    int main() {
-        const int a = 1 && 1;
-        const int b = 0 || 1;
+    fn main() -> i32 {
+        let a: const i32 = 1 && 1;
+        let b: const i32 = 0 || 1;
     }
     "#;
     let module = analyze(source);
@@ -89,9 +90,9 @@ fn test_const_logical_operations() {
 #[test]
 fn test_const_unary_operations() {
     let source = r#"
-    int main() {
-        const int a = -5;
-        const int b = !0;
+    fn main() -> i32 {
+        let a: const i32 = -5;
+        let b: const i32 = !0;
     }
     "#;
     let module = analyze(source);
@@ -102,8 +103,8 @@ fn test_const_unary_operations() {
 #[test]
 fn test_const_parenthesized_expression() {
     let source = r#"
-    int main() {
-        const int a = (1 + 2) * 3;
+    fn main() -> i32 {
+        let a: const i32 = (1 + 2) * 3;
     }
     "#;
     let module = analyze(source);
@@ -113,13 +114,13 @@ fn test_const_parenthesized_expression() {
 #[test]
 fn test_nested_scope_variables() {
     let source = r#"
-    int main() {
-        int a;
+    fn main() -> i32 {
+        let a: i32;
         {
-            int b;
-            int c;
+            let b: i32;
+            let c: i32;
         }
-        int d;
+        let d: i32;
     }
     "#;
     let module = analyze(source);
@@ -129,10 +130,10 @@ fn test_nested_scope_variables() {
 #[test]
 fn test_variable_shadowing() {
     let source = r#"
-    int main() {
-        int a;
+    fn main() -> i32 {
+        let a: i32;
         {
-            int a;
+            let a: i32;
         }
     }
     "#;
@@ -143,11 +144,11 @@ fn test_variable_shadowing() {
 #[test]
 fn test_function_definition() {
     let source = r#"
-    int add(int a, int b) {
-        int result;
+    fn add(a: i32, b: i32) -> i32 {
+        let result: i32;
     }
 
-    int main() {
+    fn main() -> i32 {
     }
     "#;
     let module = analyze(source);
@@ -158,8 +159,8 @@ fn test_function_definition() {
 #[test]
 fn test_function_parameters() {
     let source = r#"
-    int sum(int a, float b, int c) {
-        int x;
+    fn sum(a: i32, b: f32, c: i32) -> i32 {
+        let x: i32;
     }
     "#;
     let module = analyze(source);
@@ -169,7 +170,7 @@ fn test_function_parameters() {
 #[test]
 fn test_duplicate_function_parameters_error() {
     let source = r#"
-    int func(int a, int a) {
+    fn func(a: i32, a: i32) -> i32 {
     }
     "#;
     let module = analyze(source);
@@ -179,9 +180,9 @@ fn test_duplicate_function_parameters_error() {
 #[test]
 fn test_const_propagation() {
     let source = r#"
-    int main() {
-        const int a = 1;
-        const int b = a + 2;
+    fn main() -> i32 {
+        let a: const i32 = 1;
+        let b: const i32 = a + 2;
     }
     "#;
     let module = analyze(source);
@@ -191,11 +192,11 @@ fn test_const_propagation() {
 #[test]
 fn test_non_const_propagation_error() {
     // 现在允许运行时初始化的 const 变量
-    // const int b = a + 2; 是合法的，b 是运行时初始化的 const
+    // let b: const i32 = a + 2; 是合法的，b 是运行时初始化的 const
     let source = r#"
-    int main() {
-        int a = 1;
-        const int b = a + 2;
+    fn main() -> i32 {
+        let a: i32 = 1;
+        let b: const i32 = a + 2;
     }
     "#;
     let module = analyze(source);
@@ -206,10 +207,10 @@ fn test_non_const_propagation_error() {
 #[test]
 fn test_const_float_arithmetic() {
     let source = r#"
-    int main() {
-        const float a = 1.5 + 2.5;
-        const float b = 10.0 - 3.5;
-        const float c = 2.0 * 3.5;
+    fn main() -> i32 {
+        let a: const f32 = 1.5 + 2.5;
+        let b: const f32 = 10.0 - 3.5;
+        let c: const f32 = 2.0 * 3.5;
     }
     "#;
     let module = analyze(source);
@@ -219,10 +220,10 @@ fn test_const_float_arithmetic() {
 #[test]
 fn test_const_expression_with_multiple_operators() {
     let source = r#"
-    int main() {
-        const int a = 1 + 2 * 3;
-        const int b = (1 + 2) * 3;
-        const int c = 10 - 5 - 2;
+    fn main() -> i32 {
+        let a: const i32 = 1 + 2 * 3;
+        let b: const i32 = (1 + 2) * 3;
+        let c: const i32 = 10 - 5 - 2;
     }
     "#;
     let module = analyze(source);
@@ -232,16 +233,16 @@ fn test_const_expression_with_multiple_operators() {
 #[test]
 fn test_nested_scopes_with_blocks() {
     let source = r#"
-    int main() {
-        int a;
+    fn main() -> i32 {
+        let a: i32;
         {
-            int b;
+            let b: i32;
             {
-                int c;
+                let c: i32;
             }
         }
         {
-            int d;
+            let d: i32;
         }
     }
     "#;
@@ -252,16 +253,16 @@ fn test_nested_scopes_with_blocks() {
 #[test]
 fn test_multiple_functions() {
     let source = r#"
-    void func1() {
-        int a;
+    fn func1() {
+        let a: i32;
     }
 
-    int func2(int x) {
-        int b;
+    fn func2(x: i32) -> i32 {
+        let b: i32;
     }
 
-    float func3(float a, int b) {
-        float c;
+    fn func3(a: f32, b: i32) -> f32 {
+        let c: f32;
     }
     "#;
     let module = analyze(source);
@@ -272,8 +273,8 @@ fn test_multiple_functions() {
 #[test]
 fn test_const_modulo_operation() {
     let source = r#"
-    int main() {
-        const int a = 10 % 3;
+    fn main() -> i32 {
+        let a: const i32 = 10 % 3;
     }
     "#;
     let module = analyze(source);
@@ -283,13 +284,25 @@ fn test_const_modulo_operation() {
 #[test]
 fn test_const_expression_expected_error() {
     let source = r#"
-    int x = 5;
-    void foo(int arr[][x]) {}
-    int main() {
+    let x: i32 = 5;
+    fn foo(arr: *mut [i32; x]) {}
+    fn main() -> i32 {
         return 0;
     }
     "#;
     let module = analyze(source);
     // Should error: non-constant expression in array size
     assert!(!module.analyzing.errors.is_empty());
+}
+
+#[test]
+fn test_global_const_propagation() {
+    let source = r#"
+    let x: const i32 = 233;
+    let y: const i32 = x + 1;
+    "#;
+    let module = analyze(source);
+    dbg!(&module.analyzing.errors);
+    dbg!(&module.value_table);
+    assert!(module.analyzing.errors.is_empty());
 }

@@ -2,35 +2,34 @@
 source: crates/parser/src/test.rs
 expression: try_it(source)
 ---
-COMP_UNIT@0..63
+COMP_UNIT@0..61
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
-  FUNC_DEF@5..58
-    FUNC_TYPE@5..9
-      VOID_KW@5..9 "void"
-    NAME@9..14
-      WHITESPACE@9..10 " "
-      IDENT@10..14 "test"
-    L_PAREN@14..15 "("
-    R_PAREN@15..16 ")"
-    BLOCK@16..58
-      WHITESPACE@16..17 " "
-      L_BRACE@17..18 "{"
-      RETURN_STMT@18..34
-        NEWLINE@18..19 "\n"
-        WHITESPACE@19..27 "        "
-        RETURN_KW@27..33 "return"
-        SEMI@33..34 ";"
-      RETURN_STMT@34..52
-        NEWLINE@34..35 "\n"
-        WHITESPACE@35..43 "        "
-        RETURN_KW@43..49 "return"
-        LITERAL@49..51
-          WHITESPACE@49..50 " "
-          INT_LITERAL@50..51 "1"
-        SEMI@51..52 ";"
-      NEWLINE@52..53 "\n"
-      WHITESPACE@53..57 "    "
-      R_BRACE@57..58 "}"
-  NEWLINE@58..59 "\n"
-  WHITESPACE@59..63 "    "
+  FUNC_DEF@5..56
+    FN_KW@5..7 "fn"
+    NAME@7..12
+      WHITESPACE@7..8 " "
+      IDENT@8..12 "test"
+    L_PAREN@12..13 "("
+    R_PAREN@13..14 ")"
+    BLOCK@14..56
+      WHITESPACE@14..15 " "
+      L_BRACE@15..16 "{"
+      RETURN_STMT@16..32
+        NEWLINE@16..17 "\n"
+        WHITESPACE@17..25 "        "
+        RETURN_KW@25..31 "return"
+        SEMI@31..32 ";"
+      RETURN_STMT@32..50
+        NEWLINE@32..33 "\n"
+        WHITESPACE@33..41 "        "
+        RETURN_KW@41..47 "return"
+        LITERAL@47..49
+          WHITESPACE@47..48 " "
+          INT_LITERAL@48..49 "1"
+        SEMI@49..50 ";"
+      NEWLINE@50..51 "\n"
+      WHITESPACE@51..55 "    "
+      R_BRACE@55..56 "}"
+  NEWLINE@56..57 "\n"
+  WHITESPACE@57..61 "    "

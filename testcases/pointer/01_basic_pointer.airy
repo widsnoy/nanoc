@@ -1,0 +1,10 @@
+fn main() -> i32 {
+  let a: i32 = 10;
+  let p: *mut i32 = &a;
+
+  let b: i32 = *p;
+
+  *p = 20;
+
+  return a + b;
+}

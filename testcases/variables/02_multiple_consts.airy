@@ -1,0 +1,6 @@
+fn main() -> i32 {
+  let x: const i32 = 2;
+  let y: const i32 = x + 1;
+  let z: const i32 = x * y;
+  return z;
+}

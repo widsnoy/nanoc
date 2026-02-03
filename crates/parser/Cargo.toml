@@ -4,8 +4,10 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-logos.workspace = true
+syntax.workspace = true
+lexer.workspace = true
+
 text-size.workspace = true
-thiserror.workspace = true
 rowan.workspace = true
 insta.workspace = true
+thiserror.workspace = true

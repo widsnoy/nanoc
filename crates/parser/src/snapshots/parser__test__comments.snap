@@ -2,7 +2,7 @@
 source: crates/parser/src/test.rs
 expression: try_it(source)
 ---
-COMP_UNIT@0..173
+COMP_UNIT@0..178
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
   COMMENT_BLOCK@5..25 "/* normal comment */"
@@ -26,20 +26,23 @@ COMP_UNIT@0..173
   COMMENT_BLOCK@149..153 "/**/"
   NEWLINE@153..154 "\n"
   WHITESPACE@154..158 "    "
-  VAR_DECL@158..168
-    TYPE@158..161
-      INT_KW@158..161 "int"
-    VAR_DEF@161..167
-      ARRAY_DECL@161..163
-        NAME@161..163
-          WHITESPACE@161..162 " "
-          IDENT@162..163 "a"
-      WHITESPACE@163..164 " "
-      EQ@164..165 "="
-      INIT_VAL@165..167
-        LITERAL@165..167
-          WHITESPACE@165..166 " "
-          INT_LITERAL@166..167 "1"
-    SEMI@167..168 ";"
-  NEWLINE@168..169 "\n"
-  WHITESPACE@169..173 "    "
+  VAR_DEF@158..173
+    LET_KW@158..161 "let"
+    NAME@161..163
+      WHITESPACE@161..162 " "
+      IDENT@162..163 "a"
+    COLON@163..164 ":"
+    TYPE@164..168
+      BASE_TYPE@164..168
+        PRIMIT_TYPE@164..168
+          WHITESPACE@164..165 " "
+          INT_KW@165..168 "i32"
+    WHITESPACE@168..169 " "
+    EQ@169..170 "="
+    INIT_VAL@170..172
+      LITERAL@170..172
+        WHITESPACE@170..171 " "
+        INT_LITERAL@171..172 "1"
+    SEMI@172..173 ";"
+  NEWLINE@173..174 "\n"
+  WHITESPACE@174..178 "    "

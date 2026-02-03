@@ -1,0 +1,11 @@
+fn main() -> i32 {
+  let a: i32 = 10;
+  let p: const *mut i32 = &a;
+
+  let v1: i32 = *p;
+
+  *p = 25;
+  let v2: i32 = *p;
+
+  return v1 + v2;
+}

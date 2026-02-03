@@ -1,0 +1,16 @@
+struct Point { x: i32, y: i32 }
+
+fn set_point(p: *mut struct Point, x: i32, y: i32) {
+  p->x = x;
+  p->y = y;
+}
+
+fn get_sum(p: *mut struct Point) -> i32 {
+  return p->x + p->y;
+}
+
+fn main() -> i32 {
+  let p: struct Point;
+  set_point(&p, 15, 25);
+  return get_sum(&p);
+}

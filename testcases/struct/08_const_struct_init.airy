@@ -1,0 +1,6 @@
+struct Point { x: i32, y: i32 }
+
+fn main() -> i32 {
+  let p: const struct Point = {10, 20};
+  return p.x + p.y;
+}

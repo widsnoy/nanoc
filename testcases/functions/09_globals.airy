@@ -1,0 +1,16 @@
+let x: i32;
+let y: const i32 = 10;
+let z: const i32 = y + 1;
+let init: i32 = 1;
+
+fn main() -> i32 {
+  putint(x);
+  putch(32);
+  putint(y);
+  putch(32);
+  putint(z);
+  putch(32);
+  putint(init);
+  putch(10);
+  return 0;
+}

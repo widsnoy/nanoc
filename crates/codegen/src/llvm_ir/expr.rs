@@ -6,7 +6,6 @@ use parser::syntax_kind::SyntaxKind;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
-use crate::utils::*;
 
 impl<'a, 'ctx> Program<'a, 'ctx> {
     pub(crate) fn compile_expr(&mut self, expr: Expr) -> Result<BasicValueEnum<'ctx>> {
@@ -302,7 +301,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             let operand = expr.expr().ok_or(CodegenError::Missing("& operand"))?;
             return match operand {
                 Expr::IndexVal(iv) => {
-                    let (_, ptr, _) = self.get_element_ptr_by_index_val(&iv)?;
+                    let (_, ptr, _) = self.get_index_val_ptr(&iv)?;
                     Ok(ptr.into())
                 }
                 Expr::UnaryExpr(de) if de.op().map(|x| x.op().kind()) == Some(SyntaxKind::STAR) => {
@@ -349,8 +348,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     fn compile_call_expr(&mut self, expr: CallExpr) -> Result<BasicValueEnum<'ctx>> {
-        let name = name_text(&expr.name().ok_or(CodegenError::Missing("function name"))?)
-            .ok_or(CodegenError::Missing("identifier"))?;
+        let name = expr
+            .name()
+            .and_then(|n| n.var_name())
+            .ok_or(CodegenError::Missing("function name"))?;
         let func = self
             .module
             .get_function(&name)
@@ -386,7 +387,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     fn compile_index_val(&mut self, expr: IndexVal) -> Result<BasicValueEnum<'ctx>> {
-        let (ty, ptr, name) = self.get_element_ptr_by_index_val(&expr)?;
+        let (ty, ptr, name) = self.get_index_val_ptr(&expr)?;
         if ty.is_array_type() {
             // 数组 decay 成指向第一个元素的指针
             let zero = self.context.i32_type().const_zero();
@@ -493,12 +494,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let field_access = postfix
             .field()
             .ok_or(CodegenError::Missing("field access"))?;
-        let member_name = name_text(
-            &field_access
-                .name()
-                .ok_or(CodegenError::Missing("member name"))?,
-        )
-        .ok_or(CodegenError::Missing("identifier"))?;
+        let member_name = field_access
+            .name()
+            .and_then(|n| n.var_name())
+            .ok_or(CodegenError::Missing("member name"))?;
 
         let base_expr = postfix
             .expr()
@@ -540,7 +539,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         match expr {
             Expr::IndexVal(index_val) => {
                 // IndexVal 可以作为左值
-                let (_, ptr, _) = self.get_element_ptr_by_index_val(&index_val)?;
+                let (_, ptr, _) = self.get_index_val_ptr(&index_val)?;
                 Ok(ptr)
             }
             Expr::UnaryExpr(unary) => {
@@ -559,5 +558,33 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             }
             _ => Err(CodegenError::NotImplemented("not an lvalue")),
         }
+    }
+
+    /// Get (type, ptr) from Index
+    pub(crate) fn get_index_val_ptr(
+        &mut self,
+        index_val: &IndexVal,
+    ) -> Result<(BasicTypeEnum<'ctx>, PointerValue<'ctx>, String)> {
+        let name = index_val
+            .name()
+            .and_then(|n| n.var_name())
+            .ok_or(CodegenError::Missing("function name"))?;
+        let symbol = self
+            .symbols
+            .lookup_var(&name)
+            .ok_or_else(|| CodegenError::UndefinedVar(name.clone()))?;
+        let (mut ptr, cur_ntype) = (symbol.ptr, symbol.ty.clone());
+        let mut cur_llvm_type = self.convert_ntype_to_type(&cur_ntype)?;
+
+        let indices: Vec<_> = index_val
+            .indices()
+            .map(|e| self.compile_expr(e).map(|v| v.into_int_value()))
+            .collect::<Result<Vec<_>>>()?;
+
+        if indices.is_empty() {
+            return Ok((cur_llvm_type, ptr, name));
+        }
+        (cur_llvm_type, ptr) = self.calculate_index_op(cur_ntype, cur_llvm_type, ptr, indices)?;
+        Ok((cur_llvm_type, ptr, name))
     }
 }

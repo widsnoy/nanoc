@@ -1,0 +1,12 @@
+fn main() -> i32 {
+  let a: i32 = 5;
+  let b: i32 = 10;
+  let pa: *mut i32 = &a;
+  let pb: *mut i32 = &b;
+
+  let v1: i32 = *pa + *pb;
+  let v2: i32 = *pa * *pb;
+  let v3: i32 = (*pa + 1) * (*pb - 2);
+
+  return v1 + v2 + v3;
+}

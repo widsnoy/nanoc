@@ -1,0 +1,9 @@
+fn main() -> i32 {
+  let arr: [i32; 5] = {10, 20, 30, 40, 50};
+  let p: *mut i32 = arr;
+
+  let v1: i32 = *(p + 2);
+  let v2: i32 = *(2 + p);
+
+  return v1 + v2;
+}

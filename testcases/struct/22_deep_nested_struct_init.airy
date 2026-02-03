@@ -1,0 +1,10 @@
+struct Level3 { value: i32 }
+
+struct Level2 { l3: struct Level3, data: i32 }
+
+struct Level1 { l2: struct Level2, info: i32 }
+
+fn main() -> i32 {
+  let l1: const struct Level1 = {{{10}, 20}, 30};
+  return l1.l2.l3.value + l1.l2.data + l1.info;
+}

@@ -1,0 +1,13 @@
+let a: [i32; 10];
+let len: const i32 = 10;
+let b: [i32; 8 + 2];
+let c: i32;
+let d: [i32; len];
+let e: [[i32; 6]; 5];
+let f: [[i32; 6]; 5];
+let g: i32;
+let h: [[i32; 6]; 5];
+
+fn main() -> i32 {
+  return 2;
+}

@@ -1,0 +1,9 @@
+struct Inner { a: i32, b: i32 }
+
+struct Outer { inner: struct Inner, c: i32 }
+
+let g_outer: const struct Outer = {{100, 200}, 300};
+
+fn main() -> i32 {
+  return g_outer.inner.a + g_outer.inner.b + g_outer.c;
+}

@@ -1,0 +1,14 @@
+struct Point { x: i32, y: i32 }
+
+let g_point: struct Point;
+
+fn get_point() -> *mut struct Point {
+  return &g_point;
+}
+
+fn main() -> i32 {
+  let p: *mut struct Point = get_point();
+  p->x = 100;
+  p->y = 200;
+  return p->x + p->y;
+}

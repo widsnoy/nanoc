@@ -5,6 +5,8 @@ edition.workspace = true
 
 [workspace]
 members = [
+    "crates/lexer",
+    "crates/syntax",
     "crates/codegen",
     "crates/analyzer",
     "crates/parser",
@@ -29,6 +31,8 @@ thunderdome = "0.6.1"
 anyhow = "1.0"
 clap = { version = "4.5.54", features = ["derive"] }
 
+syntax = { path = "crates/syntax" }
+lexer = { path = "crates/lexer" }
 parser = { path = "crates/parser" }
 codegen = { path = "crates/codegen" }
 analyzer = { path = "crates/analyzer" }

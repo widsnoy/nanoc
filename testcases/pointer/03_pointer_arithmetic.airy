@@ -1,0 +1,18 @@
+fn main() -> i32 {
+  let arr: [i32; 5] = {10, 20, 30, 40, 50};
+  let p: *mut i32 = &arr[0];
+
+  let sum: i32 = 0;
+
+  sum = sum + *(p + 0);
+  sum = sum + *(p + 1);
+  sum = sum + *(p + 2);
+
+  p = p + 3;
+  sum = sum + *p;
+
+  p = p - 1;
+  sum = sum + *p;
+
+  return sum;
+}

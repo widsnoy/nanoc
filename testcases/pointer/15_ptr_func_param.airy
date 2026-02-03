@@ -1,0 +1,19 @@
+fn sum_via_ptr(a: *mut i32, b: *mut i32) -> i32 {
+  return *a + *b;
+}
+
+fn modify_via_ptr(p: *mut i32, val: i32) -> i32 {
+  *p = val;
+  return *p;
+}
+
+fn main() -> i32 {
+  let x: i32 = 10;
+  let y: i32 = 20;
+
+  let s: i32 = sum_via_ptr(&x, &y);
+
+  let m: i32 = modify_via_ptr(&x, 100);
+
+  return s + m + x;
+}

@@ -1,10 +1,9 @@
 //! 主要进行类型推导和常量计算, 以及基本的检查
-use parser::ast::*;
-use parser::syntax_kind::SyntaxKind;
 use parser::visitor::Visitor;
+use syntax::{SyntaxKind, *};
 
 use crate::array::{ArrayTree, ArrayTreeValue};
-use crate::module::{Function, Module, SemanticError, VariableTag};
+use crate::module::{Module, SemanticError, VariableTag};
 use crate::r#type::NType;
 use crate::value::Value;
 
@@ -14,7 +13,7 @@ impl Visitor for Module {
         self.global_scope = self.analyzing.current_scope;
     }
 
-    fn leave_struct_def(&mut self, node: StructDef) {
+    fn enter_struct_def(&mut self, node: StructDef) {
         let range = node.syntax().text_range();
 
         // 获取 struct 名称
@@ -30,120 +29,86 @@ impl Visitor for Module {
             return;
         }
 
-        // 占位, 为了处理自指
+        // 提前创建占位，以支持自引用结构体
         let struct_id = self.new_struct(name.clone(), vec![], range);
-        self.struct_map.insert(name.clone(), struct_id);
+        self.struct_map.insert(name, struct_id);
+    }
+
+    fn leave_struct_def(&mut self, node: StructDef) {
+        // 获取 struct 名称
+        let Some(Some(name)) = node.name().map(|n| n.var_name()) else {
+            return;
+        };
+        // 获取已创建的 struct ID（在 enter_struct_def 中创建）
+        let Some(struct_id) = self.find_struct(&name) else {
+            return;
+        };
 
         // 收集字段
         let mut fields = Vec::new();
         let mut field_names = std::collections::HashSet::new();
 
         for field_node in node.fields() {
-            // 获取字段基本类型
-            let base_ty = if let Some(ty_node) = field_node.ty() {
-                let Some(base_ty) = self.build_basic_type(&ty_node) else {
-                    self.analyzing.errors.push(SemanticError::TypeUndefined {
-                        range: ty_node.syntax().text_range(),
-                    });
-                    continue;
-                };
-                if let Some(pointer_node) = field_node.pointer() {
-                    Self::build_pointer_type(&pointer_node, base_ty)
-                } else {
-                    base_ty
-                }
-            } else {
+            let Some(field_name_node) = field_node.name() else {
+                continue;
+            };
+            let Some(field_name) = field_name_node.var_name() else {
+                continue;
+            };
+            let Some(ty_node) = field_node.ty() else {
                 continue;
             };
 
-            // 获取字段名称和数组维度
-            if let Some(array_decl) = field_node.array_decl()
-                && let Some(field_name_node) = array_decl.name()
-            {
-                let Some(field_name) = field_name_node.var_name() else {
-                    return;
-                };
-
-                // 检查字段名是否重复
-                if !field_names.insert(field_name.clone()) {
-                    self.analyzing.errors.push(SemanticError::VariableDefined {
-                        name: field_name.clone(),
-                        range: field_name_node.syntax().text_range(),
-                    });
-                    continue;
-                }
-
-                // 处理数组维度，构建完整的字段类型
-                let field_ty = match self.build_array_type(base_ty.clone(), array_decl.dimensions())
-                {
-                    Ok(ty) => ty,
-                    Err(e) => {
-                        self.analyzing.new_error(e);
-                        return;
-                    }
-                };
-
-                // TODO: 引入 layout 和 size 计算来判断是不是自指
-
-                fields.push(crate::module::StructField {
-                    name: field_name,
-                    ty: field_ty,
+            // 检查字段名是否重复
+            if !field_names.insert(field_name.clone()) {
+                self.analyzing.errors.push(SemanticError::VariableDefined {
+                    name: field_name.clone(),
+                    range: field_name_node.syntax().text_range(),
                 });
+                continue;
             }
+
+            // 获取字段类型（已经在 leave_type 中构建好）
+            let field_ty = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
+                ty.clone()
+            } else {
+                self.analyzing.errors.push(SemanticError::TypeUndefined {
+                    range: ty_node.syntax().text_range(),
+                });
+                continue;
+            };
+
+            fields.push(crate::module::StructField {
+                name: field_name,
+                ty: field_ty,
+            });
         }
 
-        // 添加 struct 定义
+        // 更新 struct 定义的字段
         let struct_def = self.get_struct_mut(struct_id).unwrap();
         struct_def.fields = fields;
-        self.struct_map.insert(name, struct_id);
-    }
-
-    fn enter_var_decl(&mut self, node: VarDecl) {
-        let Some(ty_node) = node.ty() else {
-            return;
-        };
-        let Some(base_type) = self.build_basic_type(&ty_node) else {
-            self.analyzing.errors.push(SemanticError::TypeUndefined {
-                range: ty_node.syntax().text_range(),
-            });
-            return;
-        };
-        // 如果是 const 声明，将类型包装为 Const
-        self.analyzing.current_base_type = if node.is_const() {
-            Some(NType::Const(Box::new(base_type)))
-        } else {
-            Some(base_type)
-        };
     }
 
     fn leave_var_def(&mut self, def: VarDef) {
-        let Some(base_type) = self.analyzing.current_base_type.clone() else {
-            return;
-        };
-        let var_type = if let Some(pointer_node) = def.pointer() {
-            Self::build_pointer_type(&pointer_node, base_type)
-        } else {
-            base_type
-        };
-
-        let Some(array_decl_node) = def.array_decl() else {
-            return;
-        };
-
-        let var_type = match self.build_array_type(var_type, array_decl_node.dimensions()) {
-            Ok(ty) => ty,
-            Err(e) => {
-                self.analyzing.new_error(e);
-                return;
-            }
-        };
-        let Some(name_node) = array_decl_node.name() else {
+        let Some(name_node) = def.name() else {
             return;
         };
         let Some(var_name) = name_node.var_name() else {
             return;
         };
         let Some(var_range) = name_node.var_range() else {
+            return;
+        };
+        let Some(ty_node) = def.ty() else {
+            return;
+        };
+
+        let var_type = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
+            ty.clone()
+        } else {
+            self.analyzing.errors.push(SemanticError::TypeUndefined {
+                range: ty_node.syntax().text_range(),
+            });
             return;
         };
 
@@ -163,6 +128,11 @@ impl Visitor for Module {
         if let Some(init_val_node) = def.init() {
             // 如果是表达式，已经在 expr 处理，所以只用考虑 Array 和 Struct 类型
             let init_range = init_val_node.syntax().text_range();
+            // 如果 InitVal 包含一个表达式，使用表达式的范围
+            let expr_range = init_val_node
+                .expr()
+                .map(|e| e.syntax().text_range())
+                .unwrap_or(init_range);
             if var_type.is_array() {
                 let (array_tree, is_const_list) =
                     match ArrayTree::new(self, &var_type, init_val_node) {
@@ -194,7 +164,7 @@ impl Visitor for Module {
                 }
             }
 
-            match self.value_table.get(&init_range) {
+            match self.value_table.get(&expr_range) {
                 Some(v) => {
                     // 如果是 const ，给变量设置一下初值
                     if is_const {
@@ -257,13 +227,18 @@ impl Visitor for Module {
             }
         }
 
-        let Some(func_type_node) = node.func_type() else {
-            return;
+        let ret_type = if let Some(ty_node) = node.ret_type() {
+            if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
+                ty.clone()
+            } else {
+                self.analyzing.errors.push(SemanticError::TypeUndefined {
+                    range: ty_node.syntax().text_range(),
+                });
+                return;
+            }
+        } else {
+            NType::Void
         };
-        let Some(ret_type) = self.build_func_type(&func_type_node) else {
-            return;
-        };
-        self.set_expr_type(func_type_node.syntax().text_range(), ret_type.clone());
 
         let Some(name_node) = node.name() else {
             return;
@@ -272,11 +247,19 @@ impl Visitor for Module {
             return;
         };
         let name = ident.text().to_string();
-        self.functions.insert(Function {
-            name,
-            params: param_list,
-            ret_type,
-        });
+
+        // 检查函数是否重复定义
+        if self.function_map.contains_key(&name) {
+            self.analyzing.errors.push(SemanticError::FunctionDefined {
+                name,
+                range: ident.text_range(),
+            });
+            self.analyzing.current_scope = parent_scope;
+            return;
+        }
+
+        let func_id = self.new_function(name.clone(), param_list, ret_type);
+        self.function_map.insert(name, func_id);
 
         self.analyzing.current_scope = parent_scope;
     }
@@ -285,35 +268,15 @@ impl Visitor for Module {
         let Some(ty_node) = node.ty() else {
             return;
         };
-        let Some(base_type) = self.build_basic_type(&ty_node) else {
+
+        let param_type = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
+            ty.clone()
+        } else {
+            self.analyzing.errors.push(SemanticError::TypeUndefined {
+                range: ty_node.syntax().text_range(),
+            });
             return;
         };
-
-        let mut param_type = if let Some(pointer_node) = node.pointer() {
-            Self::build_pointer_type(&pointer_node, base_type)
-        } else {
-            base_type
-        };
-
-        if node.is_array() {
-            for expr in node.indices() {
-                let range = expr.syntax().text_range();
-                if !self.is_compile_time_constant(range) {
-                    self.analyzing
-                        .errors
-                        .push(SemanticError::ConstantExprExpected { range });
-                    return;
-                }
-            }
-            let ty = match self.build_array_type(param_type, node.indices()) {
-                Ok(ty) => ty,
-                Err(e) => {
-                    self.analyzing.new_error(e);
-                    return;
-                }
-            };
-            param_type = NType::Pointer(Box::new(ty));
-        }
 
         let Some(name_node) = node.name() else {
             return;
@@ -424,12 +387,16 @@ impl Visitor for Module {
 
         if let Some(inner_ty) = self.get_expr_type(expr.syntax().text_range()) {
             let result_ty = if op_kind == SyntaxKind::AMP {
-                NType::Pointer(Box::new(inner_ty.clone()))
+                // 取地址操作，默认生成 *mut 指针
+                NType::Pointer {
+                    pointee: Box::new(inner_ty.clone()),
+                    is_const: false,
+                }
             } else if op_kind == SyntaxKind::STAR {
                 let pointee: Option<NType> = match inner_ty {
-                    NType::Pointer(pointee) => Some((*pointee).as_ref().clone()),
+                    NType::Pointer { pointee, .. } => Some((*pointee).as_ref().clone()),
                     NType::Const(inner) => {
-                        if let NType::Pointer(pointee) = inner.as_ref() {
+                        if let NType::Pointer { pointee, .. } = inner.as_ref() {
                             Some(pointee.as_ref().clone())
                         } else {
                             None
@@ -714,5 +681,119 @@ impl Visitor for Module {
             })
         };
         self.value_table.insert(range, v);
+    }
+
+    fn leave_type(&mut self, node: Type) {
+        let range = node.syntax().text_range();
+
+        // 获取 BaseType 的类型
+        let Some(base_type_node) = node.base_type() else {
+            return;
+        };
+        let Some(base_ntype) = self.get_expr_type(base_type_node.syntax().text_range()) else {
+            return;
+        };
+
+        // 如果有 const 前缀，包装成 Const
+        let ntype = if node.const_token().is_some() {
+            NType::Const(Box::new(base_ntype.clone()))
+        } else {
+            base_ntype.clone()
+        };
+
+        self.set_expr_type(range, ntype);
+    }
+
+    fn leave_base_type(&mut self, node: BaseType) {
+        let range = node.syntax().text_range();
+
+        let ntype = if node.l_brack_token().is_some() {
+            // 数组类型: [Type; Expr]
+            let inner_type_node = node.inner_type_full(); // 使用 Type 而不是 BaseType
+            let size_expr_node = node.size_expr();
+
+            let inner = if let Some(inner_node) = inner_type_node {
+                if let Some(ty) = self.get_expr_type(inner_node.syntax().text_range()) {
+                    ty.clone()
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            };
+
+            let size = if let Some(expr_node) = size_expr_node {
+                let expr_range = expr_node.syntax().text_range();
+                if let Some(x) = self.get_value(expr_range).cloned() {
+                    if let Value::Int(n) = x {
+                        n
+                    } else {
+                        self.analyzing.errors.push(SemanticError::TypeMismatch {
+                            expected: NType::Const(Box::new(NType::Int)),
+                            found: x.get_type(),
+                            range: expr_range,
+                        });
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            };
+
+            NType::Array(Box::new(inner), size)
+        } else if let Some(pointer) = node.pointer() {
+            // 指针类型: Pointer BaseType
+            let inner_type_node = node.inner_type();
+
+            let inner = if let Some(inner_node) = inner_type_node {
+                if let Some(ty) = self.get_expr_type(inner_node.syntax().text_range()) {
+                    ty.clone()
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            };
+
+            NType::Pointer {
+                pointee: Box::new(inner),
+                is_const: pointer.is_const(),
+            }
+        } else {
+            // 原始类型: PrimitType
+            let primit_type_node = node.primit_type();
+
+            if let Some(pt_node) = primit_type_node {
+                if pt_node.int_token().is_some() {
+                    NType::Int
+                } else if pt_node.float_token().is_some() {
+                    NType::Float
+                } else if pt_node.void_token().is_some() {
+                    NType::Void
+                } else if pt_node.struct_token().is_some() {
+                    let name_node = pt_node.name();
+                    if let Some(Some(name)) = name_node.map(|n| n.var_name()) {
+                        if let Some(sid) = self.find_struct(&name) {
+                            NType::Struct(sid)
+                        } else {
+                            self.analyzing
+                                .errors
+                                .push(SemanticError::TypeUndefined { range });
+                            return;
+                        }
+                    } else {
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            } else {
+                return;
+            }
+        };
+
+        self.set_expr_type(range, ntype);
     }
 }

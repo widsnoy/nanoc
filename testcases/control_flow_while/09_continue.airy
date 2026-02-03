@@ -1,0 +1,9 @@
+fn main() -> i32 {
+  let i: i32 = 0;
+  while (i < 10) {
+    i = 20;
+    continue;
+    i = i + 1;
+  }
+  return i;
+}

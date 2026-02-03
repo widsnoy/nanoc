@@ -1,0 +1,9 @@
+struct Node { value: i32, ptr: *mut i32 }
+
+fn main() -> i32 {
+  let x: i32 = 100;
+  let n: struct Node;
+  n.value = 50;
+  n.ptr = &x;
+  return n.value + *n.ptr;
+}

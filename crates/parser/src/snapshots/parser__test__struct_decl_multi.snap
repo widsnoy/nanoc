@@ -2,22 +2,35 @@
 source: crates/parser/src/test.rs
 expression: try_it(source3)
 ---
-COMP_UNIT@0..18
-  VAR_DECL@0..18
-    TYPE@0..12
-      STRUCT_KW@0..6 "struct"
-      NAME@6..12
-        WHITESPACE@6..7 " "
-        IDENT@7..12 "Point"
-    VAR_DEF@12..14
-      ARRAY_DECL@12..14
-        NAME@12..14
-          WHITESPACE@12..13 " "
-          IDENT@13..14 "q"
-    COMMA@14..15 ","
-    VAR_DEF@15..17
-      ARRAY_DECL@15..17
-        NAME@15..17
-          WHITESPACE@15..16 " "
-          IDENT@16..17 "r"
-    SEMI@17..18 ";"
+COMP_UNIT@0..41
+  VAR_DEF@0..20
+    LET_KW@0..3 "let"
+    NAME@3..5
+      WHITESPACE@3..4 " "
+      IDENT@4..5 "q"
+    COLON@5..6 ":"
+    TYPE@6..19
+      BASE_TYPE@6..19
+        PRIMIT_TYPE@6..19
+          WHITESPACE@6..7 " "
+          STRUCT_KW@7..13 "struct"
+          NAME@13..19
+            WHITESPACE@13..14 " "
+            IDENT@14..19 "Point"
+    SEMI@19..20 ";"
+  WHITESPACE@20..21 " "
+  VAR_DEF@21..41
+    LET_KW@21..24 "let"
+    NAME@24..26
+      WHITESPACE@24..25 " "
+      IDENT@25..26 "r"
+    COLON@26..27 ":"
+    TYPE@27..40
+      BASE_TYPE@27..40
+        PRIMIT_TYPE@27..40
+          WHITESPACE@27..28 " "
+          STRUCT_KW@28..34 "struct"
+          NAME@34..40
+            WHITESPACE@34..35 " "
+            IDENT@35..40 "Point"
+    SEMI@40..41 ";"

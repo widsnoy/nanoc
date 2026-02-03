@@ -1,0 +1,10 @@
+struct Data { arr: [i32; 3], value: i32 }
+
+fn main() -> i32 {
+  let a: i32 = 1;
+  let b: i32 = 2;
+  let c: i32 = 3;
+  let v: i32 = 10;
+  let d: struct Data = {{a, b, c}, v};
+  return d.arr[0] + d.arr[1] + d.arr[2] + d.value;
+}

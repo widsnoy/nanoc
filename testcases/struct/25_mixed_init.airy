@@ -1,0 +1,7 @@
+struct Point { x: i32, y: i32 }
+
+fn main() -> i32 {
+  let runtime_val: i32 = 25;
+  let p: struct Point = {10, runtime_val};
+  return p.x + p.y;
+}

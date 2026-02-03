@@ -33,6 +33,9 @@ pub struct Module {
     /// Struct 索引：Name -> StructID
     pub struct_map: HashMap<String, StructID>,
 
+    /// Function 索引
+    pub function_map: HashMap<String, FunctionID>,
+
     /// 表达式类型表：TextRange -> NType
     pub type_table: HashMap<TextRange, NType>,
 
@@ -183,6 +186,16 @@ impl Module {
     /// 根据名称查找 struct
     pub fn find_struct(&self, name: &str) -> Option<StructID> {
         self.struct_map.get(name).copied()
+    }
+
+    /// 根据名称查找函数
+    pub fn find_function(&self, name: &str) -> Option<FunctionID> {
+        self.function_map.get(name).copied()
+    }
+
+    /// 获取函数定义
+    pub fn get_function(&self, id: FunctionID) -> Option<&Function> {
+        self.functions.get(*id)
     }
 
     /// 添加新的 struct 定义

@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
@@ -64,7 +64,7 @@ fn collect_test_cases(dirs: &[PathBuf], excludes: &[String]) -> Result<Vec<TestC
             let path = entry.path();
             if path.is_dir() {
                 collect_from_dir(&path, cases, excludes)?;
-            } else if path.extension().and_then(|s| s.to_str()) == Some("c") {
+            } else if path.extension().and_then(|s| s.to_str()) == Some("airy") {
                 let level_name = path
                     .parent()
                     .and_then(|p| p.file_name())

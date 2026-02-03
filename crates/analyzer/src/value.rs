@@ -24,7 +24,10 @@ impl Value {
             Value::Array(_) => NType::Array(Box::new(NType::Void), 0),
             Value::Struct(struct_id, _) => NType::Struct(*struct_id),
             Value::StructZero(struct_id) => NType::Struct(*struct_id),
-            Value::Pointee(_, _) => NType::Pointer(Box::new(NType::Void)),
+            Value::Pointee(_, _) => NType::Pointer {
+                pointee: Box::new(NType::Void),
+                is_const: false,
+            },
         }
     }
     pub fn eval(lhs: &Value, rhs: &Value, op: &str) -> Result<Value, EvalError> {

@@ -1,0 +1,35 @@
+let x: i32;
+let y: i32;
+
+fn t() -> i32 {
+  x = x + 1;
+  return 1;
+}
+
+fn f() -> i32 {
+  y = y + 1;
+  return 0;
+}
+
+fn main() -> i32 {
+  let sum: i32 = 0;
+  sum = sum + (f() || f());
+  sum = sum + (f() || t());
+  sum = sum + (t() || f());
+  sum = sum + (t() || t());
+  sum = sum + (f() && f());
+  sum = sum + (f() && t());
+  sum = sum + (t() && f());
+  sum = sum + (t() && t());
+  t() || t() && t();
+  f() || t() && t();
+  f() || f() && t();
+  t() && t() || t();
+  f() && t() || t();
+  f() && f() || f();
+  putint(x);
+  putch(32);
+  putint(y);
+  putch(10);
+  return sum;
+}

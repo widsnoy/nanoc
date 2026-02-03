@@ -1,0 +1,5 @@
+fn main() -> i32 {
+  let x: const i32 = 1 * 2 || 2 * 3 && 3 * 4;
+  let y: const i32 = x * 3 > 10;
+  return y + 4 - x;
+}

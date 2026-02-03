@@ -1,0 +1,7 @@
+fn f(f: i32) -> i32 {
+  return f * 2;
+}
+
+fn main() -> i32 {
+  return f(10);
+}

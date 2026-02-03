@@ -1,0 +1,11 @@
+fn main() -> i32 {
+  let arr: [i32; 10] = {1, 2, 3, 4, 5};
+  let i: i32 = 0;
+  while (i < 10) {
+    let x: [i32; 10] = {};
+    arr[i] = arr[i] + i + x[i];
+    x[i] = arr[i];
+    i = i + 1;
+  }
+  return arr[9];
+}
