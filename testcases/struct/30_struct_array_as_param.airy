@@ -1,0 +1,23 @@
+struct Point { x: i32, y: i32 }
+
+fn sum_points(arr: *mut struct Point, n: i32) -> i32 {
+  let sum: i32 = 0;
+  let i: i32 = 0;
+  while (i < n) {
+    sum = sum + arr[i].x + arr[i].y;
+    i = i + 1;
+  }
+  return sum;
+}
+
+fn main() -> i32 {
+  let points: [struct Point; 3];
+  points[0].x = 1;
+  points[0].y = 2;
+  points[1].x = 3;
+  points[1].y = 4;
+  points[2].x = 5;
+  points[2].y = 6;
+
+  return sum_points(&points[0], 3);
+}

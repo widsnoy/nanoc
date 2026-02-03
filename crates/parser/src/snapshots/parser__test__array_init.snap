@@ -2,98 +2,112 @@
 source: crates/parser/src/test.rs
 expression: try_it(source)
 ---
-COMP_UNIT@0..82
+COMP_UNIT@0..86
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
-  VAR_DECL@5..32
-    CONST_KW@5..10 "const"
-    TYPE@10..14
-      WHITESPACE@10..11 " "
-      INT_KW@11..14 "int"
-    VAR_DEF@14..31
-      ARRAY_DECL@14..19
-        NAME@14..16
-          WHITESPACE@14..15 " "
-          IDENT@15..16 "a"
-        L_BRACK@16..17 "["
-        LITERAL@17..18
-          INT_LITERAL@17..18 "3"
-        R_BRACK@18..19 "]"
-      WHITESPACE@19..20 " "
-      EQ@20..21 "="
-      INIT_VAL@21..31
-        WHITESPACE@21..22 " "
-        L_BRACE@22..23 "{"
-        INIT_VAL@23..24
-          LITERAL@23..24
-            INT_LITERAL@23..24 "1"
-        COMMA@24..25 ","
-        INIT_VAL@25..27
-          LITERAL@25..27
-            WHITESPACE@25..26 " "
-            INT_LITERAL@26..27 "2"
-        COMMA@27..28 ","
-        INIT_VAL@28..30
-          LITERAL@28..30
-            WHITESPACE@28..29 " "
-            INT_LITERAL@29..30 "3"
-        R_BRACE@30..31 "}"
-    SEMI@31..32 ";"
-  NEWLINE@32..33 "\n"
-  WHITESPACE@33..37 "    "
-  VAR_DECL@37..77
-    CONST_KW@37..42 "const"
-    TYPE@42..46
-      WHITESPACE@42..43 " "
-      INT_KW@43..46 "int"
-    VAR_DEF@46..76
-      ARRAY_DECL@46..54
-        NAME@46..48
-          WHITESPACE@46..47 " "
-          IDENT@47..48 "a"
-        L_BRACK@48..49 "["
-        LITERAL@49..50
-          INT_LITERAL@49..50 "2"
-        R_BRACK@50..51 "]"
-        L_BRACK@51..52 "["
-        LITERAL@52..53
-          INT_LITERAL@52..53 "3"
-        R_BRACK@53..54 "]"
-      WHITESPACE@54..55 " "
-      EQ@55..56 "="
-      INIT_VAL@56..76
-        WHITESPACE@56..57 " "
-        L_BRACE@57..58 "{"
-        INIT_VAL@58..67
-          L_BRACE@58..59 "{"
-          INIT_VAL@59..60
-            LITERAL@59..60
-              INT_LITERAL@59..60 "1"
-          COMMA@60..61 ","
-          INIT_VAL@61..63
-            LITERAL@61..63
-              WHITESPACE@61..62 " "
-              INT_LITERAL@62..63 "2"
-          COMMA@63..64 ","
-          INIT_VAL@64..66
-            LITERAL@64..66
-              WHITESPACE@64..65 " "
-              INT_LITERAL@65..66 "3"
-          R_BRACE@66..67 "}"
+  VAR_DEF@5..33
+    LET_KW@5..8 "let"
+    NAME@8..10
+      WHITESPACE@8..9 " "
+      IDENT@9..10 "a"
+    COLON@10..11 ":"
+    TYPE@11..20
+      BASE_TYPE@11..20
+        WHITESPACE@11..12 " "
+        L_BRACK@12..13 "["
+        TYPE@13..16
+          BASE_TYPE@13..16
+            PRIMIT_TYPE@13..16
+              INT_KW@13..16 "i32"
+        SEMI@16..17 ";"
+        LITERAL@17..19
+          WHITESPACE@17..18 " "
+          INT_LITERAL@18..19 "3"
+        R_BRACK@19..20 "]"
+    WHITESPACE@20..21 " "
+    EQ@21..22 "="
+    INIT_VAL@22..32
+      WHITESPACE@22..23 " "
+      L_BRACE@23..24 "{"
+      INIT_VAL@24..25
+        LITERAL@24..25
+          INT_LITERAL@24..25 "1"
+      COMMA@25..26 ","
+      INIT_VAL@26..28
+        LITERAL@26..28
+          WHITESPACE@26..27 " "
+          INT_LITERAL@27..28 "2"
+      COMMA@28..29 ","
+      INIT_VAL@29..31
+        LITERAL@29..31
+          WHITESPACE@29..30 " "
+          INT_LITERAL@30..31 "3"
+      R_BRACE@31..32 "}"
+    SEMI@32..33 ";"
+  NEWLINE@33..34 "\n"
+  WHITESPACE@34..38 "    "
+  VAR_DEF@38..81
+    LET_KW@38..41 "let"
+    NAME@41..43
+      WHITESPACE@41..42 " "
+      IDENT@42..43 "b"
+    COLON@43..44 ":"
+    TYPE@44..58
+      BASE_TYPE@44..58
+        WHITESPACE@44..45 " "
+        L_BRACK@45..46 "["
+        TYPE@46..54
+          BASE_TYPE@46..54
+            L_BRACK@46..47 "["
+            TYPE@47..50
+              BASE_TYPE@47..50
+                PRIMIT_TYPE@47..50
+                  INT_KW@47..50 "i32"
+            SEMI@50..51 ";"
+            LITERAL@51..53
+              WHITESPACE@51..52 " "
+              INT_LITERAL@52..53 "3"
+            R_BRACK@53..54 "]"
+        SEMI@54..55 ";"
+        LITERAL@55..57
+          WHITESPACE@55..56 " "
+          INT_LITERAL@56..57 "2"
+        R_BRACK@57..58 "]"
+    WHITESPACE@58..59 " "
+    EQ@59..60 "="
+    INIT_VAL@60..80
+      WHITESPACE@60..61 " "
+      L_BRACE@61..62 "{"
+      INIT_VAL@62..71
+        L_BRACE@62..63 "{"
+        INIT_VAL@63..64
+          LITERAL@63..64
+            INT_LITERAL@63..64 "1"
+        COMMA@64..65 ","
+        INIT_VAL@65..67
+          LITERAL@65..67
+            WHITESPACE@65..66 " "
+            INT_LITERAL@66..67 "2"
         COMMA@67..68 ","
-        INIT_VAL@68..75
-          WHITESPACE@68..69 " "
-          L_BRACE@69..70 "{"
-          INIT_VAL@70..71
-            LITERAL@70..71
-              INT_LITERAL@70..71 "4"
-          COMMA@71..72 ","
-          INIT_VAL@72..74
-            LITERAL@72..74
-              WHITESPACE@72..73 " "
-              INT_LITERAL@73..74 "5"
-          R_BRACE@74..75 "}"
-        R_BRACE@75..76 "}"
-    SEMI@76..77 ";"
-  NEWLINE@77..78 "\n"
-  WHITESPACE@78..82 "    "
+        INIT_VAL@68..70
+          LITERAL@68..70
+            WHITESPACE@68..69 " "
+            INT_LITERAL@69..70 "3"
+        R_BRACE@70..71 "}"
+      COMMA@71..72 ","
+      INIT_VAL@72..79
+        WHITESPACE@72..73 " "
+        L_BRACE@73..74 "{"
+        INIT_VAL@74..75
+          LITERAL@74..75
+            INT_LITERAL@74..75 "4"
+        COMMA@75..76 ","
+        INIT_VAL@76..78
+          LITERAL@76..78
+            WHITESPACE@76..77 " "
+            INT_LITERAL@77..78 "5"
+        R_BRACE@78..79 "}"
+      R_BRACE@79..80 "}"
+    SEMI@80..81 ";"
+  NEWLINE@81..82 "\n"
+  WHITESPACE@82..86 "    "

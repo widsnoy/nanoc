@@ -1,0 +1,10 @@
+struct Inner { value: i32 }
+
+struct Outer { inner: struct Inner, other: i32 }
+
+fn main() -> i32 {
+  let o: struct Outer;
+  o.inner.value = 42;
+  o.other = 8;
+  return o.inner.value + o.other;
+}

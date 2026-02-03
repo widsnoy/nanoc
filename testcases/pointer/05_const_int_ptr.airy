@@ -1,0 +1,12 @@
+fn main() -> i32 {
+  let a: i32 = 10;
+  let b: i32 = 20;
+  let p: *const i32 = &a;
+
+  let v1: i32 = *p;
+
+  p = &b;
+  let v2: i32 = *p;
+
+  return v1 + v2;
+}

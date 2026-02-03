@@ -6,18 +6,22 @@ pub enum NType {
     Float,
     Void,
     Array(Box<NType>, i32),
-    Pointer(Box<NType>),
+    Pointer { pointee: Box<NType>, is_const: bool },
     Struct(StructID),
     Const(Box<NType>),
 }
 
 impl NType {
-    /// array 不可能被 const wrap
+    /// 检查是否为数组类型（包括 Const(Array(...))）
     pub fn is_array(&self) -> bool {
-        matches!(self, Self::Array(_, _))
+        match self {
+            Self::Array(_, _) => true,
+            Self::Const(inner) => inner.is_array(),
+            _ => false,
+        }
     }
 
-    /// 检查是否为指针类型（包括 Const(Pointer(...))）
+    /// 检查是否为指针类型（包括 Const(Pointer {...})）
     pub fn is_pointer(&self) -> bool {
         self.pointer_inner().is_some()
     }
@@ -27,13 +31,13 @@ impl NType {
         self.as_struct_id().is_some()
     }
 
-    /// 提取指针类型的内部类型，处理 Pointer(...) 和 Const(Pointer(...)) 两种情况
+    /// 提取指针类型的内部类型，处理 Pointer {...} 和 Const(Pointer {...}) 两种情况
     pub fn pointer_inner(&self) -> Option<&NType> {
         match self {
-            Self::Pointer(inner) => Some(inner.as_ref()),
+            Self::Pointer { pointee, .. } => Some(pointee.as_ref()),
             Self::Const(inner) => {
-                if let Self::Pointer(p) = inner.as_ref() {
-                    Some(p.as_ref())
+                if let Self::Pointer { pointee, .. } = inner.as_ref() {
+                    Some(pointee.as_ref())
                 } else {
                     None
                 }
@@ -67,10 +71,10 @@ impl NType {
         }
     }
 
-    /// 提取 struct 指针的 struct ID（处理 Pointer(Struct) 和 Const(Pointer(Struct))）
+    /// 提取 struct 指针的 struct ID（处理 Pointer{Struct} 和 Const(Pointer{Struct})）
     pub fn as_struct_pointer_id(&self) -> Option<StructID> {
         match self {
-            Self::Pointer(inner) => inner.as_struct_id(),
+            Self::Pointer { pointee, .. } => pointee.as_struct_id(),
             Self::Const(inner) => inner.as_struct_pointer_id(),
             _ => None,
         }
@@ -83,7 +87,7 @@ impl NType {
             NType::Float => Value::Float(0.0),
             NType::Void => Value::Int(0),
             NType::Array(ntype, _) => ntype.const_zero(),
-            NType::Pointer(_ntype) => Value::Int(0), // null pointer
+            NType::Pointer { .. } => Value::Int(0), // null pointer
             NType::Struct(id) => Value::StructZero(*id),
             NType::Const(ntype) => ntype.const_zero(),
         }

@@ -1,0 +1,21 @@
+struct Matrix { data: [[i32; 3]; 2], sum: i32 }
+
+fn main() -> i32 {
+  let m: const struct Matrix = {{{1, 2, 3}, {4, 5, 6}}, 21};
+
+  let computed_sum: i32 = 0;
+  let i: i32 = 0;
+  while (i < 2) {
+    let j: i32 = 0;
+    while (j < 3) {
+      computed_sum = computed_sum + m.data[i][j];
+      j = j + 1;
+    }
+    i = i + 1;
+  }
+
+  if (computed_sum == m.sum) {
+    return m.sum;
+  }
+  return 0;
+}

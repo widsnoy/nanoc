@@ -2,30 +2,34 @@
 source: crates/parser/src/test.rs
 expression: try_it(source1)
 ---
-COMP_UNIT@0..29
-  STRUCT_DEF@0..29
+COMP_UNIT@0..31
+  STRUCT_DEF@0..31
     STRUCT_KW@0..6 "struct"
     NAME@6..12
       WHITESPACE@6..7 " "
       IDENT@7..12 "Point"
     WHITESPACE@12..13 " "
     L_BRACE@13..14 "{"
-    STRUCT_FIELD@14..20
-      TYPE@14..18
+    STRUCT_FIELD@14..21
+      NAME@14..16
         WHITESPACE@14..15 " "
-        INT_KW@15..18 "int"
-      ARRAY_DECL@18..20
-        NAME@18..20
-          WHITESPACE@18..19 " "
-          IDENT@19..20 "x"
-    COMMA@20..21 ","
-    STRUCT_FIELD@21..27
-      TYPE@21..25
-        WHITESPACE@21..22 " "
-        INT_KW@22..25 "int"
-      ARRAY_DECL@25..27
-        NAME@25..27
-          WHITESPACE@25..26 " "
-          IDENT@26..27 "y"
-    WHITESPACE@27..28 " "
-    R_BRACE@28..29 "}"
+        IDENT@15..16 "x"
+      COLON@16..17 ":"
+      TYPE@17..21
+        BASE_TYPE@17..21
+          PRIMIT_TYPE@17..21
+            WHITESPACE@17..18 " "
+            INT_KW@18..21 "i32"
+    COMMA@21..22 ","
+    STRUCT_FIELD@22..29
+      NAME@22..24
+        WHITESPACE@22..23 " "
+        IDENT@23..24 "y"
+      COLON@24..25 ":"
+      TYPE@25..29
+        BASE_TYPE@25..29
+          PRIMIT_TYPE@25..29
+            WHITESPACE@25..26 " "
+            INT_KW@26..29 "i32"
+    WHITESPACE@29..30 " "
+    R_BRACE@30..31 "}"

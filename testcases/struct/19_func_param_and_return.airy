@@ -1,0 +1,13 @@
+struct Point { x: i32, y: i32 }
+
+fn modify_and_return(p: *mut struct Point) -> *mut struct Point {
+  p->x = p->x * 2;
+  p->y = p->y * 2;
+  return p;
+}
+
+fn main() -> i32 {
+  let p: struct Point = {10, 20};
+  let result: *mut struct Point = modify_and_return(&p);
+  return result->x + result->y;
+}

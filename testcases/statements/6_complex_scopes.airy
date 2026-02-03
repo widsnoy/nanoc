@@ -1,0 +1,40 @@
+fn main() -> i32 {
+  let a: i32 = 0;
+  let sum: i32 = 0;
+  {
+    a = a + 2;
+    let b: i32 = a + 3;
+    b = b + 4;
+    sum = sum + a + b;
+    {
+      b = b + 5;
+      let c: i32 = b + 6;
+      a = a + c;
+      sum = sum + a + b + c;
+      {
+        b = b + a;
+        let a: i32 = c + 7;
+        a = a + 8;
+        sum = sum + a + b + c;
+        {
+          b = b + a;
+          let b: i32 = c + 9;
+          a = a + 10;
+          let a: const i32 = 11;
+          b = b + 12;
+          sum = sum + a + b + c;
+          {
+            c = c + b;
+            let c: i32 = b + 13;
+            c = c + a;
+            sum = sum + a + b + c;
+          }
+          sum = sum - c;
+        }
+        sum = sum - b;
+      }
+      sum = sum - a;
+    }
+  }
+  return sum % 77;
+}

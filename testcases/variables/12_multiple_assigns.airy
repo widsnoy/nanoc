@@ -1,0 +1,7 @@
+fn main() -> i32 {
+  let y: i32;
+  y = 1;
+  let x: i32;
+  x = y + 1;
+  return x;
+}

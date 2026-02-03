@@ -2,168 +2,186 @@
 source: crates/parser/src/test.rs
 expression: try_it(source)
 ---
-COMP_UNIT@0..152
+COMP_UNIT@0..182
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
-  VAR_DECL@5..21
-    TYPE@5..8
-      INT_KW@5..8 "int"
-    VAR_DEF@8..20
-      ARRAY_DECL@8..10
-        NAME@8..10
-          WHITESPACE@8..9 " "
-          IDENT@9..10 "x"
-      WHITESPACE@10..11 " "
-      EQ@11..12 "="
-      INIT_VAL@12..20
-        POSTFIX_EXPR@12..20
-          INDEX_VAL@12..14
-            NAME@12..14
-              WHITESPACE@12..13 " "
-              IDENT@13..14 "s"
-          POSTFIX_OP@14..15
-            DOT@14..15 "."
-          FIELD_ACCESS@15..20
-            NAME@15..20
-              IDENT@15..20 "field"
-    SEMI@20..21 ";"
-  NEWLINE@21..22 "\n"
-  WHITESPACE@22..26 "    "
-  VAR_DECL@26..44
-    TYPE@26..29
-      INT_KW@26..29 "int"
-    VAR_DEF@29..43
-      ARRAY_DECL@29..31
-        NAME@29..31
-          WHITESPACE@29..30 " "
-          IDENT@30..31 "y"
-      WHITESPACE@31..32 " "
-      EQ@32..33 "="
-      INIT_VAL@33..43
-        POSTFIX_EXPR@33..43
-          INDEX_VAL@33..35
-            NAME@33..35
-              WHITESPACE@33..34 " "
-              IDENT@34..35 "p"
-          POSTFIX_OP@35..37
-            ARROW@35..37 "->"
-          FIELD_ACCESS@37..43
-            NAME@37..43
-              IDENT@37..43 "member"
-    SEMI@43..44 ";"
-  NEWLINE@44..45 "\n"
-  WHITESPACE@45..49 "    "
-  VAR_DECL@49..63
-    TYPE@49..52
-      INT_KW@49..52 "int"
-    VAR_DEF@52..62
-      ARRAY_DECL@52..54
-        NAME@52..54
-          WHITESPACE@52..53 " "
-          IDENT@53..54 "z"
-      WHITESPACE@54..55 " "
-      EQ@55..56 "="
-      INIT_VAL@56..62
-        POSTFIX_EXPR@56..62
-          POSTFIX_EXPR@56..60
-            INDEX_VAL@56..58
-              NAME@56..58
-                WHITESPACE@56..57 " "
-                IDENT@57..58 "s"
-            POSTFIX_OP@58..59
-              DOT@58..59 "."
-            FIELD_ACCESS@59..60
-              NAME@59..60
-                IDENT@59..60 "a"
-          POSTFIX_OP@60..61
-            DOT@60..61 "."
-          FIELD_ACCESS@61..62
-            NAME@61..62
-              IDENT@61..62 "b"
-    SEMI@62..63 ";"
-  NEWLINE@63..64 "\n"
-  WHITESPACE@64..68 "    "
-  VAR_DECL@68..84
-    TYPE@68..71
-      INT_KW@68..71 "int"
-    VAR_DEF@71..83
-      ARRAY_DECL@71..73
-        NAME@71..73
-          WHITESPACE@71..72 " "
-          IDENT@72..73 "w"
-      WHITESPACE@73..74 " "
-      EQ@74..75 "="
-      INIT_VAL@75..83
-        POSTFIX_EXPR@75..83
-          POSTFIX_EXPR@75..80
-            INDEX_VAL@75..77
-              NAME@75..77
-                WHITESPACE@75..76 " "
-                IDENT@76..77 "p"
-            POSTFIX_OP@77..79
-              ARROW@77..79 "->"
-            FIELD_ACCESS@79..80
-              NAME@79..80
-                IDENT@79..80 "a"
-          POSTFIX_OP@80..82
-            ARROW@80..82 "->"
-          FIELD_ACCESS@82..83
-            NAME@82..83
-              IDENT@82..83 "b"
-    SEMI@83..84 ";"
-  NEWLINE@84..85 "\n"
-  WHITESPACE@85..89 "    "
-  VAR_DECL@89..114
-    TYPE@89..92
-      INT_KW@89..92 "int"
-    VAR_DEF@92..113
-      ARRAY_DECL@92..98
-        NAME@92..98
-          WHITESPACE@92..93 " "
-          IDENT@93..98 "mixed"
-      WHITESPACE@98..99 " "
-      EQ@99..100 "="
-      INIT_VAL@100..113
-        POSTFIX_EXPR@100..113
-          INDEX_VAL@100..107
-            NAME@100..104
-              WHITESPACE@100..101 " "
-              IDENT@101..104 "arr"
-            L_BRACK@104..105 "["
-            LITERAL@105..106
-              INT_LITERAL@105..106 "0"
-            R_BRACK@106..107 "]"
-          POSTFIX_OP@107..108
-            DOT@107..108 "."
-          FIELD_ACCESS@108..113
-            NAME@108..113
-              IDENT@108..113 "field"
-    SEMI@113..114 ";"
-  NEWLINE@114..115 "\n"
-  WHITESPACE@115..119 "    "
-  VAR_DECL@119..147
-    TYPE@119..122
-      INT_KW@119..122 "int"
-    VAR_DEF@122..146
-      ARRAY_DECL@122..130
-        NAME@122..130
-          WHITESPACE@122..123 " "
-          IDENT@123..130 "complex"
-      WHITESPACE@130..131 " "
-      EQ@131..132 "="
-      INIT_VAL@132..146
-        POSTFIX_EXPR@132..146
-          CALL_EXPR@132..139
-            NAME@132..137
-              WHITESPACE@132..133 " "
-              IDENT@133..137 "func"
-            L_PAREN@137..138 "("
-            R_PAREN@138..139 ")"
-          POSTFIX_OP@139..140
-            DOT@139..140 "."
-          FIELD_ACCESS@140..146
-            NAME@140..146
-              IDENT@140..146 "member"
-    SEMI@146..147 ";"
-  NEWLINE@147..148 "\n"
-  WHITESPACE@148..152 "    "
+  VAR_DEF@5..26
+    LET_KW@5..8 "let"
+    NAME@8..10
+      WHITESPACE@8..9 " "
+      IDENT@9..10 "x"
+    COLON@10..11 ":"
+    TYPE@11..15
+      BASE_TYPE@11..15
+        PRIMIT_TYPE@11..15
+          WHITESPACE@11..12 " "
+          INT_KW@12..15 "i32"
+    WHITESPACE@15..16 " "
+    EQ@16..17 "="
+    INIT_VAL@17..25
+      POSTFIX_EXPR@17..25
+        INDEX_VAL@17..19
+          NAME@17..19
+            WHITESPACE@17..18 " "
+            IDENT@18..19 "s"
+        POSTFIX_OP@19..20
+          DOT@19..20 "."
+        FIELD_ACCESS@20..25
+          NAME@20..25
+            IDENT@20..25 "field"
+    SEMI@25..26 ";"
+  NEWLINE@26..27 "\n"
+  WHITESPACE@27..31 "    "
+  VAR_DEF@31..54
+    LET_KW@31..34 "let"
+    NAME@34..36
+      WHITESPACE@34..35 " "
+      IDENT@35..36 "y"
+    COLON@36..37 ":"
+    TYPE@37..41
+      BASE_TYPE@37..41
+        PRIMIT_TYPE@37..41
+          WHITESPACE@37..38 " "
+          INT_KW@38..41 "i32"
+    WHITESPACE@41..42 " "
+    EQ@42..43 "="
+    INIT_VAL@43..53
+      POSTFIX_EXPR@43..53
+        INDEX_VAL@43..45
+          NAME@43..45
+            WHITESPACE@43..44 " "
+            IDENT@44..45 "p"
+        POSTFIX_OP@45..47
+          ARROW@45..47 "->"
+        FIELD_ACCESS@47..53
+          NAME@47..53
+            IDENT@47..53 "member"
+    SEMI@53..54 ";"
+  NEWLINE@54..55 "\n"
+  WHITESPACE@55..59 "    "
+  VAR_DEF@59..78
+    LET_KW@59..62 "let"
+    NAME@62..64
+      WHITESPACE@62..63 " "
+      IDENT@63..64 "z"
+    COLON@64..65 ":"
+    TYPE@65..69
+      BASE_TYPE@65..69
+        PRIMIT_TYPE@65..69
+          WHITESPACE@65..66 " "
+          INT_KW@66..69 "i32"
+    WHITESPACE@69..70 " "
+    EQ@70..71 "="
+    INIT_VAL@71..77
+      POSTFIX_EXPR@71..77
+        POSTFIX_EXPR@71..75
+          INDEX_VAL@71..73
+            NAME@71..73
+              WHITESPACE@71..72 " "
+              IDENT@72..73 "s"
+          POSTFIX_OP@73..74
+            DOT@73..74 "."
+          FIELD_ACCESS@74..75
+            NAME@74..75
+              IDENT@74..75 "a"
+        POSTFIX_OP@75..76
+          DOT@75..76 "."
+        FIELD_ACCESS@76..77
+          NAME@76..77
+            IDENT@76..77 "b"
+    SEMI@77..78 ";"
+  NEWLINE@78..79 "\n"
+  WHITESPACE@79..83 "    "
+  VAR_DEF@83..104
+    LET_KW@83..86 "let"
+    NAME@86..88
+      WHITESPACE@86..87 " "
+      IDENT@87..88 "w"
+    COLON@88..89 ":"
+    TYPE@89..93
+      BASE_TYPE@89..93
+        PRIMIT_TYPE@89..93
+          WHITESPACE@89..90 " "
+          INT_KW@90..93 "i32"
+    WHITESPACE@93..94 " "
+    EQ@94..95 "="
+    INIT_VAL@95..103
+      POSTFIX_EXPR@95..103
+        POSTFIX_EXPR@95..100
+          INDEX_VAL@95..97
+            NAME@95..97
+              WHITESPACE@95..96 " "
+              IDENT@96..97 "p"
+          POSTFIX_OP@97..99
+            ARROW@97..99 "->"
+          FIELD_ACCESS@99..100
+            NAME@99..100
+              IDENT@99..100 "a"
+        POSTFIX_OP@100..102
+          ARROW@100..102 "->"
+        FIELD_ACCESS@102..103
+          NAME@102..103
+            IDENT@102..103 "b"
+    SEMI@103..104 ";"
+  NEWLINE@104..105 "\n"
+  WHITESPACE@105..109 "    "
+  VAR_DEF@109..139
+    LET_KW@109..112 "let"
+    NAME@112..118
+      WHITESPACE@112..113 " "
+      IDENT@113..118 "mixed"
+    COLON@118..119 ":"
+    TYPE@119..123
+      BASE_TYPE@119..123
+        PRIMIT_TYPE@119..123
+          WHITESPACE@119..120 " "
+          INT_KW@120..123 "i32"
+    WHITESPACE@123..124 " "
+    EQ@124..125 "="
+    INIT_VAL@125..138
+      POSTFIX_EXPR@125..138
+        INDEX_VAL@125..132
+          NAME@125..129
+            WHITESPACE@125..126 " "
+            IDENT@126..129 "arr"
+          L_BRACK@129..130 "["
+          LITERAL@130..131
+            INT_LITERAL@130..131 "0"
+          R_BRACK@131..132 "]"
+        POSTFIX_OP@132..133
+          DOT@132..133 "."
+        FIELD_ACCESS@133..138
+          NAME@133..138
+            IDENT@133..138 "field"
+    SEMI@138..139 ";"
+  NEWLINE@139..140 "\n"
+  WHITESPACE@140..144 "    "
+  VAR_DEF@144..177
+    LET_KW@144..147 "let"
+    NAME@147..155
+      WHITESPACE@147..148 " "
+      IDENT@148..155 "complex"
+    COLON@155..156 ":"
+    TYPE@156..160
+      BASE_TYPE@156..160
+        PRIMIT_TYPE@156..160
+          WHITESPACE@156..157 " "
+          INT_KW@157..160 "i32"
+    WHITESPACE@160..161 " "
+    EQ@161..162 "="
+    INIT_VAL@162..176
+      POSTFIX_EXPR@162..176
+        CALL_EXPR@162..169
+          NAME@162..167
+            WHITESPACE@162..163 " "
+            IDENT@163..167 "func"
+          L_PAREN@167..168 "("
+          R_PAREN@168..169 ")"
+        POSTFIX_OP@169..170
+          DOT@169..170 "."
+        FIELD_ACCESS@170..176
+          NAME@170..176
+            IDENT@170..176 "member"
+    SEMI@176..177 ";"
+  NEWLINE@177..178 "\n"
+  WHITESPACE@178..182 "    "

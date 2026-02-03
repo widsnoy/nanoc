@@ -1,6 +1,5 @@
-use crate::ast::*;
-use crate::syntax_kind::SyntaxKind;
 use rowan::WalkEvent;
+use syntax::{SyntaxKind, SyntaxNode, *};
 
 macro_rules! def_visitor {
     ($($Node:ident, $Kind:ident, $enter:ident, $leave:ident);* $(;)?) => {
@@ -63,13 +62,11 @@ macro_rules! def_visitor {
 
 def_visitor! {
     CompUnit, COMP_UNIT, enter_comp_unit, leave_comp_unit;
-    VarDecl, VAR_DECL, enter_var_decl, leave_var_decl;
     VarDef, VAR_DEF, enter_var_def, leave_var_def;
     InitVal, INIT_VAL, enter_init_val, leave_init_val;
     StructDef, STRUCT_DEF, enter_struct_def, leave_struct_def;
     StructField, STRUCT_FIELD, enter_struct_field, leave_struct_field;
     FuncDef, FUNC_DEF, enter_func_def, leave_func_def;
-    FuncType, FUNC_TYPE, enter_func_type, leave_func_type;
     FuncFParams, FUNC_F_PARAMS, enter_func_f_params, leave_func_f_params;
     FuncFParam, FUNC_F_PARAM, enter_func_f_param, leave_func_f_param;
     Block, BLOCK, enter_block, leave_block;
@@ -86,11 +83,11 @@ def_visitor! {
     CallExpr, CALL_EXPR, enter_call_expr, leave_call_expr;
     FuncRParams, FUNC_R_PARAMS, enter_func_r_params, leave_func_r_params;
     ParenExpr, PAREN_EXPR, enter_paren_expr, leave_paren_expr;
-    ArrayDecl, ARRAY_DECL, enter_array_decl, leave_array_decl;
     IndexVal, INDEX_VAL, enter_index_val, leave_index_val;
     FieldAccess, FIELD_ACCESS, enter_field_access, leave_field_access;
     Literal, LITERAL, enter_literal, leave_literal;
     Type, TYPE, enter_type, leave_type;
+    BaseType, BASE_TYPE, enter_base_type, leave_base_type;
     Name, NAME, enter_name, leave_name;
     Pointer, POINTER, enter_pointer, leave_pointer;
 }

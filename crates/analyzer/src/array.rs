@@ -1,10 +1,7 @@
 //! array 的初始化
 use std::collections::HashMap;
 
-use parser::{
-    ast::{AstNode, Expr, InitVal},
-    syntax_kind::AirycLanguage,
-};
+use syntax::{AirycLanguage, AstNode, Expr, InitVal};
 use text_size::TextRange;
 
 use crate::{
@@ -170,7 +167,7 @@ impl ArrayTree {
         is_const: &mut bool,
     ) -> Result<ArrayTree, ArrayInitError> {
         match ty {
-            NType::Int | NType::Float | NType::Pointer(_) => {
+            NType::Int | NType::Float | NType::Pointer { .. } => {
                 let Some(u) = cursor else { unreachable!() };
                 if let Some(expr) = u.try_expr() {
                     let range = u.syntax().text_range();
@@ -262,7 +259,7 @@ impl ArrayTree {
 #[cfg(test)]
 mod test {
     use parser::{
-        ast::{ArrayDecl, AstNode, InitVal, SyntaxNode, Type},
+        ast::{AstNode, InitVal, SyntaxNode, VarDef},
         parse::Parser,
         syntax_kind::SyntaxKind,
         visitor::Visitor as _,
@@ -281,37 +278,22 @@ mod test {
         res.unwrap()
     }
 
-    fn get_type_node(root: &SyntaxNode) -> SyntaxNode {
-        let res = root.descendants().find(|x| x.kind() == SyntaxKind::TYPE);
-        res.unwrap()
-    }
-
-    fn get_array_decl_node(root: &SyntaxNode) -> SyntaxNode {
-        let res = root
-            .descendants()
-            .find(|x| x.kind() == SyntaxKind::ARRAY_DECL);
-        res.unwrap()
-    }
-
     fn generator(text: &str) -> Result<(String, Module, ArrayTree), ArrayInitError> {
         let p = Parser::new(text);
         let (tree, _) = p.parse();
         let root = Parser::new_root(tree);
         let init_val_node = InitVal::cast(get_init_val_node(&root)).unwrap();
-        // dbg!(init_val_node.syntax());
         let mut module = Module::default();
         module.walk(&root);
-        let basic_ty = module
-            .build_basic_type(&Type::cast(get_type_node(&root)).unwrap())
-            .unwrap();
+
+        // 从 CompUnit 中找到 VarDef
+        let var_def = root.descendants().find_map(VarDef::cast).expect("VarDef");
+        let ty_node = var_def.ty().expect("Type");
         let ty = module
-            .build_array_type(
-                basic_ty,
-                ArrayDecl::cast(get_array_decl_node(&root))
-                    .unwrap()
-                    .dimensions(),
-            )
-            .unwrap();
+            .get_expr_type(ty_node.syntax().text_range())
+            .expect("Type")
+            .clone();
+
         dbg!(&ty);
         let (array_tree, _) = ArrayTree::new(&mut module, &ty, init_val_node)?;
         Ok((array_tree.to_string(), module, array_tree))
@@ -319,14 +301,14 @@ mod test {
 
     #[test]
     fn normal_array() {
-        let text = "const int a[2] = {1, 2}";
+        let text = "let a: [i32; 2] = {1, 2};";
         let (tree, _, _) = generator(text).unwrap();
         insta::assert_snapshot!(tree);
     }
 
     #[test]
     fn special_array() {
-        let text = "const int arr[2][3][4] = {1, 2, 3, 4, {5}, {6}, {7, 8}};";
+        let text = "let arr: [[[i32; 4]; 3]; 2] = {1, 2, 3, 4, {5}, {6}, {7, 8}};";
         let (tree, module, array_tree) = generator(text).unwrap();
         insta::assert_snapshot!(tree);
         let indices = [0, 1, 0];

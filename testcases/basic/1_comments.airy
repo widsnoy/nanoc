@@ -1,0 +1,6 @@
+/* This is a comment. */
+
+fn main() -> i32 {
+  // This is also a comment.
+  return 3;
+}

@@ -1,0 +1,19 @@
+struct Point { x: i32, y: i32 }
+
+fn main() -> i32 {
+  let points: [struct Point; 3];
+  points[0].x = 1;
+  points[0].y = 2;
+  points[1].x = 3;
+  points[1].y = 4;
+  points[2].x = 5;
+  points[2].y = 6;
+
+  let sum: i32 = 0;
+  let i: i32 = 0;
+  while (i < 3) {
+    sum = sum + points[i].x + points[i].y;
+    i = i + 1;
+  }
+  return sum;
+}

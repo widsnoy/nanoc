@@ -1,0 +1,24 @@
+struct Node { value: i32, next: *mut struct Node }
+
+fn main() -> i32 {
+  let n1: struct Node;
+  let n2: struct Node;
+  let n3: struct Node;
+
+  n1.value = 10;
+  n1.next = &n2;
+
+  n2.value = 20;
+  n2.next = &n3;
+
+  n3.value = 30;
+  n3.next = 0;
+
+  let sum: i32 = 0;
+  let current: *mut struct Node = &n1;
+  while (current) {
+    sum = sum + current->value;
+    current = current->next;
+  }
+  return sum;
+}

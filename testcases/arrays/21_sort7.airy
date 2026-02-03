@@ -1,0 +1,46 @@
+let buf: [[i32; 100]; 2];
+
+fn merge_sort(l: i32, r: i32) {
+  if (l + 1 >= r)
+    return;
+
+  let mid: i32 = (l + r) / 2;
+  merge_sort(l, mid);
+  merge_sort(mid, r);
+
+  let i: i32 = l;
+  let j: i32 = mid;
+  let k: i32 = l;
+  while (i < mid && j < r) {
+    if (buf[0][i] < buf[0][j]) {
+      buf[1][k] = buf[0][i];
+      i = i + 1;
+    } else {
+      buf[1][k] = buf[0][j];
+      j = j + 1;
+    }
+    k = k + 1;
+  }
+  while (i < mid) {
+    buf[1][k] = buf[0][i];
+    i = i + 1;
+    k = k + 1;
+  }
+  while (j < r) {
+    buf[1][k] = buf[0][j];
+    j = j + 1;
+    k = k + 1;
+  }
+
+  while (l < r) {
+    buf[0][l] = buf[1][l];
+    l = l + 1;
+  }
+}
+
+fn main() -> i32 {
+  let n: i32 = getarray(buf[0]);
+  merge_sort(0, n);
+  putarray(n, buf[0]);
+  return 0;
+}

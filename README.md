@@ -1,31 +1,31 @@
 # airyc
 
-Based on SysY language, added structure and pointer support
+A toy programming language
+
+## Grammar
 
 ```text
 CompUnit    := {GlobalDecl}
-GlobalDecl  := VarDecl | FuncDef | StructDef
+GlobalDecl  := VarDef | FuncDef | StructDef
 
-Type        := 'int' | 'float' | 'struct' Name
+Type        := ['const'] BaseType
+BaseType    := PrimitType | Pointer BaseType | '[' Type ';' Expr ']'
+PrimitType  := 'void' | 'i32' | 'f32' | 'struct' Name
+Pointer     := '*' ('mut' | 'const')
 
-VarDecl     := ['const'] Type VarDef {',' VarDef} ';'
-VarDef      := Pointer ArrayDecl ['=' InitVal]
+VarDef      := 'let' Name ':' Type ['=' InitVal] ';'
 InitVal     := Expr | '{' [InitVal {',' InitVal}] '}'
 
-Pointer     := {'*' ['const']}
-ArrayDecl   := Name {'[' Expr ']'}
-
-FuncDef     := FuncType Name '(' [FuncFParams] ')' Block
-FuncType    := ('void' | Type) Pointer
+FuncDef     := 'fn' Name '(' [FuncFParams] ')' ['->' Type] Block
 FuncFParams := FuncFParam {',' FuncFParam}
-FuncFParam  := Type Pointer Name ['[' ']' {'[' Expr ']'}]
+FuncFParam  := Name: Type
 FuncRParams := Expr {',' Expr}
 
 StructDef   := 'struct' Name '{' [StructField {',' StructField}] '}'
-StructField := Type Pointer ArrayDecl
+StructField := Name: Type
 
 Block       := '{' {BlockItem} '}'
-BlockItem   := VarDecl | Stmt
+BlockItem   := VarDef | Stmt
 
 Stmt        := AssignStmt
              | ExprStmt
@@ -71,3 +71,10 @@ FieldAccess := Name {'[' Expr ']'}
 Literal     := IntConst | FloatConst
 Name        := Ident
 ```
+
+## Semantic
+
+todo
+
+## Reference
+[SysY 语言定义](https://gitlab.eduxiji.net/csc1/nscscc/compiler2021/-/blob/master/SysY%E8%AF%AD%E8%A8%80%E5%AE%9A%E4%B9%89.pdf)

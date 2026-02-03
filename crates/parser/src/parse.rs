@@ -1,15 +1,19 @@
+mod block;
+mod common;
 mod expression;
-mod parsing;
+mod function;
 mod recovery;
 mod statement;
+mod r#struct;
+mod variable;
 
-use crate::syntax_kind::SyntaxKind;
-use crate::{lexer::Lexer, syntax_kind::AirycLanguage};
+use lexer::Lexer;
 use rowan::{Checkpoint, GreenNode, GreenNodeBuilder};
+use syntax::{AirycLanguage, SyntaxKind};
 
 #[derive(Debug)]
 pub enum ParserError {
-    Expected(SyntaxKind),
+    Expected(Vec<SyntaxKind>),
 }
 
 impl std::fmt::Display for ParserError {
@@ -95,28 +99,33 @@ impl<'a> Parser<'a> {
         self.peek() == kind
     }
 
-    /// 检查下一个 token 是否匹配 `kind`（跳过空白）
-    pub(crate) fn at_1(&self, kind: SyntaxKind) -> bool {
-        self.peek_1() == kind
-    }
-
-    /// 检查向前看两步的 token 是否匹配 `kind`（跳过空白）
-    pub(crate) fn at_2(&self, kind: SyntaxKind) -> bool {
-        self.peek_2() == kind
-    }
-
     /// 获取当前 token 类型（跳过空白）
     pub(crate) fn peek(&self) -> SyntaxKind {
         self.lexer.current_without_trivia()
     }
 
-    /// 获取下一个 token 类型（跳过空白）
-    pub(crate) fn peek_1(&self) -> SyntaxKind {
-        self.lexer.current_without_trivia_1()
-    }
+    pub fn parse_root(&mut self) {
+        self.start_node(SyntaxKind::COMP_UNIT);
+        self.bump_trivia();
 
-    /// 获取向前看两步的 token 类型（跳过空白）
-    pub(crate) fn peek_2(&self) -> SyntaxKind {
-        self.lexer.current_without_trivia_2()
+        loop {
+            match self.peek() {
+                SyntaxKind::LET_KW => self.parse_var_def(),
+                SyntaxKind::FN_KW => self.parse_func_def(),
+                SyntaxKind::STRUCT_KW => self.parse_struct_def(),
+                SyntaxKind::EOF => break,
+                _ => {
+                    self.skip_until(&[
+                        SyntaxKind::LET_KW,
+                        SyntaxKind::FN_KW,
+                        SyntaxKind::STRUCT_KW,
+                        SyntaxKind::EOF,
+                    ]);
+                }
+            }
+            self.bump_trivia();
+        }
+
+        self.finish_node();
     }
 }

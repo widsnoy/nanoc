@@ -1,0 +1,14 @@
+struct Inner { value: i32 }
+
+struct Outer { inner: struct Inner, inner_ptr: *mut struct Inner }
+
+fn main() -> i32 {
+  let i: struct Inner;
+  i.value = 10;
+
+  let o: struct Outer;
+  o.inner.value = 20;
+  o.inner_ptr = &i;
+
+  return o.inner.value + o.inner_ptr->value;
+}

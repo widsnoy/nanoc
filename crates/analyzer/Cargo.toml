@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 parser.workspace = true
+syntax.workspace = true
 
 thunderdome.workspace = true
 text-size.workspace = true

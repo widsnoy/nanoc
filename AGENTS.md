@@ -4,16 +4,125 @@ Guidelines for AI coding agents working on the airyc compiler codebase.
 
 ## Project Overview
 
-Airyc is a compiler for a SysY-based language with structure and pointer support. Compiles to LLVM IR and native executables.
+Airyc is a compiler for a Rust-like language (evolved from SysY) with structure and pointer support. Compiles to LLVM IR and native executables.
 
 ### Crate Structure
 
 - `compiler` (root) - Main compiler binary with CLI
-- `crates/parser` - Lexer, parser, AST definitions using rowan
+- `crates/syntax` - SyntaxKind definitions and AST node types
+- `crates/lexer` - Lexer using logos
+- `crates/parser` - Parser using rowan for lossless syntax trees
 - `crates/analyzer` - Semantic analysis, type checking, symbol resolution
 - `crates/codegen` - LLVM IR code generation using inkwell
 - `crates/runtime` - Runtime library (C code compiled to static lib)
 - `crates/test` - Integration test runner
+
+## Language Syntax
+
+The language uses a Rust-like syntax. See `README.md` for the full grammar.
+
+### C to Airyc Syntax Conversion
+
+When converting test cases from C/SysY syntax to Airyc syntax:
+
+#### Type Keywords
+| C/SysY | Airyc |
+|--------|-------|
+| `int`  | `i32` |
+| `float`| `f32` |
+| `void` | `void` |
+
+#### Variable Declarations
+```c
+// C/SysY
+int x;
+int x = 1;
+const int x = 1;
+float y = 1.0;
+int a, b, c;
+
+// Airyc
+let x: i32;
+let x: i32 = 1;
+let x: const i32 = 1;
+let y: f32 = 1.0;
+let a;
+let b;
+let c;
+```
+
+#### Array Declarations
+```c
+// C/SysY
+int arr[10];
+int arr[2][3];
+int arr[3] = {1, 2, 3};
+
+// Airyc
+let arr: [i32; 10];
+let arr: [[i32; 3]; 2];  // Note: dimensions are reversed!
+let arr: [i32; 3] = {1, 2, 3};
+```
+
+#### Pointer Declarations
+```c
+// C/SysY
+int *p;
+int * const p;
+const int *p;
+
+// Airyc
+let p: *mut i32;           // mutable pointer to mutable i32
+let p: const *mut i32;     // immutable pointer to mutable i32
+let p: *const i32;         // mutable pointer to immutable i32
+let p: const *const i32;   // immutable pointer to immutable i32
+```
+
+Note: `*` must be followed by `mut` or `const` to specify pointer mutability.
+
+#### Function Definitions
+```c
+// C/SysY
+int main() { return 0; }
+void func() {}
+int add(int a, int b) { return a + b; }
+int *getPtr(int arr[][10]) {}
+
+// Airyc
+fn main() -> i32 { return 0; }
+fn func() {}
+fn add(a: i32, b: i32) -> i32 { return a + b; }
+fn getPtr(arr: *mut [i32; 10]) -> *mut i32 {}
+```
+
+#### Struct Definitions
+```c
+// C/SysY
+struct Point {
+    int x;
+    int y;
+};
+struct Point p;
+
+// Airyc
+struct Point { x: i32, y: i32 }
+let p: struct Point;
+```
+
+#### Statements (unchanged)
+- `if`, `else`, `while`, `break`, `continue`, `return` - same syntax
+- Assignment: `x = 1;` - same syntax
+- Expression statements: `func();` - same syntax
+
+### Key Differences Summary
+1. **Type comes after name**: `name: type` instead of `type name`
+2. **`let` keyword** for all variable declarations
+3. **`fn` keyword** for function definitions
+4. **`->` for return type** instead of prefix type
+5. **Array dimensions reversed**: `[inner; size]` is outermost
+6. **`const` in type**: `let x: const i32` instead of `const int x`
+7. **Struct fields use `,`** not `;` as separator
+8. **Pointer requires `mut` or `const`**: `*mut T` or `*const T` instead of `*T`
 
 ## Build Commands
 
@@ -70,10 +179,26 @@ cargo make test-pku-minic    # Tests without perf
 cargo make test-pointer      # Pointer functionality tests
 cargo make test-struct       # Struct
 cargo make test-ci           # CI test suite
+```
 
-# Run compiler manually
-cargo build
-./target/debug/airyc-compiler -i path/to/source
+### Testing Individual Files
+
+**IMPORTANT**: When testing individual .airy or .c files with the compiler, always use `/tmp` as the working directory to avoid polluting the source tree with compilation artifacts (.ll, .s, .o, a.out files).
+
+```bash
+# Good: Test in /tmp
+cd /tmp
+/path/to/airyc-compiler -i /path/to/testcases/file.airy
+
+# Bad: Test in source directory (creates artifacts in testcases/)
+cd /path/to/airyc/testcases
+../target/debug/airyc-compiler -i file.airy  # DON'T DO THIS
+
+# Batch testing example (in /tmp)
+cd /tmp
+for f in /path/to/airyc/testcases/*/*.airy; do
+  /path/to/airyc/target/debug/airyc-compiler -i "$f" >/dev/null 2>&1 || echo "Failed: $f"
+done
 ```
 
 ## Code Style Guidelines
@@ -153,12 +278,6 @@ The CI pipeline runs:
 
 All checks must pass before merging.
 
-## Copilot Instructions
-
-From `.github/copilot-instructions.md`:
-- When performing code review, respond in Chinese
-- Chinese comments are allowed in code
-
 ## Key Dependencies
 
 - `logos` - Lexer generator
@@ -175,4 +294,4 @@ From `.github/copilot-instructions.md`:
 - Source files: `src/**/*.rs`, `crates/*/src/**/*.rs`
 - Tests: `**/test.rs`, `**/tests/*.rs`
 - Snapshots: `**/snapshots/*.snap`
-- Test cases: `test/compiler-dev-test-cases/testcases/**/*.c`
+- Test cases: `testcases/**/*.airy`

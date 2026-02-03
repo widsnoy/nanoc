@@ -1,4 +1,4 @@
-use parser::ast::{AstNode as _, Expr, FuncType, InitVal, Pointer, Type};
+use parser::ast::{AstNode as _, InitVal};
 
 use crate::{
     array::ArrayTree,
@@ -8,73 +8,8 @@ use crate::{
 };
 
 impl Module {
-    pub(crate) fn build_basic_type(&self, node: &Type) -> Option<NType> {
-        if node.int_token().is_some() {
-            Some(NType::Int)
-        } else if node.float_token().is_some() {
-            Some(NType::Float)
-        } else if node.struct_token().is_some() {
-            let Some(Some(name)) = node.name().map(|n| n.var_name()) else {
-                return None;
-            };
-            // 查找 struct 定义
-            self.find_struct(&name).map(NType::Struct)
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn build_pointer_type(node: &Pointer, base_type: NType) -> NType {
-        let res = node.stars();
-        let mut ty = base_type;
-        for b in res {
-            ty = NType::Pointer(Box::new(ty));
-            if !b {
-                ty = NType::Const(Box::new(ty));
-            }
-        }
-        ty
-    }
-
-    pub(crate) fn build_func_type(&self, node: &FuncType) -> Option<NType> {
-        if node.void_token().is_some() {
-            Some(NType::Void)
-        } else {
-            let node_ty = node.ty()?;
-            let base_type = self.build_basic_type(&node_ty)?;
-
-            if let Some(pointer_node) = node.pointer() {
-                Some(Self::build_pointer_type(&pointer_node, base_type))
-            } else {
-                Some(base_type)
-            }
-        }
-    }
-
-    pub(crate) fn build_array_type(
-        &self,
-        mut ty: NType,
-        indices_iter: impl Iterator<Item = Expr>,
-    ) -> Result<NType, SemanticError> {
-        let indices = indices_iter.collect::<Vec<Expr>>();
-        for expr in indices.iter().rev() {
-            let range = expr.syntax().text_range();
-            let Some(x) = self.get_value(range).cloned() else {
-                return Err(SemanticError::ConstantExprExpected { range });
-            };
-            let Value::Int(y) = x else {
-                return Err(SemanticError::TypeMismatch {
-                    expected: NType::Const(Box::new(NType::Int)),
-                    found: x.get_type(),
-                    range,
-                });
-            };
-            ty = NType::Array(Box::new(ty), y);
-        }
-        Ok(ty)
-    }
-
     /// 计算索引后的类型：去掉 index_count 层数组/指针
+    /// 如果结果是数组类型，自动 decay 成指向元素的指针
     pub(crate) fn compute_indexed_type(
         ty: &NType,
         index_count: usize,
@@ -83,7 +18,7 @@ impl Module {
         for _ in 0..index_count {
             current = match current {
                 NType::Array(inner, _) => *inner,
-                NType::Pointer(inner) => *inner,
+                NType::Pointer { pointee, .. } => *pointee,
                 NType::Const(inner) => Self::compute_indexed_type(&inner, 1)?,
                 _ => {
                     return Err(SemanticError::CantApplyOpOnType {
@@ -93,7 +28,15 @@ impl Module {
                 }
             };
         }
-        Ok(current)
+        // 如果结果是数组类型，decay 成指向元素的指针
+        if let NType::Array(inner, _) = current {
+            Ok(NType::Pointer {
+                pointee: inner,
+                is_const: false,
+            })
+        } else {
+            Ok(current)
+        }
     }
 
     /// 解析 struct 初始化列表，返回 Value::Struct
@@ -158,7 +101,7 @@ impl Module {
 
         match &inner_ty {
             // 标量类型：期望一个表达式
-            NType::Int | NType::Float | NType::Pointer(_) => {
+            NType::Int | NType::Float | NType::Pointer { .. } => {
                 let Some(expr) = init_val_node.expr() else {
                     // 期望表达式，但得到了初始化列表
                     return Err(SemanticError::ConstantExprExpected { range });

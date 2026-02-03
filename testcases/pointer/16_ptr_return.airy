@@ -1,0 +1,15 @@
+let global_val: i32 = 42;
+
+fn get_global_ptr() -> *mut i32 {
+  return &global_val;
+}
+
+fn main() -> i32 {
+  let p: *mut i32 = get_global_ptr();
+  let v1: i32 = *p;
+
+  *p = 84;
+  let v2: i32 = global_val;
+
+  return v1 + v2;
+}

@@ -2,108 +2,154 @@
 source: crates/parser/src/test.rs
 expression: try_it(source)
 ---
-COMP_UNIT@0..119
+COMP_UNIT@0..155
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
-  FUNC_DEF@5..20
-    FUNC_TYPE@5..9
-      VOID_KW@5..9 "void"
-    NAME@9..15
-      WHITESPACE@9..10 " "
-      IDENT@10..15 "func1"
-    L_PAREN@15..16 "("
-    R_PAREN@16..17 ")"
-    BLOCK@17..20
-      WHITESPACE@17..18 " "
-      L_BRACE@18..19 "{"
-      R_BRACE@19..20 "}"
-  NEWLINE@20..21 "\n"
-  WHITESPACE@21..25 "    "
-  FUNC_DEF@25..44
-    FUNC_TYPE@25..28
-      TYPE@25..28
-        INT_KW@25..28 "int"
-    NAME@28..34
-      WHITESPACE@28..29 " "
-      IDENT@29..34 "func2"
-    L_PAREN@34..35 "("
-    FUNC_F_PARAMS@35..40
-      FUNC_F_PARAM@35..40
-        TYPE@35..38
-          INT_KW@35..38 "int"
-        NAME@38..40
-          WHITESPACE@38..39 " "
-          IDENT@39..40 "a"
-    R_PAREN@40..41 ")"
-    BLOCK@41..44
-      WHITESPACE@41..42 " "
-      L_BRACE@42..43 "{"
-      R_BRACE@43..44 "}"
-  NEWLINE@44..45 "\n"
-  WHITESPACE@45..49 "    "
-  FUNC_DEF@49..77
-    FUNC_TYPE@49..52
-      TYPE@49..52
-        INT_KW@49..52 "int"
-    NAME@52..58
-      WHITESPACE@52..53 " "
-      IDENT@53..58 "func3"
-    L_PAREN@58..59 "("
-    FUNC_F_PARAMS@59..73
-      FUNC_F_PARAM@59..64
-        TYPE@59..62
-          INT_KW@59..62 "int"
-        NAME@62..64
-          WHITESPACE@62..63 " "
+  FUNC_DEF@5..18
+    FN_KW@5..7 "fn"
+    NAME@7..13
+      WHITESPACE@7..8 " "
+      IDENT@8..13 "func1"
+    L_PAREN@13..14 "("
+    R_PAREN@14..15 ")"
+    BLOCK@15..18
+      WHITESPACE@15..16 " "
+      L_BRACE@16..17 "{"
+      R_BRACE@17..18 "}"
+  NEWLINE@18..19 "\n"
+  WHITESPACE@19..23 "    "
+  FUNC_DEF@23..49
+    FN_KW@23..25 "fn"
+    NAME@25..31
+      WHITESPACE@25..26 " "
+      IDENT@26..31 "func2"
+    L_PAREN@31..32 "("
+    FUNC_F_PARAMS@32..38
+      FUNC_F_PARAM@32..38
+        NAME@32..33
+          IDENT@32..33 "a"
+        COLON@33..34 ":"
+        TYPE@34..38
+          BASE_TYPE@34..38
+            PRIMIT_TYPE@34..38
+              WHITESPACE@34..35 " "
+              INT_KW@35..38 "i32"
+    R_PAREN@38..39 ")"
+    WHITESPACE@39..40 " "
+    ARROW@40..42 "->"
+    TYPE@42..46
+      BASE_TYPE@42..46
+        PRIMIT_TYPE@42..46
+          WHITESPACE@42..43 " "
+          INT_KW@43..46 "i32"
+    BLOCK@46..49
+      WHITESPACE@46..47 " "
+      L_BRACE@47..48 "{"
+      R_BRACE@48..49 "}"
+  NEWLINE@49..50 "\n"
+  WHITESPACE@50..54 "    "
+  FUNC_DEF@54..88
+    FN_KW@54..56 "fn"
+    NAME@56..62
+      WHITESPACE@56..57 " "
+      IDENT@57..62 "func3"
+    L_PAREN@62..63 "("
+    FUNC_F_PARAMS@63..77
+      FUNC_F_PARAM@63..69
+        NAME@63..64
           IDENT@63..64 "a"
-      COMMA@64..65 ","
-      FUNC_F_PARAM@65..73
-        TYPE@65..71
-          WHITESPACE@65..66 " "
-          FLOAT_KW@66..71 "float"
-        NAME@71..73
-          WHITESPACE@71..72 " "
-          IDENT@72..73 "b"
-    R_PAREN@73..74 ")"
-    BLOCK@74..77
-      WHITESPACE@74..75 " "
-      L_BRACE@75..76 "{"
-      R_BRACE@76..77 "}"
-  NEWLINE@77..78 "\n"
-  WHITESPACE@78..82 "    "
-  FUNC_DEF@82..114
-    FUNC_TYPE@82..87
-      TYPE@82..85
-        INT_KW@82..85 "int"
-      POINTER@85..87
-        WHITESPACE@85..86 " "
-        STAR@86..87 "*"
-    NAME@87..92
-      IDENT@87..92 "func4"
-    L_PAREN@92..93 "("
-    FUNC_F_PARAMS@93..110
-      FUNC_F_PARAM@93..99
-        TYPE@93..96
-          INT_KW@93..96 "int"
-        POINTER@96..98
-          WHITESPACE@96..97 " "
-          STAR@97..98 "*"
-        NAME@98..99
-          IDENT@98..99 "p"
-      COMMA@99..100 ","
-      FUNC_F_PARAM@100..110
-        TYPE@100..104
-          WHITESPACE@100..101 " "
-          INT_KW@101..104 "int"
-        NAME@104..108
-          WHITESPACE@104..105 " "
-          IDENT@105..108 "arr"
-        L_BRACK@108..109 "["
-        R_BRACK@109..110 "]"
-    R_PAREN@110..111 ")"
-    BLOCK@111..114
-      WHITESPACE@111..112 " "
-      L_BRACE@112..113 "{"
-      R_BRACE@113..114 "}"
-  NEWLINE@114..115 "\n"
-  WHITESPACE@115..119 "    "
+        COLON@64..65 ":"
+        TYPE@65..69
+          BASE_TYPE@65..69
+            PRIMIT_TYPE@65..69
+              WHITESPACE@65..66 " "
+              INT_KW@66..69 "i32"
+      COMMA@69..70 ","
+      FUNC_F_PARAM@70..77
+        NAME@70..72
+          WHITESPACE@70..71 " "
+          IDENT@71..72 "b"
+        COLON@72..73 ":"
+        TYPE@73..77
+          BASE_TYPE@73..77
+            PRIMIT_TYPE@73..77
+              WHITESPACE@73..74 " "
+              FLOAT_KW@74..77 "f32"
+    R_PAREN@77..78 ")"
+    WHITESPACE@78..79 " "
+    ARROW@79..81 "->"
+    TYPE@81..85
+      BASE_TYPE@81..85
+        PRIMIT_TYPE@81..85
+          WHITESPACE@81..82 " "
+          INT_KW@82..85 "i32"
+    BLOCK@85..88
+      WHITESPACE@85..86 " "
+      L_BRACE@86..87 "{"
+      R_BRACE@87..88 "}"
+  NEWLINE@88..89 "\n"
+  WHITESPACE@89..93 "    "
+  FUNC_DEF@93..150
+    FN_KW@93..95 "fn"
+    NAME@95..101
+      WHITESPACE@95..96 " "
+      IDENT@96..101 "func4"
+    L_PAREN@101..102 "("
+    FUNC_F_PARAMS@102..134
+      FUNC_F_PARAM@102..113
+        NAME@102..103
+          IDENT@102..103 "p"
+        COLON@103..104 ":"
+        TYPE@104..113
+          BASE_TYPE@104..113
+            POINTER@104..109
+              WHITESPACE@104..105 " "
+              STAR@105..106 "*"
+              MUT_KW@106..109 "mut"
+            BASE_TYPE@109..113
+              PRIMIT_TYPE@109..113
+                WHITESPACE@109..110 " "
+                INT_KW@110..113 "i32"
+      COMMA@113..114 ","
+      FUNC_F_PARAM@114..134
+        NAME@114..118
+          WHITESPACE@114..115 " "
+          IDENT@115..118 "arr"
+        COLON@118..119 ":"
+        TYPE@119..134
+          BASE_TYPE@119..134
+            POINTER@119..124
+              WHITESPACE@119..120 " "
+              STAR@120..121 "*"
+              MUT_KW@121..124 "mut"
+            BASE_TYPE@124..134
+              WHITESPACE@124..125 " "
+              L_BRACK@125..126 "["
+              TYPE@126..129
+                BASE_TYPE@126..129
+                  PRIMIT_TYPE@126..129
+                    INT_KW@126..129 "i32"
+              SEMI@129..130 ";"
+              LITERAL@130..133
+                WHITESPACE@130..131 " "
+                INT_LITERAL@131..133 "10"
+              R_BRACK@133..134 "]"
+    R_PAREN@134..135 ")"
+    WHITESPACE@135..136 " "
+    ARROW@136..138 "->"
+    TYPE@138..147
+      BASE_TYPE@138..147
+        POINTER@138..143
+          WHITESPACE@138..139 " "
+          STAR@139..140 "*"
+          MUT_KW@140..143 "mut"
+        BASE_TYPE@143..147
+          PRIMIT_TYPE@143..147
+            WHITESPACE@143..144 " "
+            INT_KW@144..147 "i32"
+    BLOCK@147..150
+      WHITESPACE@147..148 " "
+      L_BRACE@148..149 "{"
+      R_BRACE@149..150 "}"
+  NEWLINE@150..151 "\n"
+  WHITESPACE@151..155 "    "

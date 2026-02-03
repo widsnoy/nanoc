@@ -1,0 +1,21 @@
+struct Container { ptrs: [*mut i32; 3], count: i32 }
+
+fn main() -> i32 {
+  let a: i32 = 10;
+  let b: i32 = 20;
+  let c: i32 = 30;
+
+  let cont: struct Container;
+  cont.ptrs[0] = &a;
+  cont.ptrs[1] = &b;
+  cont.ptrs[2] = &c;
+  cont.count = 3;
+
+  let sum: i32 = 0;
+  let i: i32 = 0;
+  while (i < cont.count) {
+    sum = sum + *cont.ptrs[i];
+    i = i + 1;
+  }
+  return sum;
+}

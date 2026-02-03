@@ -1,0 +1,9 @@
+struct Point { x: i32, y: i32 }
+
+let g_point: struct Point = {50, 60};
+
+fn main() -> i32 {
+  g_point.x = g_point.x + 10;
+  g_point.y = g_point.y + 20;
+  return g_point.x + g_point.y;
+}

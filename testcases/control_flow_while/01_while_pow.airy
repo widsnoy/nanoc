@@ -1,0 +1,9 @@
+fn main() -> i32 {
+  let i: i32 = 0;
+  let pow: i32 = 1;
+  while (i < 7) {
+    pow = pow * 2;
+    i = i + 1;
+  }
+  return pow;
+}

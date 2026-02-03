@@ -1,0 +1,14 @@
+fn main() -> i32 {
+  let arr: [i32; 5] = {1, 2, 3, 4, 5};
+  let p: *mut i32 = arr;
+  let sum: i32 = 0;
+  let i: i32 = 0;
+
+  while (i < 5) {
+    sum = sum + *p;
+    p = p + 1;
+    i = i + 1;
+  }
+
+  return sum;
+}

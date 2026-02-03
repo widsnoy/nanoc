@@ -1,6 +1,7 @@
 use rowan::SyntaxNode;
 
-use crate::{parse::Parser, syntax_kind::AirycLanguage};
+use crate::parse::Parser;
+use syntax::AirycLanguage;
 
 fn try_it(source: &str) -> SyntaxNode<AirycLanguage> {
     let parser = Parser::new(source);
@@ -18,14 +19,15 @@ fn try_it(source: &str) -> SyntaxNode<AirycLanguage> {
 #[test]
 fn test_declarations() {
     let source = r#"
-    const int A = 1;
-    const float B = 2.0, C = 3.0;
-    int a;
-    float b = 1.0;
-    struct MyStruct s;
-    int *p;
-    int arr[10];
-    int arr2[2][3];
+    let A: const i32 = 1;
+    let B: const f32 = 2.0;
+    let C: const f32 = 3.0;
+    let a: i32;
+    let b: f32 = 1.0;
+    let s: struct MyStruct;
+    let p: *mut i32;
+    let arr: [i32; 10];
+    let arr2: [[i32; 3]; 2];
     "#;
     insta::assert_debug_snapshot!(try_it(source));
 }
@@ -33,42 +35,41 @@ fn test_declarations() {
 #[test]
 fn test_struct_def_and_decl() {
     // 测试结构体定义
-    let source1 = "struct Point { int x, int y }";
+    let source1 = "struct Point { x: i32, y: i32 }";
     insta::assert_debug_snapshot!("struct_def", try_it(source1));
 
     // 测试结构体变量声明
-    let source2 = "struct Point p;";
+    let source2 = "let p: struct Point;";
     insta::assert_debug_snapshot!("struct_decl", try_it(source2));
 
     // 测试多个结构体变量声明
-    let source3 = "struct Point q, r;";
+    let source3 = "let q: struct Point; let r: struct Point;";
     insta::assert_debug_snapshot!("struct_decl_multi", try_it(source3));
 }
 
 #[test]
 fn test_functions() {
     let source = r#"
-    void func1() {}
-    int func2(int a) {}
-    int func3(int a, float b) {}
-    int *func4(int *p, int arr[]) {}
+    fn func1() {}
+    fn func2(a: i32) -> i32 {}
+    fn func3(a: i32, b: f32) -> i32 {}
+    fn func4(p: *mut i32, arr: *mut [i32; 10]) -> *mut i32 {}
     "#;
     insta::assert_debug_snapshot!(try_it(source));
 }
 
 #[test]
 fn test_expressions() {
-    // Wrapped in a var decl because we can't parse bare expressions at root
     let source = r#"
-    int x = a + b * c;
-    int y = (a + b) * c;
-    int z = a || b && c;
-    int w = a == b;
-    int rel = a < b;
-    int unary = -a + !b;
-    int ptr = *p + &x;
-    int arr = a[1][2];
-    int call = foo(a, b);
+    let x: i32 = a + b * c;
+    let y: i32 = (a + b) * c;
+    let z: i32 = a || b && c;
+    let w: i32 = a == b;
+    let rel: i32 = a < b;
+    let unary: i32 = -a + !b;
+    let ptr: i32 = *p + &x;
+    let arr: i32 = a[1][2];
+    let call: i32 = foo(a, b);
     "#;
     insta::assert_debug_snapshot!(try_it(source));
 }
@@ -76,13 +77,13 @@ fn test_expressions() {
 #[test]
 fn test_complex_mix() {
     let source = r#"
-    const int MAX = 100;
-    struct Point p;
+    let MAX: const i32 = 100;
+    let p: struct Point;
 
-    int main(int argc, int *argv[]) {
-        int a = 1;
-        int *ptr = &a;
-        const int b = MAX;
+    fn main(argc: i32, argv: *mut [*mut i32; 10]) -> i32 {
+        let a: i32 = 1;
+        let ptr: *mut i32 = &a;
+        let b: const i32 = MAX;
     }
     "#;
     insta::assert_debug_snapshot!(try_it(source));
@@ -91,7 +92,7 @@ fn test_complex_mix() {
 #[test]
 fn test_if_statement() {
     let source = r#"
-    void test() {
+    fn test() {
         if (a) {
             return;
         }
@@ -104,7 +105,7 @@ fn test_if_statement() {
 #[test]
 fn test_while_statement() {
     let source = r#"
-    void test() {
+    fn test() {
         while (1) {
             break;
             continue;
@@ -117,7 +118,7 @@ fn test_while_statement() {
 #[test]
 fn test_return_statement() {
     let source = r#"
-    void test() {
+    fn test() {
         return;
         return 1;
     }
@@ -128,9 +129,9 @@ fn test_return_statement() {
 #[test]
 fn test_block_statement() {
     let source = r#"
-    void test() {
+    fn test() {
         {
-            int nested;
+            let nested: i32;
         }
     }
     "#;
@@ -140,7 +141,7 @@ fn test_block_statement() {
 #[test]
 fn test_assign_statement() {
     let source = r#"
-    void test() {
+    fn test() {
         a = 1;
         *p = 2;
         arr[0] = 3;
@@ -152,7 +153,7 @@ fn test_assign_statement() {
 #[test]
 fn test_expr_statement() {
     let source = r#"
-    void test() {
+    fn test() {
         func();
         a + b;
         ;
@@ -171,7 +172,7 @@ fn test_comments() {
     /* **/
     /****/
     /**/
-    int a = 1;
+    let a: i32 = 1;
     "#;
     insta::assert_debug_snapshot!(try_it(source));
 }
@@ -179,8 +180,8 @@ fn test_comments() {
 #[test]
 fn test_array_init() {
     let source = r#"
-    const int a[3] = {1, 2, 3};
-    const int a[2][3] = {{1, 2, 3}, {4, 5}};
+    let a: [i32; 3] = {1, 2, 3};
+    let b: [[i32; 3]; 2] = {{1, 2, 3}, {4, 5}};
     "#;
     insta::assert_debug_snapshot!(try_it(source));
 }
@@ -188,12 +189,12 @@ fn test_array_init() {
 #[test]
 fn test_postfix_expressions() {
     let source = r#"
-    int x = s.field;
-    int y = p->member;
-    int z = s.a.b;
-    int w = p->a->b;
-    int mixed = arr[0].field;
-    int complex = func().member;
+    let x: i32 = s.field;
+    let y: i32 = p->member;
+    let z: i32 = s.a.b;
+    let w: i32 = p->a->b;
+    let mixed: i32 = arr[0].field;
+    let complex: i32 = func().member;
     "#;
     insta::assert_debug_snapshot!(try_it(source));
 }
@@ -203,7 +204,7 @@ fn test_struct_ast_nodes() {
     use crate::ast::*;
 
     // 测试 StructDef AST 节点
-    let source = "struct Point { int x, int y }";
+    let source = "struct Point { x: i32, y: i32 }";
     let syntax = try_it(source);
     let root = CompUnit::cast(syntax).unwrap();
 
@@ -229,9 +230,7 @@ fn test_struct_ast_nodes() {
 
     // 验证第一个字段
     let field1 = &fields[0];
-    assert!(field1.ty().is_some());
-    let field1_array_decl = field1.array_decl().expect("字段应该有 array_decl");
-    let field1_name = field1_array_decl.name().expect("array_decl 应该有名称");
+    let field1_name = field1.name().expect("字段应该有名称");
     let field1_text = field1_name
         .ident()
         .expect("应该有标识符")
@@ -241,8 +240,7 @@ fn test_struct_ast_nodes() {
 
     // 验证第二个字段
     let field2 = &fields[1];
-    let field2_array_decl = field2.array_decl().expect("字段应该有 array_decl");
-    let field2_name = field2_array_decl.name().expect("array_decl 应该有名称");
+    let field2_name = field2.name().expect("字段应该有名称");
     let field2_text = field2_name
         .ident()
         .expect("应该有标识符")

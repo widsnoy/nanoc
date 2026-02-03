@@ -2,282 +2,309 @@
 source: crates/parser/src/test.rs
 expression: try_it(source)
 ---
-COMP_UNIT@0..216
+COMP_UNIT@0..261
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
-  VAR_DECL@5..23
-    TYPE@5..8
-      INT_KW@5..8 "int"
-    VAR_DEF@8..22
-      ARRAY_DECL@8..10
-        NAME@8..10
-          WHITESPACE@8..9 " "
-          IDENT@9..10 "x"
-      WHITESPACE@10..11 " "
-      EQ@11..12 "="
-      INIT_VAL@12..22
-        BINARY_EXPR@12..22
-          INDEX_VAL@12..14
-            NAME@12..14
-              WHITESPACE@12..13 " "
-              IDENT@13..14 "a"
-          BINARY_OP@14..16
-            WHITESPACE@14..15 " "
-            PLUS@15..16 "+"
-          BINARY_EXPR@16..22
-            INDEX_VAL@16..18
-              NAME@16..18
-                WHITESPACE@16..17 " "
-                IDENT@17..18 "b"
-            BINARY_OP@18..20
-              WHITESPACE@18..19 " "
-              STAR@19..20 "*"
-            INDEX_VAL@20..22
-              NAME@20..22
-                WHITESPACE@20..21 " "
-                IDENT@21..22 "c"
-    SEMI@22..23 ";"
-  NEWLINE@23..24 "\n"
-  WHITESPACE@24..28 "    "
-  VAR_DECL@28..48
-    TYPE@28..31
-      INT_KW@28..31 "int"
-    VAR_DEF@31..47
-      ARRAY_DECL@31..33
-        NAME@31..33
-          WHITESPACE@31..32 " "
-          IDENT@32..33 "y"
-      WHITESPACE@33..34 " "
-      EQ@34..35 "="
-      INIT_VAL@35..47
-        BINARY_EXPR@35..47
-          PAREN_EXPR@35..43
-            WHITESPACE@35..36 " "
-            L_PAREN@36..37 "("
-            BINARY_EXPR@37..42
-              INDEX_VAL@37..38
-                NAME@37..38
-                  IDENT@37..38 "a"
-              BINARY_OP@38..40
-                WHITESPACE@38..39 " "
-                PLUS@39..40 "+"
-              INDEX_VAL@40..42
-                NAME@40..42
-                  WHITESPACE@40..41 " "
-                  IDENT@41..42 "b"
-            R_PAREN@42..43 ")"
-          BINARY_OP@43..45
-            WHITESPACE@43..44 " "
-            STAR@44..45 "*"
-          INDEX_VAL@45..47
-            NAME@45..47
-              WHITESPACE@45..46 " "
-              IDENT@46..47 "c"
-    SEMI@47..48 ";"
-  NEWLINE@48..49 "\n"
-  WHITESPACE@49..53 "    "
-  VAR_DECL@53..73
-    TYPE@53..56
-      INT_KW@53..56 "int"
-    VAR_DEF@56..72
-      ARRAY_DECL@56..58
-        NAME@56..58
-          WHITESPACE@56..57 " "
-          IDENT@57..58 "z"
-      WHITESPACE@58..59 " "
-      EQ@59..60 "="
-      INIT_VAL@60..72
-        BINARY_EXPR@60..72
-          INDEX_VAL@60..62
-            NAME@60..62
-              WHITESPACE@60..61 " "
-              IDENT@61..62 "a"
-          BINARY_OP@62..65
-            WHITESPACE@62..63 " "
-            PIPEPIPE@63..65 "||"
-          BINARY_EXPR@65..72
-            INDEX_VAL@65..67
-              NAME@65..67
-                WHITESPACE@65..66 " "
-                IDENT@66..67 "b"
-            BINARY_OP@67..70
-              WHITESPACE@67..68 " "
-              AMPAMP@68..70 "&&"
-            INDEX_VAL@70..72
-              NAME@70..72
-                WHITESPACE@70..71 " "
-                IDENT@71..72 "c"
-    SEMI@72..73 ";"
-  NEWLINE@73..74 "\n"
-  WHITESPACE@74..78 "    "
-  VAR_DECL@78..93
-    TYPE@78..81
-      INT_KW@78..81 "int"
-    VAR_DEF@81..92
-      ARRAY_DECL@81..83
-        NAME@81..83
-          WHITESPACE@81..82 " "
-          IDENT@82..83 "w"
-      WHITESPACE@83..84 " "
-      EQ@84..85 "="
-      INIT_VAL@85..92
-        BINARY_EXPR@85..92
+  VAR_DEF@5..28
+    LET_KW@5..8 "let"
+    NAME@8..10
+      WHITESPACE@8..9 " "
+      IDENT@9..10 "x"
+    COLON@10..11 ":"
+    TYPE@11..15
+      BASE_TYPE@11..15
+        PRIMIT_TYPE@11..15
+          WHITESPACE@11..12 " "
+          INT_KW@12..15 "i32"
+    WHITESPACE@15..16 " "
+    EQ@16..17 "="
+    INIT_VAL@17..27
+      BINARY_EXPR@17..27
+        INDEX_VAL@17..19
+          NAME@17..19
+            WHITESPACE@17..18 " "
+            IDENT@18..19 "a"
+        BINARY_OP@19..21
+          WHITESPACE@19..20 " "
+          PLUS@20..21 "+"
+        BINARY_EXPR@21..27
+          INDEX_VAL@21..23
+            NAME@21..23
+              WHITESPACE@21..22 " "
+              IDENT@22..23 "b"
+          BINARY_OP@23..25
+            WHITESPACE@23..24 " "
+            STAR@24..25 "*"
+          INDEX_VAL@25..27
+            NAME@25..27
+              WHITESPACE@25..26 " "
+              IDENT@26..27 "c"
+    SEMI@27..28 ";"
+  NEWLINE@28..29 "\n"
+  WHITESPACE@29..33 "    "
+  VAR_DEF@33..58
+    LET_KW@33..36 "let"
+    NAME@36..38
+      WHITESPACE@36..37 " "
+      IDENT@37..38 "y"
+    COLON@38..39 ":"
+    TYPE@39..43
+      BASE_TYPE@39..43
+        PRIMIT_TYPE@39..43
+          WHITESPACE@39..40 " "
+          INT_KW@40..43 "i32"
+    WHITESPACE@43..44 " "
+    EQ@44..45 "="
+    INIT_VAL@45..57
+      BINARY_EXPR@45..57
+        PAREN_EXPR@45..53
+          WHITESPACE@45..46 " "
+          L_PAREN@46..47 "("
+          BINARY_EXPR@47..52
+            INDEX_VAL@47..48
+              NAME@47..48
+                IDENT@47..48 "a"
+            BINARY_OP@48..50
+              WHITESPACE@48..49 " "
+              PLUS@49..50 "+"
+            INDEX_VAL@50..52
+              NAME@50..52
+                WHITESPACE@50..51 " "
+                IDENT@51..52 "b"
+          R_PAREN@52..53 ")"
+        BINARY_OP@53..55
+          WHITESPACE@53..54 " "
+          STAR@54..55 "*"
+        INDEX_VAL@55..57
+          NAME@55..57
+            WHITESPACE@55..56 " "
+            IDENT@56..57 "c"
+    SEMI@57..58 ";"
+  NEWLINE@58..59 "\n"
+  WHITESPACE@59..63 "    "
+  VAR_DEF@63..88
+    LET_KW@63..66 "let"
+    NAME@66..68
+      WHITESPACE@66..67 " "
+      IDENT@67..68 "z"
+    COLON@68..69 ":"
+    TYPE@69..73
+      BASE_TYPE@69..73
+        PRIMIT_TYPE@69..73
+          WHITESPACE@69..70 " "
+          INT_KW@70..73 "i32"
+    WHITESPACE@73..74 " "
+    EQ@74..75 "="
+    INIT_VAL@75..87
+      BINARY_EXPR@75..87
+        INDEX_VAL@75..77
+          NAME@75..77
+            WHITESPACE@75..76 " "
+            IDENT@76..77 "a"
+        BINARY_OP@77..80
+          WHITESPACE@77..78 " "
+          PIPEPIPE@78..80 "||"
+        BINARY_EXPR@80..87
+          INDEX_VAL@80..82
+            NAME@80..82
+              WHITESPACE@80..81 " "
+              IDENT@81..82 "b"
+          BINARY_OP@82..85
+            WHITESPACE@82..83 " "
+            AMPAMP@83..85 "&&"
           INDEX_VAL@85..87
             NAME@85..87
               WHITESPACE@85..86 " "
-              IDENT@86..87 "a"
-          BINARY_OP@87..90
-            WHITESPACE@87..88 " "
-            EQEQ@88..90 "=="
-          INDEX_VAL@90..92
-            NAME@90..92
-              WHITESPACE@90..91 " "
-              IDENT@91..92 "b"
-    SEMI@92..93 ";"
-  NEWLINE@93..94 "\n"
-  WHITESPACE@94..98 "    "
-  VAR_DECL@98..114
-    TYPE@98..101
-      INT_KW@98..101 "int"
-    VAR_DEF@101..113
-      ARRAY_DECL@101..105
-        NAME@101..105
-          WHITESPACE@101..102 " "
-          IDENT@102..105 "rel"
-      WHITESPACE@105..106 " "
-      EQ@106..107 "="
-      INIT_VAL@107..113
-        BINARY_EXPR@107..113
-          INDEX_VAL@107..109
-            NAME@107..109
-              WHITESPACE@107..108 " "
-              IDENT@108..109 "a"
-          BINARY_OP@109..111
-            WHITESPACE@109..110 " "
-            LT@110..111 "<"
-          INDEX_VAL@111..113
-            NAME@111..113
-              WHITESPACE@111..112 " "
-              IDENT@112..113 "b"
-    SEMI@113..114 ";"
-  NEWLINE@114..115 "\n"
-  WHITESPACE@115..119 "    "
-  VAR_DECL@119..139
-    TYPE@119..122
-      INT_KW@119..122 "int"
-    VAR_DEF@122..138
-      ARRAY_DECL@122..128
-        NAME@122..128
-          WHITESPACE@122..123 " "
-          IDENT@123..128 "unary"
-      WHITESPACE@128..129 " "
-      EQ@129..130 "="
-      INIT_VAL@130..138
-        BINARY_EXPR@130..138
-          UNARY_EXPR@130..133
-            UNARY_OP@130..132
-              WHITESPACE@130..131 " "
-              MINUS@131..132 "-"
-            INDEX_VAL@132..133
-              NAME@132..133
-                IDENT@132..133 "a"
-          BINARY_OP@133..135
-            WHITESPACE@133..134 " "
-            PLUS@134..135 "+"
-          UNARY_EXPR@135..138
-            UNARY_OP@135..137
-              WHITESPACE@135..136 " "
-              BANG@136..137 "!"
-            INDEX_VAL@137..138
-              NAME@137..138
-                IDENT@137..138 "b"
+              IDENT@86..87 "c"
+    SEMI@87..88 ";"
+  NEWLINE@88..89 "\n"
+  WHITESPACE@89..93 "    "
+  VAR_DEF@93..113
+    LET_KW@93..96 "let"
+    NAME@96..98
+      WHITESPACE@96..97 " "
+      IDENT@97..98 "w"
+    COLON@98..99 ":"
+    TYPE@99..103
+      BASE_TYPE@99..103
+        PRIMIT_TYPE@99..103
+          WHITESPACE@99..100 " "
+          INT_KW@100..103 "i32"
+    WHITESPACE@103..104 " "
+    EQ@104..105 "="
+    INIT_VAL@105..112
+      BINARY_EXPR@105..112
+        INDEX_VAL@105..107
+          NAME@105..107
+            WHITESPACE@105..106 " "
+            IDENT@106..107 "a"
+        BINARY_OP@107..110
+          WHITESPACE@107..108 " "
+          EQEQ@108..110 "=="
+        INDEX_VAL@110..112
+          NAME@110..112
+            WHITESPACE@110..111 " "
+            IDENT@111..112 "b"
+    SEMI@112..113 ";"
+  NEWLINE@113..114 "\n"
+  WHITESPACE@114..118 "    "
+  VAR_DEF@118..139
+    LET_KW@118..121 "let"
+    NAME@121..125
+      WHITESPACE@121..122 " "
+      IDENT@122..125 "rel"
+    COLON@125..126 ":"
+    TYPE@126..130
+      BASE_TYPE@126..130
+        PRIMIT_TYPE@126..130
+          WHITESPACE@126..127 " "
+          INT_KW@127..130 "i32"
+    WHITESPACE@130..131 " "
+    EQ@131..132 "="
+    INIT_VAL@132..138
+      BINARY_EXPR@132..138
+        INDEX_VAL@132..134
+          NAME@132..134
+            WHITESPACE@132..133 " "
+            IDENT@133..134 "a"
+        BINARY_OP@134..136
+          WHITESPACE@134..135 " "
+          LT@135..136 "<"
+        INDEX_VAL@136..138
+          NAME@136..138
+            WHITESPACE@136..137 " "
+            IDENT@137..138 "b"
     SEMI@138..139 ";"
   NEWLINE@139..140 "\n"
   WHITESPACE@140..144 "    "
-  VAR_DECL@144..162
-    TYPE@144..147
-      INT_KW@144..147 "int"
-    VAR_DEF@147..161
-      ARRAY_DECL@147..151
-        NAME@147..151
-          WHITESPACE@147..148 " "
-          IDENT@148..151 "ptr"
-      WHITESPACE@151..152 " "
-      EQ@152..153 "="
-      INIT_VAL@153..161
-        BINARY_EXPR@153..161
-          UNARY_EXPR@153..156
-            UNARY_OP@153..155
-              WHITESPACE@153..154 " "
-              STAR@154..155 "*"
-            INDEX_VAL@155..156
-              NAME@155..156
-                IDENT@155..156 "p"
-          BINARY_OP@156..158
-            WHITESPACE@156..157 " "
-            PLUS@157..158 "+"
-          UNARY_EXPR@158..161
-            UNARY_OP@158..160
-              WHITESPACE@158..159 " "
-              AMP@159..160 "&"
-            INDEX_VAL@160..161
-              NAME@160..161
-                IDENT@160..161 "x"
-    SEMI@161..162 ";"
-  NEWLINE@162..163 "\n"
-  WHITESPACE@163..167 "    "
-  VAR_DECL@167..185
-    TYPE@167..170
-      INT_KW@167..170 "int"
-    VAR_DEF@170..184
-      ARRAY_DECL@170..174
-        NAME@170..174
-          WHITESPACE@170..171 " "
-          IDENT@171..174 "arr"
-      WHITESPACE@174..175 " "
-      EQ@175..176 "="
-      INIT_VAL@176..184
-        INDEX_VAL@176..184
-          NAME@176..178
-            WHITESPACE@176..177 " "
-            IDENT@177..178 "a"
-          L_BRACK@178..179 "["
-          LITERAL@179..180
-            INT_LITERAL@179..180 "1"
-          R_BRACK@180..181 "]"
-          L_BRACK@181..182 "["
-          LITERAL@182..183
-            INT_LITERAL@182..183 "2"
-          R_BRACK@183..184 "]"
-    SEMI@184..185 ";"
-  NEWLINE@185..186 "\n"
-  WHITESPACE@186..190 "    "
-  VAR_DECL@190..211
-    TYPE@190..193
-      INT_KW@190..193 "int"
-    VAR_DEF@193..210
-      ARRAY_DECL@193..198
-        NAME@193..198
-          WHITESPACE@193..194 " "
-          IDENT@194..198 "call"
-      WHITESPACE@198..199 " "
-      EQ@199..200 "="
-      INIT_VAL@200..210
-        CALL_EXPR@200..210
-          NAME@200..204
-            WHITESPACE@200..201 " "
-            IDENT@201..204 "foo"
-          L_PAREN@204..205 "("
-          FUNC_R_PARAMS@205..209
-            INDEX_VAL@205..206
-              NAME@205..206
-                IDENT@205..206 "a"
-            COMMA@206..207 ","
-            INDEX_VAL@207..209
-              NAME@207..209
-                WHITESPACE@207..208 " "
-                IDENT@208..209 "b"
-          R_PAREN@209..210 ")"
-    SEMI@210..211 ";"
-  NEWLINE@211..212 "\n"
-  WHITESPACE@212..216 "    "
+  VAR_DEF@144..169
+    LET_KW@144..147 "let"
+    NAME@147..153
+      WHITESPACE@147..148 " "
+      IDENT@148..153 "unary"
+    COLON@153..154 ":"
+    TYPE@154..158
+      BASE_TYPE@154..158
+        PRIMIT_TYPE@154..158
+          WHITESPACE@154..155 " "
+          INT_KW@155..158 "i32"
+    WHITESPACE@158..159 " "
+    EQ@159..160 "="
+    INIT_VAL@160..168
+      BINARY_EXPR@160..168
+        UNARY_EXPR@160..163
+          UNARY_OP@160..162
+            WHITESPACE@160..161 " "
+            MINUS@161..162 "-"
+          INDEX_VAL@162..163
+            NAME@162..163
+              IDENT@162..163 "a"
+        BINARY_OP@163..165
+          WHITESPACE@163..164 " "
+          PLUS@164..165 "+"
+        UNARY_EXPR@165..168
+          UNARY_OP@165..167
+            WHITESPACE@165..166 " "
+            BANG@166..167 "!"
+          INDEX_VAL@167..168
+            NAME@167..168
+              IDENT@167..168 "b"
+    SEMI@168..169 ";"
+  NEWLINE@169..170 "\n"
+  WHITESPACE@170..174 "    "
+  VAR_DEF@174..197
+    LET_KW@174..177 "let"
+    NAME@177..181
+      WHITESPACE@177..178 " "
+      IDENT@178..181 "ptr"
+    COLON@181..182 ":"
+    TYPE@182..186
+      BASE_TYPE@182..186
+        PRIMIT_TYPE@182..186
+          WHITESPACE@182..183 " "
+          INT_KW@183..186 "i32"
+    WHITESPACE@186..187 " "
+    EQ@187..188 "="
+    INIT_VAL@188..196
+      BINARY_EXPR@188..196
+        UNARY_EXPR@188..191
+          UNARY_OP@188..190
+            WHITESPACE@188..189 " "
+            STAR@189..190 "*"
+          INDEX_VAL@190..191
+            NAME@190..191
+              IDENT@190..191 "p"
+        BINARY_OP@191..193
+          WHITESPACE@191..192 " "
+          PLUS@192..193 "+"
+        UNARY_EXPR@193..196
+          UNARY_OP@193..195
+            WHITESPACE@193..194 " "
+            AMP@194..195 "&"
+          INDEX_VAL@195..196
+            NAME@195..196
+              IDENT@195..196 "x"
+    SEMI@196..197 ";"
+  NEWLINE@197..198 "\n"
+  WHITESPACE@198..202 "    "
+  VAR_DEF@202..225
+    LET_KW@202..205 "let"
+    NAME@205..209
+      WHITESPACE@205..206 " "
+      IDENT@206..209 "arr"
+    COLON@209..210 ":"
+    TYPE@210..214
+      BASE_TYPE@210..214
+        PRIMIT_TYPE@210..214
+          WHITESPACE@210..211 " "
+          INT_KW@211..214 "i32"
+    WHITESPACE@214..215 " "
+    EQ@215..216 "="
+    INIT_VAL@216..224
+      INDEX_VAL@216..224
+        NAME@216..218
+          WHITESPACE@216..217 " "
+          IDENT@217..218 "a"
+        L_BRACK@218..219 "["
+        LITERAL@219..220
+          INT_LITERAL@219..220 "1"
+        R_BRACK@220..221 "]"
+        L_BRACK@221..222 "["
+        LITERAL@222..223
+          INT_LITERAL@222..223 "2"
+        R_BRACK@223..224 "]"
+    SEMI@224..225 ";"
+  NEWLINE@225..226 "\n"
+  WHITESPACE@226..230 "    "
+  VAR_DEF@230..256
+    LET_KW@230..233 "let"
+    NAME@233..238
+      WHITESPACE@233..234 " "
+      IDENT@234..238 "call"
+    COLON@238..239 ":"
+    TYPE@239..243
+      BASE_TYPE@239..243
+        PRIMIT_TYPE@239..243
+          WHITESPACE@239..240 " "
+          INT_KW@240..243 "i32"
+    WHITESPACE@243..244 " "
+    EQ@244..245 "="
+    INIT_VAL@245..255
+      CALL_EXPR@245..255
+        NAME@245..249
+          WHITESPACE@245..246 " "
+          IDENT@246..249 "foo"
+        L_PAREN@249..250 "("
+        FUNC_R_PARAMS@250..254
+          INDEX_VAL@250..251
+            NAME@250..251
+              IDENT@250..251 "a"
+          COMMA@251..252 ","
+          INDEX_VAL@252..254
+            NAME@252..254
+              WHITESPACE@252..253 " "
+              IDENT@253..254 "b"
+        R_PAREN@254..255 ")"
+    SEMI@255..256 ";"
+  NEWLINE@256..257 "\n"
+  WHITESPACE@257..261 "    "

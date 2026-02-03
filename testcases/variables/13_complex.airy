@@ -1,0 +1,11 @@
+fn main() -> i32 {
+  let x: i32 = 0;
+  let k: const i32 = 10 + 11;
+  let y: i32 = k;
+  x = y + 1;
+  let n: const i32 = k * 7;
+  let z: i32 = n - x;
+  let w: i32 = n - y;
+  w = w * 1 * 1 * 1;
+  return z + w;
+}

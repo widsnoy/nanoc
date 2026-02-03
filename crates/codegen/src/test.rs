@@ -43,8 +43,8 @@ fn try_it(code: &str) -> String {
 #[test]
 fn test_const_init() {
     let code = r#"
-    const int x = 233;
-    const int y = x + 1;
+    let x: const i32 = 233;
+    let y: const i32 = x + 1;
     "#;
     insta::assert_snapshot!(try_it(code));
 }
@@ -52,12 +52,12 @@ fn test_const_init() {
 #[test]
 fn test_func_call() {
     let code = r#"
-    int func(int p, int y) {
-        int x = 233;
+    fn func(p: i32, y: i32) -> i32 {
+        let x: i32 = 233;
         return x;
     }
-    int main() {
-        int res = func(1, 2);
+    fn main() -> i32 {
+        let res: i32 = func(1, 2);
     }
     "#;
     insta::assert_snapshot!(try_it(code));
@@ -66,9 +66,9 @@ fn test_func_call() {
 #[test]
 fn test_expr_stmt() {
     let code = r#"
-    int main() {
-        int x = 233;
-        int y = 1 + 2 * 3;
+    fn main() -> i32 {
+        let x: i32 = 233;
+        let y: i32 = 1 + 2 * 3;
     }
     "#;
     insta::assert_snapshot!(try_it(code));
@@ -77,8 +77,8 @@ fn test_expr_stmt() {
 #[test]
 fn test_if_stmt() {
     let code = r#"
-    int main() {
-        int x;
+    fn main() -> i32 {
+        let x: i32;
         if (x > 1) {
             if ( x > 2) {
                 x = 3;
@@ -99,7 +99,7 @@ fn test_if_stmt() {
 #[test]
 fn test_complex_program() {
     let code = r#"
-    void solve(int n, int a, int b, int c) {
+    fn solve(n: i32, a: i32, b: i32, c: i32) {
         if (n == 1) {
             // print("{a}->{c}\n");
             return;
@@ -109,8 +109,8 @@ fn test_complex_program() {
         solve(n - 1, b, a, c);
     }
 
-    int main() {
-        int n = 3;
+    fn main() -> i32 {
+        let n: i32 = 3;
         solve(n, 1, 2, 3);
         return 0;
     }
@@ -121,9 +121,9 @@ fn test_complex_program() {
 #[test]
 fn test_return_stmt() {
     let code = r#"
-    int main() {
-        int x = 233;
-        int y = 1 + 2 * 3;
+    fn main() -> i32 {
+        let x: i32 = 233;
+        let y: i32 = 1 + 2 * 3;
         return x + y;
         return 0;
     }
@@ -134,18 +134,18 @@ fn test_return_stmt() {
 #[test]
 fn test_array_initialize() {
     let code = r#"
-    const int a[3] = {};
-    const int b[2][3][4] = {1, 2, 3, 4, {5}, {6}, {7, 8}};
-    int c = b[1][0][1];
+    let a: [i32; 3] = {};
+    let b: [[[i32; 4]; 3]; 2] = {1, 2, 3, 4, {5}, {6}, {7, 8}};
     
-    const float d[2] = {1.11};
-    float e = d[0];
+    let d: [f32; 2] = {1.11};
 
-    int g[2] = {1, 2};
+    let g: [i32; 2] = {1, 2};
 
-    int main() {
-        int a[3] = {1, 2, 3};
-        int b[2] = {1, a[1]};
+    fn main() -> i32 {
+        let c: i32 = b[1][0][1];
+        let e: f32 = d[0];
+        let a: [i32; 3] = {1, 2, 3};
+        let b: [i32; 2] = {1, a[1]};
     }
     "#;
     insta::assert_snapshot!(try_it(code));

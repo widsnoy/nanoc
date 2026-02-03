@@ -1,5 +1,5 @@
 use crate::parse::Parser;
-use crate::syntax_kind::SyntaxKind;
+use syntax::SyntaxKind;
 
 impl Parser<'_> {
     pub(super) fn parse_statement(&mut self) {
