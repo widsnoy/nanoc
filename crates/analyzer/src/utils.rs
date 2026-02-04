@@ -1,9 +1,10 @@
 use parser::ast::{AstNode as _, InitVal};
 use syntax::{Expr, IndexVal, OpNode, PostfixExpr, SyntaxKind, UnaryExpr};
 
+use crate::error::SemanticError;
 use crate::{
     array::ArrayTree,
-    module::{Module, SemanticError, StructField, StructID},
+    module::{Module, StructID, VariableID},
     r#type::NType,
     value::Value,
 };
@@ -69,10 +70,17 @@ impl Module {
 
         // 按顺序解析每个字段的初始化值
         let mut field_values = Vec::with_capacity(struct_def.fields.len());
-        let fields: *const [StructField] = &struct_def.fields[..];
+        let field_ids: *const [VariableID] = &struct_def.fields[..];
+
+        // 先收集所有字段类型（避免借用冲突）
+        let field_types: Vec<NType> = unsafe { &*field_ids }
+            .iter()
+            .map(|field_id| self.variables.get(**field_id).unwrap().ty.clone())
+            .collect();
+
         let mut all_const = true;
-        for (init, field) in inits.into_iter().zip(unsafe { &*fields }.iter()) {
-            let value = self.process_field_init_value(&field.ty, init)?;
+        for (init, field_ty) in inits.into_iter().zip(field_types.iter()) {
+            let value = self.process_field_init_value(field_ty, init)?;
             if let Some(v) = value
                 && all_const
             {

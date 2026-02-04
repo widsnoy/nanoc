@@ -3,7 +3,8 @@ use parser::visitor::Visitor;
 use syntax::{SyntaxKind, *};
 
 use crate::array::{ArrayTree, ArrayTreeValue};
-use crate::module::{Module, SemanticError, VariableTag};
+use crate::error::SemanticError;
+use crate::module::{Module, ReferenceTag};
 use crate::r#type::NType;
 use crate::value::Value;
 
@@ -14,10 +15,13 @@ impl Visitor for Module {
     }
 
     fn enter_struct_def(&mut self, node: StructDef) {
-        let range = node.syntax().text_range();
-
-        // 获取 struct 名称
-        let Some(Some(name)) = node.name().map(|n| n.var_name()) else {
+        let Some(name_node) = node.name() else {
+            return;
+        };
+        let Some(name) = name_node.var_name() else {
+            return;
+        };
+        let Some(range) = name_node.var_range() else {
             return;
         };
         // 检查是否重复定义
@@ -28,6 +32,8 @@ impl Visitor for Module {
             });
             return;
         }
+
+        self.analyzing.current_scope = self.new_scope(Some(self.global_scope));
 
         // 提前创建占位，以支持自引用结构体
         let struct_id = self.new_struct(name.clone(), vec![], range);
@@ -44,8 +50,8 @@ impl Visitor for Module {
             return;
         };
 
-        // 收集字段
-        let mut fields = Vec::new();
+        // 收集字段信息（先不创建变量）
+        let mut field_infos = Vec::new();
         let mut field_names = std::collections::HashSet::new();
 
         for field_node in node.fields() {
@@ -78,15 +84,34 @@ impl Visitor for Module {
                 continue;
             };
 
-            fields.push(crate::module::StructField {
-                name: field_name,
-                ty: field_ty,
-            });
+            let field_range = field_name_node.syntax().text_range();
+            field_infos.push((field_name, field_ty, field_range));
+        }
+
+        // 创建字段变量
+        let Some(scope) = self.scopes.get_mut(*self.analyzing.current_scope) else {
+            return;
+        };
+        let Some(parent_scope) = scope.parent else {
+            return;
+        };
+        let mut field_ids = Vec::new();
+        for (field_name, field_ty, field_range) in field_infos {
+            let field_id = scope.new_variable(
+                &mut self.variables,
+                &mut self.variable_map,
+                field_name,
+                field_ty,
+                field_range,
+            );
+            field_ids.push(field_id);
         }
 
         // 更新 struct 定义的字段
         let struct_def = self.get_struct_mut(struct_id).unwrap();
-        struct_def.fields = fields;
+        struct_def.fields = field_ids;
+
+        self.analyzing.current_scope = parent_scope;
     }
 
     fn leave_var_def(&mut self, def: VarDef) {
@@ -116,7 +141,7 @@ impl Visitor for Module {
         let scope = self.scopes.get_mut(*current_scope).unwrap();
         let is_global = current_scope == self.global_scope;
         let is_const = var_type.is_const();
-        if scope.have_variable_def(&self.variables, &var_name) {
+        if scope.have_variable_def(&var_name) {
             self.new_error(SemanticError::VariableDefined {
                 name: var_name,
                 range: var_range,
@@ -195,7 +220,6 @@ impl Visitor for Module {
             var_name,
             var_type,
             var_range,
-            VariableTag::Define,
         );
     }
 
@@ -256,7 +280,7 @@ impl Visitor for Module {
                     return;
                 };
                 let name = ident.text();
-                let Some(v) = scope.look_up(self, name, VariableTag::Define) else {
+                let Some(v) = scope.look_up_variable(self, name) else {
                     return;
                 };
                 param_list.push(v);
@@ -322,7 +346,7 @@ impl Visitor for Module {
         let range = ident.text_range();
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
-        if scope.have_variable_def(&self.variables, &name) {
+        if scope.have_variable_def(&name) {
             self.new_error(SemanticError::VariableDefined { name, range });
             return;
         }
@@ -333,7 +357,6 @@ impl Visitor for Module {
             name,
             param_type,
             range,
-            VariableTag::Define,
         );
     }
 
@@ -396,9 +419,8 @@ impl Visitor for Module {
                 range: rhs_range,
             });
         }
-
-        // FIXME: 字段的 ref
     }
+
     fn enter_break_stmt(&mut self, node: BreakStmt) {
         if self.analyzing.loop_depth == 0 {
             self.new_error(SemanticError::BreakOutsideLoop {
@@ -677,7 +699,7 @@ impl Visitor for Module {
         let var_name = ident_token.text();
 
         // 查找变量定义
-        let Some(def_id) = self.find_variable_def(var_name) else {
+        let Some(var_id) = self.find_variable_def(var_name) else {
             self.new_error(SemanticError::VariableUndefined {
                 name: var_name.to_string(),
                 range: var_range,
@@ -685,10 +707,11 @@ impl Visitor for Module {
             return;
         };
 
+        let node_range = node.syntax().text_range();
         // 记录 Read 引用
-        self.record_variable_reference(var_name, var_range, VariableTag::Read);
+        self.record_variable_reference(var_id, node_range, ReferenceTag::Read);
 
-        let var = self.variables.get(*def_id).unwrap();
+        let var = self.variables.get(*var_id).unwrap();
         let index_count = node.indices().count();
         let result_ty = match Self::compute_indexed_type(&var.ty, index_count) {
             Ok(ty) => ty,
@@ -700,7 +723,7 @@ impl Visitor for Module {
         let is_const = var.ty.is_const() && result_ty.is_const();
         let var_range = var.range;
         let const_zero = var.ty.const_zero();
-        self.set_expr_type(node.syntax().text_range(), result_ty);
+        self.set_expr_type(node_range, result_ty);
 
         if !is_const {
             return;
@@ -826,11 +849,11 @@ impl Visitor for Module {
 
         // 查找 struct 定义
         let struct_def = self.get_struct(struct_id).unwrap();
-
         let struct_def: *const crate::module::Struct = struct_def;
 
         // 查找字段并设置类型
-        if let Some(field) = unsafe { &*struct_def }.field(&member_name) {
+        if let Some(field_id) = unsafe { &*struct_def }.field(self, &member_name) {
+            let field = self.variables.get(*field_id).unwrap();
             // 计算索引后的类型（如果有数组索引）
             let indices: Vec<_> = field_access_node.indices().collect();
             let result_ty = if indices.is_empty() {
@@ -857,7 +880,7 @@ impl Visitor for Module {
             // 常量处理：如果基础表达式是常量 struct，提取字段值
             if let Some(Value::Struct(_struct_id, field_values)) =
                 self.value_table.get(&base_range).cloned()
-                && let Some(field_idx) = unsafe { &*struct_def }.field_index(&member_name)
+                && let Some(field_idx) = unsafe { &*struct_def }.field_index(self, &member_name)
                 && let Some(field_value) = field_values.get(field_idx as usize)
             {
                 if indices.is_empty() {

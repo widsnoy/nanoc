@@ -5,7 +5,8 @@ use syntax::{AirycLanguage, AstNode, Expr, InitVal};
 use text_size::TextRange;
 
 use crate::{
-    module::{Module, SemanticError, StructID},
+    error::SemanticError,
+    module::{Module, StructID},
     r#type::NType,
     value::Value,
 };

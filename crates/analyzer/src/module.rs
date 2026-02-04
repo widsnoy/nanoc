@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Deref,
-};
+use std::{collections::HashMap, ops::Deref};
 
 use parser::visitor::Visitor;
 use rowan::GreenNode;
@@ -9,15 +6,12 @@ use syntax::SyntaxNode;
 use text_size::TextRange;
 use thunderdome::Arena;
 
-use crate::{
-    array::{ArrayInitError, ArrayTree},
-    r#type::NType,
-    value::Value,
-};
+use crate::{array::ArrayTree, error::SemanticError, r#type::NType, value::Value};
 
 #[derive(Debug)]
 pub struct Module {
     pub variables: Arena<Variable>,
+    pub reference: Arena<Reference>,
     pub functions: Arena<Function>,
     pub structs: Arena<Struct>,
     pub scopes: Arena<Scope>,
@@ -34,6 +28,9 @@ pub struct Module {
 
     /// 变量索引：TextRange -> VariableID
     pub variable_map: HashMap<TextRange, VariableID>,
+
+    /// 引用索引：TextRange -> ReferenceID
+    pub reference_map: HashMap<TextRange, ReferenceID>,
 
     /// Struct 索引：Name -> StructID
     pub struct_map: HashMap<String, StructID>,
@@ -67,113 +64,12 @@ pub struct AnalyzeContext {
     pub current_func_name: Option<String>,
 }
 
-#[derive(Debug)]
-pub enum SemanticError {
-    TypeMismatch {
-        expected: NType,
-        found: NType,
-        range: TextRange,
-    },
-    ConstantExprExpected {
-        range: TextRange,
-    },
-    VariableDefined {
-        name: String,
-        range: TextRange,
-    },
-    FunctionDefined {
-        name: String,
-        range: TextRange,
-    },
-    VariableUndefined {
-        name: String,
-        range: TextRange,
-    },
-    ExpectInitialVal {
-        name: String,
-        range: TextRange,
-    },
-    ArrayError {
-        message: Box<ArrayInitError>,
-        range: TextRange,
-    },
-    StructDefined {
-        name: String,
-        range: TextRange,
-    },
-    TypeUndefined {
-        range: TextRange,
-    },
-    FieldNotFound {
-        struct_name: String,
-        field_name: String,
-        range: TextRange,
-    },
-    NotAStruct {
-        ty: NType,
-        range: TextRange,
-    },
-    NotAStructPointer {
-        ty: NType,
-        range: TextRange,
-    },
-    /// Struct 初始化列表字段数量不匹配
-    StructInitFieldCountMismatch {
-        expected: usize,
-        found: usize,
-        range: TextRange,
-    },
-    /// 不能对 type 应用某种 op
-    ApplyOpOnType {
-        ty: NType,
-        op: String,
-    },
-    /// 函数未定义
-    FunctionUndefined {
-        name: String,
-        range: TextRange,
-    },
-    /// 函数参数数量不匹配
-    ArgumentCountMismatch {
-        function_name: String,
-        expected: usize,
-        found: usize,
-        range: TextRange,
-    },
-    /// 赋值给 const 变量
-    AssignToConst {
-        name: String,
-        range: TextRange,
-    },
-    /// break 在循环外使用
-    BreakOutsideLoop {
-        range: TextRange,
-    },
-    /// continue 在循环外使用
-    ContinueOutsideLoop {
-        range: TextRange,
-    },
-    /// 返回类型不匹配
-    ReturnTypeMismatch {
-        expected: NType,
-        found: NType,
-        range: TextRange,
-    },
-    /// 无效的左值
-    InvalidLValue {
-        range: TextRange,
-    },
-    /// 取地址操作的操作数不是左值
-    AddressOfNonLvalue {
-        range: TextRange,
-    },
-}
-
 impl Module {
     pub fn new(green_tree: GreenNode) -> Self {
         Self {
             green_tree,
             variables: Default::default(),
+            reference: Default::default(),
             functions: Default::default(),
             structs: Default::default(),
             scopes: Default::default(),
@@ -181,6 +77,7 @@ impl Module {
             value_table: Default::default(),
             expand_array: Default::default(),
             variable_map: Default::default(),
+            reference_map: Default::default(),
             struct_map: Default::default(),
             function_map: Default::default(),
             type_table: Default::default(),
@@ -255,6 +152,12 @@ impl Module {
             .and_then(|f| self.variables.get(**f))
     }
 
+    pub fn get_reference(&self, range: TextRange) -> Option<&Reference> {
+        self.reference_map
+            .get(&range)
+            .and_then(|f| self.reference.get(**f))
+    }
+
     /// 获取 struct 定义
     pub fn get_struct(&self, id: StructID) -> Option<&Struct> {
         self.structs.get(*id)
@@ -284,7 +187,7 @@ impl Module {
     pub fn new_struct(
         &mut self,
         name: String,
-        fields: Vec<StructField>,
+        fields: Vec<VariableID>,
         range: TextRange,
     ) -> StructID {
         let struct_def = Struct {
@@ -300,41 +203,22 @@ impl Module {
     /// 返回定义处的 VariableID（如果找到）
     pub fn record_variable_reference(
         &mut self,
-        var_name: &str,
-        ref_range: TextRange,
-        tag: VariableTag,
-    ) -> Option<VariableID> {
-        let scope = self.scopes.get(*self.analyzing.current_scope)?;
-        // 查找变量定义
-        let def_id = scope.look_up(self, var_name, VariableTag::Define)?;
-        let def_var = self.variables.get(*def_id)?;
-        let ty = def_var.ty.clone();
-
+        var_id: VariableID,
+        range: TextRange,
+        tag: ReferenceTag,
+    ) {
         // 创建新的引用记录
-        let ref_var = Variable {
-            name: var_name.to_string(),
-            ty,
-            range: ref_range,
-            tag,
-        };
-        let ref_idx = self.variables.insert(ref_var);
-        let ref_id = VariableID(ref_idx);
+        let ref_var = Reference { var_id, range, tag };
+        let ref_idx = self.reference.insert(ref_var);
+        let ref_id = ReferenceID(ref_idx);
 
-        // 将引用添加到当前作用域的变量集合中
-        let scope = self.scopes.get_mut(*self.analyzing.current_scope)?;
-        let entry = scope.variables.entry(var_name.to_string()).or_default();
-        entry.insert(ref_id);
-
-        // 记录到 variable_map
-        self.variable_map.insert(ref_range, ref_id);
-
-        Some(def_id)
+        self.reference_map.insert(range, ref_id);
     }
 
     /// 查找变量定义，返回定义处的 VariableID
     pub fn find_variable_def(&self, var_name: &str) -> Option<VariableID> {
         let scope = self.scopes.get(*self.analyzing.current_scope)?;
-        scope.look_up(self, var_name, VariableTag::Define)
+        scope.look_up_variable(self, var_name)
     }
 
     pub(crate) fn new_error(&mut self, error: SemanticError) {
@@ -378,6 +262,7 @@ define_id_type!(VariableID);
 define_id_type!(FunctionID);
 define_id_type!(ScopeID);
 define_id_type!(StructID);
+define_id_type!(ReferenceID);
 
 impl Default for ScopeID {
     fn default() -> Self {
@@ -390,14 +275,6 @@ pub struct Variable {
     pub name: String,
     pub ty: NType,
     pub range: TextRange,
-    pub tag: VariableTag,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum VariableTag {
-    Define,
-    Write,
-    Read,
 }
 
 impl Variable {
@@ -406,6 +283,18 @@ impl Variable {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Reference {
+    pub var_id: VariableID,
+    pub tag: ReferenceTag,
+    pub range: TextRange,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ReferenceTag {
+    Write,
+    Read,
+}
 #[derive(Debug)]
 pub struct Function {
     pub name: String,
@@ -416,35 +305,49 @@ pub struct Function {
 #[derive(Debug, Clone)]
 pub struct Struct {
     pub name: String,
-    pub fields: Vec<StructField>,
+    pub fields: Vec<VariableID>,
     pub range: TextRange,
 }
 
 impl Struct {
     /// 根据字段名查找字段索引
-    pub fn field_index(&self, name: &str) -> Option<u32> {
+    pub fn field_index(&self, module: &Module, name: &str) -> Option<u32> {
         self.fields
             .iter()
-            .position(|f| f.name == name)
+            .position(|field_id| {
+                module
+                    .variables
+                    .get(**field_id)
+                    .map(|var| var.name == name)
+                    .unwrap_or(false)
+            })
             .map(|i| i as u32)
     }
 
-    /// 根据字段名查找字段
-    pub fn field(&self, name: &str) -> Option<&StructField> {
-        self.fields.iter().find(|f| f.name == name)
+    /// 根据字段名查找字段 ID
+    pub fn field(&self, module: &Module, name: &str) -> Option<VariableID> {
+        self.fields
+            .iter()
+            .find(|field_id| {
+                module
+                    .variables
+                    .get(***field_id)
+                    .map(|var| var.name == name)
+                    .unwrap_or(false)
+            })
+            .copied()
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct StructField {
-    pub name: String,
-    pub ty: NType,
+    /// 根据索引获取字段 ID
+    pub fn field_at(&self, index: usize) -> Option<VariableID> {
+        self.fields.get(index).copied()
+    }
 }
 
 #[derive(Debug)]
 pub struct Scope {
     pub parent: Option<ScopeID>,
-    pub variables: HashMap<String, HashSet<VariableID>>,
+    pub variables: HashMap<String, VariableID>,
 }
 
 impl Scope {
@@ -455,31 +358,23 @@ impl Scope {
         name: String,
         ty: NType,
         range: TextRange,
-        tag: VariableTag,
     ) -> VariableID {
         let idx = variables.insert(Variable {
             name: name.clone(),
             ty,
             range,
-            tag,
         });
         let var_id = VariableID(idx);
-        let entry = self.variables.entry(name).or_default();
-        entry.insert(var_id);
+        self.variables.insert(name, var_id);
         variable_map.insert(range, var_id);
         var_id
     }
 
     /// 查找变量
-    pub fn look_up(&self, m: &Module, var_name: &str, var_tag: VariableTag) -> Option<VariableID> {
+    pub fn look_up_variable(&self, m: &Module, var_name: &str) -> Option<VariableID> {
         let mut u_opt = Some(self);
         while let Some(u) = u_opt {
-            if let Some(entry) = u.variables.get(var_name)
-                && let Some(idx) = entry.iter().find(|x| {
-                    let var = m.variables.get(***x).unwrap();
-                    var.tag == var_tag
-                })
-            {
+            if let Some(idx) = u.variables.get(var_name) {
                 return Some(*idx);
             }
             u_opt = u.parent.map(|x| m.scopes.get(*x).unwrap());
@@ -487,19 +382,8 @@ impl Scope {
         None
     }
 
-    /// 检查当前作用域是否存在变量定义（不包括引用）
-    pub fn have_variable_def(&self, variables: &Arena<Variable>, var_name: &str) -> bool {
-        if let Some(entry) = self.variables.get(var_name) {
-            // 检查是否有 Define 标签的变量
-            entry.iter().any(|id| {
-                if let Some(var) = variables.get(**id) {
-                    var.tag == VariableTag::Define
-                } else {
-                    false
-                }
-            })
-        } else {
-            false
-        }
+    /// 检查当前作用域是否存在变量定义
+    pub fn have_variable_def(&self, var_name: &str) -> bool {
+        self.variables.contains_key(var_name)
     }
 }

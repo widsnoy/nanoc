@@ -121,7 +121,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let field_types: Vec<_> = struct_def
                     .fields
                     .iter()
-                    .map(|f| self.convert_ntype_to_type(&f.ty))
+                    .map(|field_id| {
+                        let field = self.analyzer.variables.get(**field_id).unwrap();
+                        self.convert_ntype_to_type(&field.ty)
+                    })
                     .collect::<Result<Vec<_>>>()?;
 
                 // 创建 LLVM struct 类型（匿名）
@@ -402,8 +405,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let field_values: Vec<_> = struct_def
                     .fields
                     .iter()
-                    .map(|f| {
-                        let field_llvm_ty = self.convert_ntype_to_type(&f.ty)?;
+                    .map(|field_id| {
+                        let field = self.analyzer.variables.get(**field_id).unwrap();
+                        let field_llvm_ty = self.convert_ntype_to_type(&field.ty)?;
                         Ok(field_llvm_ty.const_zero())
                     })
                     .collect::<Result<Vec<_>>>()?;
