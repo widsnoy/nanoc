@@ -1,0 +1,89 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Dev: Run Extension (Linux Debug)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/**/*.js"
+      ],
+      "preLaunchTask": "dev:linux:debug",
+      "presentation": {
+        "group": "dev",
+        "order": 1
+      }
+    },
+    {
+      "name": "Dev: Run Extension (Linux Release)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/**/*.js"
+      ],
+      "preLaunchTask": "dev:linux:release",
+      "presentation": {
+        "group": "dev",
+        "order": 2
+      }
+    },
+    {
+      "name": "Dev: Run Extension (Windows Debug)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/**/*.js"
+      ],
+      "preLaunchTask": "dev:windows:debug",
+      "presentation": {
+        "group": "dev",
+        "order": 3
+      }
+    },
+    {
+      "name": "Dev: Run Extension (Windows Release)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/**/*.js"
+      ],
+      \"preLaunchTask\": \"dev:windows:release\",
+      \"presentation\": {
+        \"group\": \"dev\",
+        \"order\": 4
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Dev: Build All Platforms (Debug)",
+      "configurations": [],
+      "preLaunchTask": "build:all:debug",
+      "presentation": {
+        "group": "build",
+        "order": 1
+      }
+    },
+    {
+      "name": "Dev: Build All Platforms (Release)",
+      "configurations": [],
+      "preLaunchTask": "build:all:release",
+      "presentation": {
+        "group": "build",
+        "order": 2
+      }
+    }
+  ]
+}

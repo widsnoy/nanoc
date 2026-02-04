@@ -22,6 +22,8 @@ target
 
 # Vscode
 .vscode/
+# Keep VSCode extension development config
+!editor/code/.vscode/
 
 
 # Added by cargo
@@ -29,3 +31,12 @@ target
 /target
 
 /playground
+
+# VSCode Extension
+editor/code/node_modules/
+editor/code/out/
+editor/code/*.vsix
+editor/code/*.log
+editor/code/.vscode-test/
+editor/code/server
+
