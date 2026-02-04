@@ -26,7 +26,7 @@ impl std::fmt::Display for ParserError {
 
 /// 语法解析器
 pub struct Parser<'a> {
-    lexer: Lexer<'a>,
+    pub lexer: Lexer<'a>,
     builder: GreenNodeBuilder<'static>,
     pub parse_errors: Vec<ParserError>,
 }
@@ -123,17 +123,5 @@ impl<'a> Parser<'a> {
         }
 
         self.finish_node();
-    }
-}
-
-impl<'a> Parser<'a> {
-    // 获取每个换行符的结束下标，用于 LineIndex 初始化
-    pub fn get_newline_end_postions(&self) -> Vec<usize> {
-        self.lexer
-            .get_tokens()
-            .iter()
-            .filter(|(kind, _, _)| *kind == SyntaxKind::NEWLINE)
-            .map(|(_, _, r)| r.end)
-            .collect::<Vec<_>>()
     }
 }

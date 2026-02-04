@@ -8,6 +8,7 @@ syntax.workspace = true
 lexer.workspace = true
 parser.workspace = true
 analyzer.workspace = true
+line_index.workspace = true
 
 logos.workspace = true
 thiserror.workspace = true

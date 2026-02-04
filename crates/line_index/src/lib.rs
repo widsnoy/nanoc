@@ -1,14 +1,11 @@
-//! position <-> line_position
 #[derive(Debug)]
 pub struct LineIndex {
     spilit_points: Vec<usize>, // 开区间
 }
 
 impl LineIndex {
-    pub fn new(newline_token_end_position: Vec<usize>) -> Self {
-        Self {
-            spilit_points: newline_token_end_position,
-        }
+    pub fn new(spilit_points: Vec<usize>) -> Self {
+        Self { spilit_points }
     }
 
     pub fn get_row_column(&self, offset: usize) -> (usize, usize) {
