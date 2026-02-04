@@ -455,10 +455,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .ok_or(CodegenError::NotImplemented("undefined struct"))?;
 
         let field_idx = struct_def
-            .field_index(member_name)
+            .field_index(self.analyzer, member_name)
             .ok_or(CodegenError::NotImplemented("field not found"))?;
 
-        let field_ty = struct_def.fields[field_idx as usize].ty.clone();
+        let field_id = struct_def.fields[field_idx as usize];
+        let field = self.analyzer.variables.get(*field_id).unwrap();
+        let field_ty = field.ty.clone();
 
         let struct_ntype = NType::Struct(struct_id);
         let struct_llvm_ty = self.convert_ntype_to_type(&struct_ntype)?;

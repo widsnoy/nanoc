@@ -1,6 +1,7 @@
 use parser::parse::Parser;
 
-use crate::module::{Module, SemanticError};
+use crate::error::SemanticError;
+use crate::module::Module;
 
 fn analyze(source: &str) -> Module {
     let parser = Parser::new(source);

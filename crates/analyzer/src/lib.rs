@@ -1,5 +1,6 @@
 pub mod analyze;
 pub mod array;
+pub mod error;
 pub mod module;
 pub mod r#type;
 pub(crate) mod utils;
