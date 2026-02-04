@@ -1,4 +1,4 @@
-use crate::parse::Parser;
+use crate::parse::{Parser, ParserError};
 use syntax::SyntaxKind;
 
 impl Parser<'_> {
@@ -42,6 +42,9 @@ impl Parser<'_> {
         } else if current_token == SyntaxKind::STRUCT_KW {
             self.bump();
             self.parse_name();
+        } else {
+            self.parse_errors
+                .push(ParserError::Expected(vec![SyntaxKind::PRIMIT_TYPE]));
         }
         self.finish_node();
     }
@@ -57,10 +60,6 @@ impl Parser<'_> {
             self.skip_until(&[
                 SyntaxKind::MUT_KW,
                 SyntaxKind::CONST_KW,
-                SyntaxKind::INT_KW,
-                SyntaxKind::FLOAT_KW,
-                SyntaxKind::VOID_KW,
-                SyntaxKind::STRUCT_KW,
                 SyntaxKind::SEMI,
                 SyntaxKind::EOF,
             ]);

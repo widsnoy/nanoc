@@ -11,6 +11,9 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_errors
                 .push(ParserError::Expected(vec![expect_token]));
+            if cond(self.peek()) {
+                return;
+            }
             self.start_node(SyntaxKind::ERROR);
             while !cond(self.peek()) {
                 self.bump();
@@ -26,6 +29,9 @@ impl<'a> Parser<'a> {
         assert!(next_start_token.contains(&SyntaxKind::EOF));
         self.parse_errors
             .push(ParserError::Expected(next_start_token.to_vec()));
+        if next_start_token.iter().any(|x| self.at(*x)) {
+            return;
+        }
         self.start_node(SyntaxKind::ERROR);
         while !next_start_token.iter().any(|x| self.at(*x)) {
             self.bump();
