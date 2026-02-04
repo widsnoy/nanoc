@@ -1,5 +1,4 @@
 use parser::parse::Parser;
-use parser::visitor::Visitor;
 
 use crate::module::{Module, SemanticError};
 
@@ -11,10 +10,8 @@ fn analyze(source: &str) -> Module {
         panic!("Parser errors: {:?}", errors);
     }
 
-    let ast = Parser::new_root(tree);
-    // dbg!(&ast);
-    let mut module = Module::default();
-    module.walk(&ast);
+    let mut module = Module::new(tree);
+    module.analyze();
     module
 }
 
@@ -27,7 +24,7 @@ fn test_variable_declaration() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -39,8 +36,8 @@ fn test_duplicate_variable_error() {
     }
     "#;
     let module = analyze(source);
-    assert!(!module.analyzing.errors.is_empty());
-    match &module.analyzing.errors[0] {
+    assert!(!module.semantic_errors.is_empty());
+    match &module.semantic_errors[0] {
         SemanticError::VariableDefined { name, .. } => {
             assert_eq!(name, "a");
         }
@@ -59,7 +56,7 @@ fn test_const_binary_operations() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -72,7 +69,7 @@ fn test_const_comparison_operations() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -84,7 +81,7 @@ fn test_const_logical_operations() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -96,8 +93,8 @@ fn test_const_unary_operations() {
     }
     "#;
     let module = analyze(source);
-    dbg!(&module.analyzing.errors);
-    assert!(module.analyzing.errors.is_empty());
+    dbg!(&module.semantic_errors);
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -108,7 +105,7 @@ fn test_const_parenthesized_expression() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -124,7 +121,7 @@ fn test_nested_scope_variables() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -138,7 +135,7 @@ fn test_variable_shadowing() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -152,7 +149,7 @@ fn test_function_definition() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
     assert_eq!(module.functions.len(), 2);
 }
 
@@ -164,7 +161,7 @@ fn test_function_parameters() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -174,7 +171,7 @@ fn test_duplicate_function_parameters_error() {
     }
     "#;
     let module = analyze(source);
-    assert!(!module.analyzing.errors.is_empty());
+    assert!(!module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -186,7 +183,7 @@ fn test_const_propagation() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -201,7 +198,7 @@ fn test_non_const_propagation_error() {
     "#;
     let module = analyze(source);
     // 不再报错，因为允许运行时初始化
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -214,7 +211,7 @@ fn test_const_float_arithmetic() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -227,7 +224,7 @@ fn test_const_expression_with_multiple_operators() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -247,7 +244,7 @@ fn test_nested_scopes_with_blocks() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -266,7 +263,7 @@ fn test_multiple_functions() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
     assert_eq!(module.functions.len(), 3);
 }
 
@@ -278,7 +275,7 @@ fn test_const_modulo_operation() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -292,7 +289,7 @@ fn test_const_expression_expected_error() {
     "#;
     let module = analyze(source);
     // Should error: non-constant expression in array size
-    assert!(!module.analyzing.errors.is_empty());
+    assert!(!module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -302,9 +299,9 @@ fn test_global_const_propagation() {
     let y: const i32 = x + 1;
     "#;
     let module = analyze(source);
-    dbg!(&module.analyzing.errors);
+    dbg!(&module.semantic_errors);
     dbg!(&module.value_table);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -318,7 +315,7 @@ fn test_break_inside_loop() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -330,8 +327,8 @@ fn test_break_outside_loop_error() {
     }
     "#;
     let module = analyze(source);
-    assert!(!module.analyzing.errors.is_empty());
-    match &module.analyzing.errors[0] {
+    assert!(!module.semantic_errors.is_empty());
+    match &module.semantic_errors[0] {
         SemanticError::BreakOutsideLoop { .. } => {}
         _ => panic!("Expected BreakOutsideLoop error"),
     }
@@ -346,8 +343,8 @@ fn test_continue_outside_loop_error() {
     }
     "#;
     let module = analyze(source);
-    assert!(!module.analyzing.errors.is_empty());
-    match &module.analyzing.errors[0] {
+    assert!(!module.semantic_errors.is_empty());
+    match &module.semantic_errors[0] {
         SemanticError::ContinueOutsideLoop { .. } => {}
         _ => panic!("Expected ContinueOutsideLoop error"),
     }
@@ -367,7 +364,7 @@ fn test_nested_loop_break() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -382,7 +379,7 @@ fn test_function_call_valid() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -394,8 +391,8 @@ fn test_function_undefined_error() {
     }
     "#;
     let module = analyze(source);
-    assert!(!module.analyzing.errors.is_empty());
-    match &module.analyzing.errors[0] {
+    assert!(!module.semantic_errors.is_empty());
+    match &module.semantic_errors[0] {
         SemanticError::FunctionUndefined { name, .. } => {
             assert_eq!(name, "undefined_func");
         }
@@ -415,8 +412,8 @@ fn test_function_argument_count_mismatch() {
     }
     "#;
     let module = analyze(source);
-    assert!(!module.analyzing.errors.is_empty());
-    match &module.analyzing.errors[0] {
+    assert!(!module.semantic_errors.is_empty());
+    match &module.semantic_errors[0] {
         SemanticError::ArgumentCountMismatch {
             function_name,
             expected,
@@ -441,7 +438,7 @@ fn test_builtin_function_call() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -454,8 +451,8 @@ fn test_assign_to_const_error() {
     }
     "#;
     let module = analyze(source);
-    assert!(!module.analyzing.errors.is_empty());
-    match &module.analyzing.errors[0] {
+    assert!(!module.semantic_errors.is_empty());
+    match &module.semantic_errors[0] {
         SemanticError::AssignToConst { name, .. } => {
             assert_eq!(name, "x");
         }
@@ -473,7 +470,7 @@ fn test_assign_to_mutable_variable() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -484,7 +481,7 @@ fn test_return_type_match() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -495,7 +492,7 @@ fn test_return_void_from_void_function() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
 }
 
 #[test]
@@ -508,7 +505,7 @@ fn test_variable_read_reference() {
     }
     "#;
     let module = analyze(source);
-    assert!(module.analyzing.errors.is_empty());
+    assert!(module.semantic_errors.is_empty());
     // 检查 variable_map 中有多个条目（定义 + 引用）
     assert!(module.variable_map.len() >= 2);
 }
@@ -524,7 +521,7 @@ fn test_variable_read_reference() {
 //     }
 //     "#;
 //     let module = analyze(source);
-//     assert!(module.analyzing.errors.is_empty());
+//     assert!(module.semantic_errors.is_empty());
 //     // 检查有 Write 引用被记录
 //     let has_write = module
 //         .variables
@@ -541,8 +538,8 @@ fn test_undefined_variable_error() {
     }
     "#;
     let module = analyze(source);
-    assert!(!module.analyzing.errors.is_empty());
-    match &module.analyzing.errors[0] {
+    assert!(!module.semantic_errors.is_empty());
+    match &module.semantic_errors[0] {
         SemanticError::VariableUndefined { name, .. } => {
             assert_eq!(name, "undefined_var");
         }

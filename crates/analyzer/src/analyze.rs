@@ -22,7 +22,7 @@ impl Visitor for Module {
         };
         // 检查是否重复定义
         if self.find_struct(&name).is_some() {
-            self.analyzing.new_error(SemanticError::StructDefined {
+            self.new_error(SemanticError::StructDefined {
                 name: name.clone(),
                 range,
             });
@@ -61,7 +61,7 @@ impl Visitor for Module {
 
             // 检查字段名是否重复
             if !field_names.insert(field_name.clone()) {
-                self.analyzing.new_error(SemanticError::VariableDefined {
+                self.new_error(SemanticError::VariableDefined {
                     name: field_name.clone(),
                     range: field_name_node.syntax().text_range(),
                 });
@@ -72,7 +72,7 @@ impl Visitor for Module {
             let field_ty = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
                 ty.clone()
             } else {
-                self.analyzing.new_error(SemanticError::TypeUndefined {
+                self.new_error(SemanticError::TypeUndefined {
                     range: ty_node.syntax().text_range(),
                 });
                 continue;
@@ -106,7 +106,7 @@ impl Visitor for Module {
         let var_type = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
             ty.clone()
         } else {
-            self.analyzing.new_error(SemanticError::TypeUndefined {
+            self.new_error(SemanticError::TypeUndefined {
                 range: ty_node.syntax().text_range(),
             });
             return;
@@ -117,7 +117,7 @@ impl Visitor for Module {
         let is_global = current_scope == self.global_scope;
         let is_const = var_type.is_const();
         if scope.have_variable_def(&self.variables, &var_name) {
-            self.analyzing.new_error(SemanticError::VariableDefined {
+            self.new_error(SemanticError::VariableDefined {
                 name: var_name,
                 range: var_range,
             });
@@ -138,7 +138,7 @@ impl Visitor for Module {
                     match ArrayTree::new(self, &var_type, init_val_node) {
                         Ok(s) => s,
                         Err(e) => {
-                            self.analyzing.new_error(SemanticError::ArrayError {
+                            self.new_error(SemanticError::ArrayError {
                                 message: Box::new(e),
                                 range: init_range,
                             });
@@ -158,7 +158,7 @@ impl Visitor for Module {
                     }
                     Ok(None) => {}
                     Err(e) => {
-                        self.analyzing.new_error(e);
+                        self.new_error(e);
                         return;
                     }
                 }
@@ -174,15 +174,14 @@ impl Visitor for Module {
                 None => {
                     // global 变量必须编译时能求值
                     if is_global {
-                        self.analyzing
-                            .new_error(SemanticError::ConstantExprExpected { range: init_range });
+                        self.new_error(SemanticError::ConstantExprExpected { range: init_range });
                         return;
                     }
                 }
             }
         } else if is_const {
             // 如果是 const 必须要有初始化列表:w
-            self.analyzing.new_error(SemanticError::ExpectInitialVal {
+            self.new_error(SemanticError::ExpectInitialVal {
                 name: var_name,
                 range: var_range,
             });
@@ -212,7 +211,7 @@ impl Visitor for Module {
 
         // 检查函数是否重复定义
         if self.function_map.contains_key(&name) {
-            self.analyzing.new_error(SemanticError::FunctionDefined {
+            self.new_error(SemanticError::FunctionDefined {
                 name,
                 range: ident.text_range(),
             });
@@ -264,7 +263,7 @@ impl Visitor for Module {
             if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
                 ty.clone()
             } else {
-                self.analyzing.new_error(SemanticError::TypeUndefined {
+                self.new_error(SemanticError::TypeUndefined {
                     range: ty_node.syntax().text_range(),
                 });
                 return;
@@ -301,7 +300,7 @@ impl Visitor for Module {
         let param_type = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
             ty.clone()
         } else {
-            self.analyzing.new_error(SemanticError::TypeUndefined {
+            self.new_error(SemanticError::TypeUndefined {
                 range: ty_node.syntax().text_range(),
             });
             return;
@@ -320,8 +319,7 @@ impl Visitor for Module {
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
         if scope.have_variable_def(&self.variables, &name) {
-            self.analyzing
-                .new_error(SemanticError::VariableDefined { name, range });
+            self.new_error(SemanticError::VariableDefined { name, range });
             return;
         }
 
@@ -370,8 +368,7 @@ impl Visitor for Module {
         // 检查是否是左值
         let is_valid_lvalue = self.is_lvalue_expr(&lhs);
         if !is_valid_lvalue {
-            self.analyzing
-                .new_error(SemanticError::InvalidLValue { range: lhs_range });
+            self.new_error(SemanticError::InvalidLValue { range: lhs_range });
             return;
         }
 
@@ -389,7 +386,7 @@ impl Visitor for Module {
         };
 
         if !lhs_ty.assign_to_me_is_ok(rhs_ty) {
-            self.analyzing.new_error(SemanticError::TypeMismatch {
+            self.new_error(SemanticError::TypeMismatch {
                 expected: lhs_ty.clone(),
                 found: rhs_ty.clone(),
                 range: rhs_range,
@@ -400,7 +397,7 @@ impl Visitor for Module {
     }
     fn enter_break_stmt(&mut self, node: BreakStmt) {
         if self.analyzing.loop_depth == 0 {
-            self.analyzing.new_error(SemanticError::BreakOutsideLoop {
+            self.new_error(SemanticError::BreakOutsideLoop {
                 range: node.syntax().text_range(),
             });
         }
@@ -408,10 +405,9 @@ impl Visitor for Module {
 
     fn enter_continue_stmt(&mut self, node: ContinueStmt) {
         if self.analyzing.loop_depth == 0 {
-            self.analyzing
-                .new_error(SemanticError::ContinueOutsideLoop {
-                    range: node.syntax().text_range(),
-                });
+            self.new_error(SemanticError::ContinueOutsideLoop {
+                range: node.syntax().text_range(),
+            });
         }
     }
 
@@ -436,7 +432,7 @@ impl Visitor for Module {
 
         // 检查返回类型是否匹配
         if !expected_ret_type.assign_to_me_is_ok(actual_ret_type) {
-            self.analyzing.new_error(SemanticError::ReturnTypeMismatch {
+            self.new_error(SemanticError::ReturnTypeMismatch {
                 expected: expected_ret_type.clone(),
                 found: actual_ret_type.clone(),
                 range,
@@ -485,20 +481,19 @@ impl Visitor for Module {
 
             // 检查参数数量（-1 表示可变参数，不检查）
             if *expected_args >= 0 && arg_count != *expected_args as usize {
-                self.analyzing
-                    .new_error(SemanticError::ArgumentCountMismatch {
-                        function_name: func_name.clone(),
-                        expected: *expected_args as usize,
-                        found: arg_count,
-                        range: func_range,
-                    });
+                self.new_error(SemanticError::ArgumentCountMismatch {
+                    function_name: func_name.clone(),
+                    expected: *expected_args as usize,
+                    found: arg_count,
+                    range: func_range,
+                });
             }
             return;
         }
 
         // 查找用户定义的函数
         let Some(func_id) = self.find_function(&func_name) else {
-            self.analyzing.new_error(SemanticError::FunctionUndefined {
+            self.new_error(SemanticError::FunctionUndefined {
                 name: func_name,
                 range: func_range,
             });
@@ -530,13 +525,12 @@ impl Visitor for Module {
 
         // 检查参数数量（跳过正在定义的函数，因为参数列表还未完成）
         if !is_current_func && arg_count != expected_arg_count {
-            self.analyzing
-                .new_error(SemanticError::ArgumentCountMismatch {
-                    function_name: func_name,
-                    expected: expected_arg_count,
-                    found: arg_count,
-                    range: func_range,
-                });
+            self.new_error(SemanticError::ArgumentCountMismatch {
+                function_name: func_name,
+                expected: expected_arg_count,
+                found: arg_count,
+                range: func_range,
+            });
         }
     }
 
@@ -600,7 +594,7 @@ impl Visitor for Module {
         if let Some(inner_ty) = self.get_expr_type(expr.syntax().text_range()) {
             let result_ty = if op_kind == SyntaxKind::AMP {
                 if !self.is_lvalue_expr(&expr) {
-                    self.analyzing.new_error(SemanticError::AddressOfNonLvalue {
+                    self.new_error(SemanticError::AddressOfNonLvalue {
                         range: expr.syntax().text_range(),
                     });
 
@@ -626,7 +620,7 @@ impl Visitor for Module {
                 if let Some(pointee) = pointee {
                     pointee
                 } else {
-                    self.analyzing.new_error(SemanticError::ApplyOpOnType {
+                    self.new_error(SemanticError::ApplyOpOnType {
                         ty: inner_ty.clone(),
                         op: "*".to_string(),
                     });
@@ -680,7 +674,7 @@ impl Visitor for Module {
 
         // 查找变量定义
         let Some(def_id) = self.find_variable_def(var_name) else {
-            self.analyzing.new_error(SemanticError::VariableUndefined {
+            self.new_error(SemanticError::VariableUndefined {
                 name: var_name.to_string(),
                 range: var_range,
             });
@@ -695,7 +689,7 @@ impl Visitor for Module {
         let result_ty = match Self::compute_indexed_type(&var.ty, index_count) {
             Ok(ty) => ty,
             Err(e) => {
-                self.analyzing.new_error(e);
+                self.new_error(e);
                 return;
             }
         };
@@ -719,7 +713,7 @@ impl Visitor for Module {
                     return;
                 };
                 let Value::Int(index) = v else {
-                    self.analyzing.new_error(SemanticError::TypeMismatch {
+                    self.new_error(SemanticError::TypeMismatch {
                         expected: NType::Int,
                         found: NType::Float,
                         range,
@@ -731,7 +725,7 @@ impl Visitor for Module {
             let leaf = match tree.get_leaf(&indices) {
                 Ok(s) => s,
                 Err(e) => {
-                    self.analyzing.new_error(SemanticError::ArrayError {
+                    self.new_error(SemanticError::ArrayError {
                         message: Box::new(e),
                         range: node.syntax().text_range(),
                     });
@@ -739,17 +733,17 @@ impl Visitor for Module {
                 }
             };
             value = match leaf {
-                ArrayTreeValue::Expr(expr) => {
-                    let Some(v) = self.value_table.get(&expr.syntax().text_range()) else {
+                ArrayTreeValue::Expr(expr_range) => {
+                    let Some(v) = self.value_table.get(&expr_range) else {
                         return;
                     };
                     v
                 }
                 ArrayTreeValue::Struct {
-                    init_list: init_val_node,
+                    init_list: init_val_node_range,
                     ..
                 } => {
-                    let Some(v) = self.value_table.get(&init_val_node.syntax().text_range()) else {
+                    let Some(v) = self.value_table.get(&init_val_node_range) else {
                         return;
                     };
                     v
@@ -798,7 +792,7 @@ impl Visitor for Module {
                 if let Some(id) = base_ty.as_struct_id() {
                     id
                 } else {
-                    self.analyzing.new_error(SemanticError::NotAStruct {
+                    self.new_error(SemanticError::NotAStruct {
                         ty: base_ty.clone(),
                         range: base_range,
                     });
@@ -810,7 +804,7 @@ impl Visitor for Module {
                 if let Some(id) = base_ty.as_struct_pointer_id() {
                     id
                 } else {
-                    self.analyzing.new_error(SemanticError::NotAStructPointer {
+                    self.new_error(SemanticError::NotAStructPointer {
                         ty: base_ty.clone(),
                         range: base_range,
                     });
@@ -818,7 +812,7 @@ impl Visitor for Module {
                 }
             }
             _ => {
-                self.analyzing.new_error(SemanticError::ApplyOpOnType {
+                self.new_error(SemanticError::ApplyOpOnType {
                     ty: base_ty.clone(),
                     op: op_node.op().text().to_string(),
                 });
@@ -842,7 +836,7 @@ impl Visitor for Module {
                 match Self::compute_indexed_type(&field.ty, indices.len()) {
                     Ok(ty) => ty,
                     Err(e) => {
-                        self.analyzing.new_error(e);
+                        self.new_error(e);
                         return;
                     }
                 }
@@ -883,7 +877,7 @@ impl Visitor for Module {
                 }
             }
         } else {
-            self.analyzing.new_error(SemanticError::FieldNotFound {
+            self.new_error(SemanticError::FieldNotFound {
                 struct_name: unsafe { &*struct_def }.name.clone(),
                 field_name: member_name,
                 range,
@@ -943,7 +937,7 @@ impl Visitor for Module {
                     if let Value::Int(n) = x {
                         n
                     } else {
-                        self.analyzing.new_error(SemanticError::TypeMismatch {
+                        self.new_error(SemanticError::TypeMismatch {
                             expected: NType::Const(Box::new(NType::Int)),
                             found: x.get_type(),
                             range: expr_range,
@@ -993,8 +987,7 @@ impl Visitor for Module {
                         if let Some(sid) = self.find_struct(&name) {
                             NType::Struct(sid)
                         } else {
-                            self.analyzing
-                                .new_error(SemanticError::TypeUndefined { range });
+                            self.new_error(SemanticError::TypeUndefined { range });
                             return;
                         }
                     } else {

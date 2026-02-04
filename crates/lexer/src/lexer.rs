@@ -197,7 +197,7 @@ impl From<Token> for SyntaxKind {
 
 /// 词法分析器
 pub struct Lexer<'a> {
-    tokens: Vec<(SyntaxKind, &'a str)>,
+    tokens: Vec<(SyntaxKind, &'a str, Range<usize>)>,
     pos: usize,
     pos_skip_trivia: usize,
 }
@@ -212,7 +212,7 @@ impl<'a> Lexer<'a> {
                 Ok(token) => token.into(),
                 Err(_) => SyntaxKind::ERROR,
             };
-            tokens.push((kind, &text[span]));
+            tokens.push((kind, &text[span.clone()], span));
         }
 
         let pos_skip_trivia = Self::get_next_non_trivia_pos(&tokens, 0usize);
@@ -224,7 +224,10 @@ impl<'a> Lexer<'a> {
     }
 
     /// 从当前位置获取第一个非空白 token 的位置
-    fn get_next_non_trivia_pos(tokens: &[(SyntaxKind, &str)], start_pos: usize) -> usize {
+    fn get_next_non_trivia_pos(
+        tokens: &[(SyntaxKind, &str, Range<usize>)],
+        start_pos: usize,
+    ) -> usize {
         let mut pos = start_pos;
         while pos < tokens.len() {
             let kind = tokens[pos].0;
@@ -247,6 +250,10 @@ impl<'a> Lexer<'a> {
     /// 返回当前 token 文本
     pub fn current_text(&self) -> &'a str {
         self.tokens.get(self.pos).map(|t| t.1).unwrap_or("")
+    }
+
+    pub fn get_tokens(&self) -> &[(SyntaxKind, &str, Range<usize>)] {
+        &self.tokens
     }
 
     /// 返回当前非空白 token 类型

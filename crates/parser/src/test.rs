@@ -13,7 +13,7 @@ fn try_it(source: &str) -> SyntaxNode<AirycLanguage> {
         panic!("Parser errors: {:?}", errors);
     }
 
-    Parser::new_root(tree)
+    SyntaxNode::new_root(tree)
 }
 
 #[test]

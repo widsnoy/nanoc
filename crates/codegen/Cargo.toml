@@ -6,6 +6,8 @@ edition.workspace = true
 [dependencies]
 parser.workspace = true
 analyzer.workspace = true
+utils.workspace = true
+syntax.workspace = true
 
 inkwell.workspace = true
 rowan.workspace = true

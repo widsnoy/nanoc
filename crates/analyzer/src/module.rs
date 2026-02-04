@@ -3,6 +3,9 @@ use std::{
     ops::Deref,
 };
 
+use parser::visitor::Visitor;
+use rowan::GreenNode;
+use syntax::SyntaxNode;
 use text_size::TextRange;
 use thunderdome::Arena;
 
@@ -12,7 +15,7 @@ use crate::{
     value::Value,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Module {
     pub variables: Arena<Variable>,
     pub functions: Arena<Function>,
@@ -20,6 +23,8 @@ pub struct Module {
     pub scopes: Arena<Scope>,
 
     pub global_scope: ScopeID,
+
+    pub green_tree: GreenNode,
 
     /// 存储编译时能计算的表达式
     pub value_table: HashMap<TextRange, Value>,
@@ -39,6 +44,9 @@ pub struct Module {
     /// 表达式类型表：TextRange -> NType
     pub type_table: HashMap<TextRange, NType>,
 
+    /// 错误
+    pub semantic_errors: Vec<SemanticError>,
+
     /// 分析上下文，使用后清除
     pub analyzing: AnalyzeContext,
 }
@@ -46,8 +54,6 @@ pub struct Module {
 #[derive(Debug, Default)]
 pub struct AnalyzeContext {
     pub current_scope: ScopeID,
-    pub errors: Vec<SemanticError>,
-    pub current_base_type: Option<NType>,
     pub current_var_type: Option<NType>,
     /// 当前所在函数的返回类型（用于 return 类型检查）
     pub current_function_ret_type: Option<NType>,
@@ -59,12 +65,6 @@ pub struct AnalyzeContext {
     pub func_ret_type_range: Option<TextRange>,
     /// 当前正在定义的函数名称（用于递归调用时跳过参数检查）
     pub current_func_name: Option<String>,
-}
-
-impl AnalyzeContext {
-    pub(crate) fn new_error(&mut self, error: SemanticError) {
-        self.errors.push(error)
-    }
 }
 
 #[derive(Debug)]
@@ -170,8 +170,28 @@ pub enum SemanticError {
 }
 
 impl Module {
-    /// 分析完成后清除分析上下文
-    pub fn finish_analysis(&mut self) {
+    pub fn new(green_tree: GreenNode) -> Self {
+        Self {
+            green_tree,
+            variables: Default::default(),
+            functions: Default::default(),
+            structs: Default::default(),
+            scopes: Default::default(),
+            global_scope: Default::default(),
+            value_table: Default::default(),
+            expand_array: Default::default(),
+            variable_map: Default::default(),
+            struct_map: Default::default(),
+            function_map: Default::default(),
+            type_table: Default::default(),
+            semantic_errors: Default::default(),
+            analyzing: Default::default(),
+        }
+    }
+    /// 分析
+    pub fn analyze(&mut self) {
+        let root = SyntaxNode::new_root(self.green_tree.clone());
+        self.walk(&root);
         self.analyzing = AnalyzeContext::default();
     }
 
@@ -315,6 +335,14 @@ impl Module {
     pub fn find_variable_def(&self, var_name: &str) -> Option<VariableID> {
         let scope = self.scopes.get(*self.analyzing.current_scope)?;
         scope.look_up(self, var_name, VariableTag::Define)
+    }
+
+    pub(crate) fn new_error(&mut self, error: SemanticError) {
+        self.semantic_errors.push(error)
+    }
+
+    pub fn get_green_tree(&self) -> GreenNode {
+        self.green_tree.clone()
     }
 }
 

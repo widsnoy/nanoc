@@ -188,7 +188,7 @@ impl Module {
 
         // const 不可被赋值
         if var.ty.is_const() || result_ty.is_const() {
-            self.analyzing.new_error(SemanticError::AssignToConst {
+            self.new_error(SemanticError::AssignToConst {
                 name: var_name.to_string(),
                 range: var_range,
             });
@@ -201,7 +201,7 @@ impl Module {
     fn check_postfix_assignable(&mut self, node: &PostfixExpr) -> bool {
         if let Some(ty) = self.get_expr_type(node.syntax().text_range()) {
             if ty.is_const() {
-                self.analyzing.new_error(SemanticError::AssignToConst {
+                self.new_error(SemanticError::AssignToConst {
                     name: "field".to_string(),
                     range: node.syntax().text_range(),
                 });
@@ -229,7 +229,7 @@ impl Module {
         };
 
         if expr_ty.is_const() {
-            self.analyzing.new_error(SemanticError::AssignToConst {
+            self.new_error(SemanticError::AssignToConst {
                 name: "*ptr".to_string(),
                 range: node.syntax().text_range(),
             });

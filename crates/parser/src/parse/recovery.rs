@@ -9,7 +9,8 @@ impl<'a> Parser<'a> {
         if self.at(expect_token) {
             self.bump();
         } else {
-            self.errors.push(ParserError::Expected(vec![expect_token]));
+            self.parse_errors
+                .push(ParserError::Expected(vec![expect_token]));
             self.start_node(SyntaxKind::ERROR);
             while !cond(self.peek()) {
                 self.bump();
@@ -23,7 +24,7 @@ impl<'a> Parser<'a> {
     /// 要保证有 SyntaxKind::EOF
     pub(crate) fn skip_until(&mut self, next_start_token: &[SyntaxKind]) {
         assert!(next_start_token.contains(&SyntaxKind::EOF));
-        self.errors
+        self.parse_errors
             .push(ParserError::Expected(next_start_token.to_vec()));
         self.start_node(SyntaxKind::ERROR);
         while !next_start_token.iter().any(|x| self.at(*x)) {

@@ -10,11 +10,10 @@ COMP_UNIT@0..20
       IDENT@4..5 "p"
     COLON@5..6 ":"
     TYPE@6..19
-      BASE_TYPE@6..19
-        PRIMIT_TYPE@6..19
-          WHITESPACE@6..7 " "
-          STRUCT_KW@7..13 "struct"
-          NAME@13..19
-            WHITESPACE@13..14 " "
-            IDENT@14..19 "Point"
+      PRIMIT_TYPE@6..19
+        WHITESPACE@6..7 " "
+        STRUCT_KW@7..13 "struct"
+        NAME@13..19
+          WHITESPACE@13..14 " "
+          IDENT@14..19 "Point"
     SEMI@19..20 ";"
