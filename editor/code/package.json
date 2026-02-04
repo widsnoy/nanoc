@@ -1,0 +1,82 @@
+{
+    "name": "airyc-lang",
+    "displayName": "airyc",
+    "description": "language support for airyc programming language",
+    "version": "0.1.0",
+    "publisher": "widsnoy",
+    "engines": {
+        "vscode": "^1.75.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "activationEvents": [
+        "onLanguage:airyc"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "airyc",
+                "aliases": [
+                    "airyc"
+                ],
+                "extensions": [
+                    ".airy"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "Airyc Language Server",
+            "properties": {
+                "airyc.trace.server": {
+                    "type": "string",
+                    "enum": [
+                        "off",
+                        "messages",
+                        "verbose"
+                    ],
+                    "default": "off",
+                    "description": "Traces the communication between VS Code and the language server."
+                }
+            }
+        },
+        "commands": [
+            {
+                "command": "airyc.restartServer",
+                "title": "Airyc: Restart Language Server"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run build:all:release && npm run compile",
+        "compile": "tsc -p ./",
+        "pretest": "npm run compile",
+        "lint": "eslint src --ext ts",
+        "build:linux:debug": "./build-server.sh linux debug",
+        "build:linux:release": "./build-server.sh linux release",
+        "build:windows:debug": "./build-server.sh windows debug",
+        "build:windows:release": "./build-server.sh windows release",
+        "build:all:debug": "npm run build:linux:debug && npm run build:windows:debug",
+        "build:all:release": "npm run build:linux:release && npm run build:windows:release",
+        "dev:linux:debug": "npm run build:linux:debug && npm run compile",
+        "dev:linux:release": "npm run build:linux:release && npm run compile",
+        "dev:windows:debug": "npm run build:windows:debug && npm run compile",
+        "dev:windows:release": "npm run build:windows:release && npm run compile",
+        "package:vsix": "npm run build:all:release && npm run compile && vsce package"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^9.0.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "@types/vscode": "^1.75.0",
+        "@typescript-eslint/eslint-plugin": "^6.0.0",
+        "@typescript-eslint/parser": "^6.0.0",
+        "eslint": "^8.0.0",
+        "typescript": "^5.0.0",
+        "@vscode/vsce": "^2.0.0"
+    }
+}
