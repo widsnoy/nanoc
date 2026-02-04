@@ -240,8 +240,12 @@ impl Visitor for Module {
     fn leave_func_def(&mut self, node: FuncDef) {
         let mut param_list = Vec::new();
 
-        let scope = self.scopes.get(*self.analyzing.current_scope).unwrap();
-        let parent_scope = scope.parent.unwrap();
+        let Some(scope) = self.scopes.get(*self.analyzing.current_scope) else {
+            return;
+        };
+        let Some(parent_scope) = scope.parent else {
+            return;
+        };
 
         if let Some(params) = node.params() {
             for param in params.params() {

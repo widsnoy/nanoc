@@ -68,16 +68,9 @@ fn main() -> Result<()> {
     let input_path = args.input_path;
     let input = fs::read_to_string(&input_path).context("failed to read input file")?;
 
-    // 1. Parse
+    // Parse
     let parser = parser::parse::Parser::new(&input);
     let (green_node, errors) = parser.parse();
-    if !errors.is_empty() {
-        eprintln!("Parser errors:");
-        for error in errors {
-            eprintln!("- {}", error);
-        }
-        std::process::exit(1);
-    }
 
     if args.emit == EmitTarget::Ast {
         // FIXME:
@@ -85,7 +78,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // 2. Codegen (LLVM IR)
+    // Codegen (LLVM IR)
     let context = LlvmContext::create();
     let module_name = input_path
         .file_stem()
@@ -139,12 +132,12 @@ fn main() -> Result<()> {
     module.set_triple(&machine.get_triple());
     module.set_data_layout(&machine.get_target_data().get_data_layout());
 
-    // 3. Verify before output
+    //  Verify before output
     if let Err(e) = module.verify() {
         bail!("LLVM verification failed: {}", e.to_string_lossy());
     }
 
-    // 4. Write output
+    //  Write output
     let mut file_name = PathBuf::from_str(module_name)?;
     match args.emit {
         EmitTarget::Ir => {
