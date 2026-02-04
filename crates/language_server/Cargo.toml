@@ -1,0 +1,21 @@
+[package]
+name = "language_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+syntax.workspace = true
+lexer.workspace = true
+parser.workspace = true
+analyzer.workspace = true
+
+logos.workspace = true
+thiserror.workspace = true
+text-size.workspace = true
+rowan.workspace = true
+tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread", "io-std"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dashmap = "6.1.0"
+tower-lsp-server = "0.23.0"
+parking_lot = "0.12.5"

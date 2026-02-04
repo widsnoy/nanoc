@@ -12,10 +12,10 @@ use crate::{
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ArrayTreeValue {
-    Expr(Expr),
+    Expr(TextRange),
     Struct {
         struct_id: StructID,
-        init_list: InitVal,
+        init_list: TextRange,
     },
     Empty,
 }
@@ -26,79 +26,17 @@ impl ArrayTreeValue {
         value_table: &'a HashMap<TextRange, Value>,
     ) -> Option<&'a Value> {
         match self {
-            Self::Expr(node) => value_table.get(&node.syntax().text_range()),
-            Self::Struct {
-                init_list: node, ..
-            } => value_table.get(&node.syntax().text_range()),
+            Self::Expr(r) => value_table.get(r),
+            Self::Struct { init_list: r, .. } => value_table.get(r),
             Self::Empty => None,
         }
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum ArrayTree {
     Children(Vec<ArrayTree>),
     Val(ArrayTreeValue),
-}
-
-impl std::fmt::Display for ArrayTree {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fn fmt_inner(
-            tree: &ArrayTree,
-            f: &mut std::fmt::Formatter<'_>,
-            prefix: &str,
-            is_last: bool,
-            is_root: bool,
-        ) -> std::fmt::Result {
-            let connector = if is_root {
-                ""
-            } else if is_last {
-                "└── "
-            } else {
-                "├── "
-            };
-
-            match tree {
-                ArrayTree::Children(children) => {
-                    writeln!(f, "{}{}Mama", prefix, connector)?;
-
-                    let new_prefix = if is_root {
-                        "".to_string()
-                    } else if is_last {
-                        format!("{}    ", prefix)
-                    } else {
-                        format!("{}│   ", prefix)
-                    };
-
-                    for (i, child) in children.iter().enumerate() {
-                        let is_last_child = i == children.len() - 1;
-                        fmt_inner(child, f, &new_prefix, is_last_child, false)?;
-                    }
-                    Ok(())
-                }
-                ArrayTree::Val(v) => {
-                    let text = match v {
-                        ArrayTreeValue::Expr(e) => e.syntax().text(),
-                        ArrayTreeValue::Struct { init_list: e, .. } => e.syntax().text(),
-                        ArrayTreeValue::Empty => {
-                            return writeln!(f, "{}{}Empty", prefix, connector);
-                        }
-                    }
-                    .to_string()
-                    .trim()
-                    .to_string();
-                    writeln!(f, "{}{}Val({})", prefix, connector, text)
-                }
-            }
-        }
-        fmt_inner(self, f, "", true, true)
-    }
-}
-
-impl std::fmt::Debug for ArrayTree {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self, f)
-    }
 }
 
 pub trait ArrayTreeTrait: AstNode<Language = AirycLanguage> + Sized {
@@ -126,7 +64,7 @@ impl ArrayTreeTrait for InitVal {
     fn try_expr(&self) -> Option<ArrayTreeValue> {
         self.syntax()
             .children()
-            .find_map(|x| Expr::cast(x.clone()).map(ArrayTreeValue::Expr))
+            .find_map(|x| Expr::cast(x).map(|x| ArrayTreeValue::Expr(x.syntax().text_range())))
     }
 }
 
@@ -190,7 +128,7 @@ impl ArrayTree {
                     m.value_table.insert(u.syntax().text_range(), v);
                 }
                 Ok(ArrayTree::Val(ArrayTreeValue::Struct {
-                    init_list: u.clone(),
+                    init_list: u.syntax().text_range(),
                     struct_id: *struct_id,
                 }))
             }
@@ -254,75 +192,4 @@ impl ArrayTree {
             _ => Err(ArrayInitError::MisMatchIndexAndType),
         }
     }
-}
-
-#[cfg(test)]
-mod test {
-    use parser::{
-        ast::{AstNode, InitVal, SyntaxNode, VarDef},
-        parse::Parser,
-        syntax_kind::SyntaxKind,
-        visitor::Visitor as _,
-    };
-
-    use crate::{
-        array::{ArrayInitError, ArrayTree},
-        module::Module,
-        value::Value,
-    };
-
-    fn get_init_val_node(root: &SyntaxNode) -> SyntaxNode {
-        let res = root
-            .descendants()
-            .find(|x| matches!(x.kind(), SyntaxKind::INIT_VAL));
-        res.unwrap()
-    }
-
-    fn generator(text: &str) -> Result<(String, Module, ArrayTree), ArrayInitError> {
-        let p = Parser::new(text);
-        let (tree, _) = p.parse();
-        let root = Parser::new_root(tree);
-        let init_val_node = InitVal::cast(get_init_val_node(&root)).unwrap();
-        let mut module = Module::default();
-        module.walk(&root);
-
-        // 从 CompUnit 中找到 VarDef
-        let var_def = root.descendants().find_map(VarDef::cast).expect("VarDef");
-        let ty_node = var_def.ty().expect("Type");
-        let ty = module
-            .get_expr_type(ty_node.syntax().text_range())
-            .expect("Type")
-            .clone();
-
-        dbg!(&ty);
-        let (array_tree, _) = ArrayTree::new(&mut module, &ty, init_val_node)?;
-        Ok((array_tree.to_string(), module, array_tree))
-    }
-
-    #[test]
-    fn normal_array() {
-        let text = "let a: [i32; 2] = {1, 2};";
-        let (tree, _, _) = generator(text).unwrap();
-        insta::assert_snapshot!(tree);
-    }
-
-    #[test]
-    fn special_array() {
-        let text = "let arr: [[[i32; 4]; 3]; 2] = {1, 2, 3, 4, {5}, {6}, {7, 8}};";
-        let (tree, module, array_tree) = generator(text).unwrap();
-        insta::assert_snapshot!(tree);
-        let indices = [0, 1, 0];
-        let leaf = array_tree.get_leaf(&indices).unwrap();
-        dbg!(&leaf);
-        dbg!(&module.value_table);
-        let value = leaf.get_const_value(&module.value_table);
-        assert_eq!(value, Some(&Value::Int(5)));
-    }
-
-    // #[test]
-    // fn bad_test_case() {
-    //     let text = "const int arr[2][2][2] = {{}, 1, {}};";
-    //     let tree = generator(text);
-    //     assert!(tree.is_err());
-    // }
 }

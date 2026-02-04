@@ -12,6 +12,9 @@ members = [
     "crates/parser",
     "crates/runtime",
     "crates/test",
+    "crates/language_server", 
+    "crates/position",
+    "crates/utils",
 ]
 resolver = "2"
 
@@ -36,6 +39,8 @@ lexer = { path = "crates/lexer" }
 parser = { path = "crates/parser" }
 codegen = { path = "crates/codegen" }
 analyzer = { path = "crates/analyzer" }
+position = { path = "crates/position"}
+utils = { path = "crates/utils" }
 
 [dependencies]
 parser.workspace = true

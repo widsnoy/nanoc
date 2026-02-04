@@ -10,13 +10,12 @@ COMP_UNIT@0..41
       IDENT@4..5 "q"
     COLON@5..6 ":"
     TYPE@6..19
-      BASE_TYPE@6..19
-        PRIMIT_TYPE@6..19
-          WHITESPACE@6..7 " "
-          STRUCT_KW@7..13 "struct"
-          NAME@13..19
-            WHITESPACE@13..14 " "
-            IDENT@14..19 "Point"
+      PRIMIT_TYPE@6..19
+        WHITESPACE@6..7 " "
+        STRUCT_KW@7..13 "struct"
+        NAME@13..19
+          WHITESPACE@13..14 " "
+          IDENT@14..19 "Point"
     SEMI@19..20 ";"
   WHITESPACE@20..21 " "
   VAR_DEF@21..41
@@ -26,11 +25,10 @@ COMP_UNIT@0..41
       IDENT@25..26 "r"
     COLON@26..27 ":"
     TYPE@27..40
-      BASE_TYPE@27..40
-        PRIMIT_TYPE@27..40
-          WHITESPACE@27..28 " "
-          STRUCT_KW@28..34 "struct"
-          NAME@34..40
-            WHITESPACE@34..35 " "
-            IDENT@35..40 "Point"
+      PRIMIT_TYPE@27..40
+        WHITESPACE@27..28 " "
+        STRUCT_KW@28..34 "struct"
+        NAME@34..40
+          WHITESPACE@34..35 " "
+          IDENT@35..40 "Point"
     SEMI@40..41 ";"

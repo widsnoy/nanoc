@@ -1,6 +1,8 @@
 use inkwell::context::Context;
-use parser::ast::{AstNode, CompUnit};
-use parser::visitor::Visitor as _;
+use parser::{
+    SyntaxNode,
+    ast::{AstNode, CompUnit},
+};
 
 use crate::llvm_ir;
 
@@ -9,15 +11,14 @@ fn try_it(code: &str) -> String {
     let (green_node, errors) = parser.parse();
     assert!(errors.is_empty(), "Parser errors: {:?}", errors);
 
-    let root = parser::parse::Parser::new_root(green_node);
-
-    let mut analyzer = analyzer::module::Module::default();
-    analyzer.walk(&root);
+    let root = SyntaxNode::new_root(green_node.clone());
+    let mut analyzer = analyzer::module::Module::new(green_node);
+    analyzer.analyze();
 
     assert!(
-        analyzer.analyzing.errors.is_empty(),
+        analyzer.semantic_errors.is_empty(),
         "Analyzer erros: {:?}",
-        analyzer.analyzing.errors
+        analyzer.semantic_errors
     );
 
     // dbg!(&root);

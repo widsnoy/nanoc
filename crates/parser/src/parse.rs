@@ -9,7 +9,7 @@ mod variable;
 
 use lexer::Lexer;
 use rowan::{Checkpoint, GreenNode, GreenNodeBuilder};
-use syntax::{AirycLanguage, SyntaxKind};
+use syntax::SyntaxKind;
 
 #[derive(Debug)]
 pub enum ParserError {
@@ -28,7 +28,7 @@ impl std::fmt::Display for ParserError {
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     builder: GreenNodeBuilder<'static>,
-    pub errors: Vec<ParserError>,
+    pub parse_errors: Vec<ParserError>,
 }
 
 impl<'a> Parser<'a> {
@@ -36,17 +36,13 @@ impl<'a> Parser<'a> {
         Self {
             lexer: Lexer::new(text),
             builder: GreenNodeBuilder::new(),
-            errors: Vec::new(),
+            parse_errors: Vec::new(),
         }
     }
 
     pub fn parse(mut self) -> (GreenNode, Vec<ParserError>) {
         self.parse_root();
         self.finish()
-    }
-
-    pub fn new_root(green_node: GreenNode) -> rowan::SyntaxNode<AirycLanguage> {
-        rowan::SyntaxNode::new_root(green_node)
     }
 
     pub(crate) fn checkpoint(&self) -> Checkpoint {
@@ -91,7 +87,7 @@ impl<'a> Parser<'a> {
 
     /// 完成解析并返回 GreenNode
     pub(crate) fn finish(self) -> (GreenNode, Vec<ParserError>) {
-        (self.builder.finish(), self.errors)
+        (self.builder.finish(), self.parse_errors)
     }
 
     /// 检查当前 token 是否匹配 `kind`（跳过空白）
@@ -127,5 +123,17 @@ impl<'a> Parser<'a> {
         }
 
         self.finish_node();
+    }
+}
+
+impl<'a> Parser<'a> {
+    // 获取每个换行符的结束下标，用于 LineIndex 初始化
+    pub fn get_newline_end_postions(&self) -> Vec<usize> {
+        self.lexer
+            .get_tokens()
+            .iter()
+            .filter(|(kind, _, _)| *kind == SyntaxKind::NEWLINE)
+            .map(|(_, _, r)| r.end)
+            .collect::<Vec<_>>()
     }
 }

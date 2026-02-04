@@ -4,6 +4,7 @@ use analyzer::r#type::NType;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::{BasicValueEnum, IntValue, PointerValue};
 use parser::ast::*;
+use utils::find_node_by_range;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
@@ -242,13 +243,17 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         llvm_ty: BasicTypeEnum<'ctx>,
     ) -> Result<()> {
         match array_tree {
-            ArrayTree::Val(ArrayTreeValue::Expr(expr)) => {
+            ArrayTree::Val(ArrayTreeValue::Expr(expr_range)) => {
                 // 尝试获取编译时常量值，否则编译表达式
-                let value = if let Ok(const_val) = self.get_const_var_value(expr, None) {
-                    const_val
-                } else {
-                    self.compile_expr(expr.clone())?
-                };
+                let value =
+                    if let Ok(const_val) = self.get_const_var_value_by_range(*expr_range, None) {
+                        const_val
+                    } else {
+                        let syntax_tree = SyntaxNode::new_root(self.analyzer.get_green_tree());
+                        let expr = find_node_by_range::<Expr>(&syntax_tree, *expr_range)
+                            .ok_or(CodegenError::Missing("expr node not found"))?;
+                        self.compile_expr(expr)?
+                    };
                 let gep = unsafe {
                     self.builder
                         .build_gep(llvm_ty, ptr, indices, "idx.gep")
@@ -260,7 +265,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             }
             ArrayTree::Val(ArrayTreeValue::Struct {
                 struct_id: id,
-                init_list: list,
+                init_list: list_range,
             }) => {
                 // 尝试获取编译时常量值，否则逐个 store
                 let struct_ty = NType::Struct(*id);
@@ -270,12 +275,16 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         .build_gep(llvm_ty, ptr, indices, "idx.gep")
                         .map_err(|_| CodegenError::LlvmBuild("gep failed"))?
                 };
-                if let Ok(const_val) = self.get_const_var_value(list, Some(llvm_ty)) {
+                if let Ok(const_val) = self.get_const_var_value_by_range(*list_range, Some(llvm_ty))
+                {
                     self.builder
                         .build_store(gep, const_val)
                         .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
                 } else {
-                    self.store_struct_init(&struct_ty, list.clone(), gep, llvm_ty)?;
+                    let syntax_tree = SyntaxNode::new_root(self.analyzer.get_green_tree());
+                    let list = find_node_by_range::<InitVal>(&syntax_tree, *list_range)
+                        .ok_or(CodegenError::Missing("init_val node not found"))?;
+                    self.store_struct_init(&struct_ty, list, gep, llvm_ty)?;
                 }
             }
             ArrayTree::Children(children) => {
