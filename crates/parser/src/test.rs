@@ -248,3 +248,24 @@ fn test_struct_ast_nodes() {
         .to_string();
     assert_eq!(field2_text, "y");
 }
+
+#[test]
+fn test_struct_trailing_comma_no_deadloop() {
+    // 测试尾随逗号不会导致死循环，并且现在是合法的
+    let source = "struct x {a:i32, } fn main() {}";
+    let parser = Parser::new(source);
+    let (tree, errors) = parser.parse();
+    // 不应该有解析错误，因为尾随逗号现在是合法的
+    // 只要能完成解析就说明没有死循环
+    assert!(
+        errors.is_empty(),
+        "Trailing comma should be allowed, but got errors: {:?}",
+        errors
+    );
+
+    // 验证语法树结构
+    let root: SyntaxNode<AirycLanguage> = SyntaxNode::new_root(tree);
+    let debug_str = format!("{:#?}", root);
+    assert!(debug_str.contains("STRUCT_DEF"));
+    assert!(debug_str.contains("FUNC_DEF"));
+}
