@@ -2,34 +2,64 @@ use crate::parse::Parser;
 use syntax::SyntaxKind;
 
 impl Parser<'_> {
-    pub(super) fn parse_var_def(&mut self) {
+    /// 解析变量定义
+    pub(super) fn parse_var_def(&mut self) -> bool {
         self.start_node(SyntaxKind::VAR_DEF);
-        self.bump();
-        self.parse_name();
-        self.expect_or_else_recovery(SyntaxKind::COLON, SyntaxKind::is_decl_recovery);
-        self.parse_type();
+        self.bump(); // LET_KW
+
+        if !self.parse_name() {
+            self.finish_node();
+            return false;
+        }
+        if !self.expect_or_else_recovery(SyntaxKind::COLON, SyntaxKind::is_decl_recovery) {
+            self.finish_node();
+            return false;
+        }
+        if !self.parse_type() {
+            self.finish_node();
+            return false;
+        }
         if self.at(SyntaxKind::EQ) {
             self.bump();
-            self.parse_init_val();
+            if !self.parse_init_val() {
+                self.finish_node();
+                return false;
+            }
         }
-        self.expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_decl_recovery);
+        let success = self.expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_decl_recovery);
         self.finish_node();
+        success
     }
 
-    pub(super) fn parse_init_val(&mut self) {
+    /// 解析初始化值
+    pub(super) fn parse_init_val(&mut self) -> bool {
         self.start_node(SyntaxKind::INIT_VAL);
+
         if self.at(SyntaxKind::L_BRACE) {
-            self.bump();
+            self.bump(); // {
+
+            let mut is_first = true;
             while !matches!(self.peek(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
-                self.parse_init_val();
-                if self.at(SyntaxKind::COMMA) {
-                    self.bump();
+                if !is_first
+                    && !self
+                        .expect_or_else_recovery(SyntaxKind::COMMA, SyntaxKind::is_decl_recovery)
+                {
+                    continue;
                 }
+
+                if !self.parse_init_val() {
+                    return false;
+                }
+                is_first = false;
             }
-            self.expect_or_else_recovery(SyntaxKind::R_BRACE, SyntaxKind::is_decl_recovery);
+            let success =
+                self.expect_or_else_recovery(SyntaxKind::R_BRACE, SyntaxKind::is_decl_recovery);
+            self.finish_node();
+            success
         } else {
-            self.parse_exp();
+            let success = self.parse_exp();
+            self.finish_node();
+            success
         }
-        self.finish_node();
     }
 }

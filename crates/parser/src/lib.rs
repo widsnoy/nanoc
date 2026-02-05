@@ -1,5 +1,4 @@
 pub mod parse;
-pub mod visitor;
 
 #[cfg(test)]
 mod test;

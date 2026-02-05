@@ -106,9 +106,15 @@ impl<'a> Parser<'a> {
 
         loop {
             match self.peek() {
-                SyntaxKind::LET_KW => self.parse_var_def(),
-                SyntaxKind::FN_KW => self.parse_func_def(),
-                SyntaxKind::STRUCT_KW => self.parse_struct_def(),
+                SyntaxKind::LET_KW => {
+                    self.parse_var_def();
+                }
+                SyntaxKind::FN_KW => {
+                    self.parse_func_def();
+                }
+                SyntaxKind::STRUCT_KW => {
+                    self.parse_struct_def();
+                }
                 SyntaxKind::EOF => break,
                 _ => {
                     self.skip_until(&[
