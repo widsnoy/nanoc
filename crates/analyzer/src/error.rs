@@ -1,3 +1,5 @@
+#![allow(unused_assignments)]
+
 use miette::Diagnostic;
 use thiserror::Error;
 use tools::TextRange;
@@ -11,14 +13,14 @@ pub enum SemanticError {
     TypeMismatch {
         expected: NType,
         found: NType,
-        #[label("type mismatch: expected {expected}, found {found}")]
+        #[label("here")]
         range: TextRange,
     },
 
     #[error("constant expression expected")]
     #[diagnostic(code(semantic::constant_expr_expected))]
     ConstantExprExpected {
-        #[label("constant expression expected here")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -26,7 +28,7 @@ pub enum SemanticError {
     #[diagnostic(code(semantic::variable_defined))]
     VariableDefined {
         name: String,
-        #[label("variable '{name}' is already defined")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -34,7 +36,7 @@ pub enum SemanticError {
     #[diagnostic(code(semantic::function_defined))]
     FunctionDefined {
         name: String,
-        #[label("function '{name}' is already defined")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -42,7 +44,7 @@ pub enum SemanticError {
     #[diagnostic(code(semantic::variable_undefined))]
     VariableUndefined {
         name: String,
-        #[label("variable '{name}' is not defined")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -50,7 +52,7 @@ pub enum SemanticError {
     #[diagnostic(code(semantic::expect_initial_val))]
     ExpectInitialVal {
         name: String,
-        #[label("variable '{name}' must be initialized")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -58,7 +60,7 @@ pub enum SemanticError {
     #[diagnostic(code(semantic::array_error))]
     ArrayError {
         message: Box<ArrayInitError>,
-        #[label("array initialization error: {message}")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -66,14 +68,14 @@ pub enum SemanticError {
     #[diagnostic(code(semantic::struct_defined))]
     StructDefined {
         name: String,
-        #[label("struct '{name}' is already defined")]
+        #[label("here")]
         range: TextRange,
     },
 
     #[error("type is not defined")]
     #[diagnostic(code(semantic::type_undefined))]
     TypeUndefined {
-        #[label("type is not defined")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -82,7 +84,7 @@ pub enum SemanticError {
     FieldNotFound {
         struct_name: String,
         field_name: String,
-        #[label("field '{field_name}' not found in struct '{struct_name}")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -90,7 +92,7 @@ pub enum SemanticError {
     #[diagnostic(code(semantic::not_a_struct))]
     NotAStruct {
         ty: NType,
-        #[label("type {ty} is not a struct")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -98,7 +100,7 @@ pub enum SemanticError {
     #[diagnostic(code(semantic::not_a_struct_pointer))]
     NotAStructPointer {
         ty: NType,
-        #[label("type {ty} is not a struct pointer")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -107,7 +109,7 @@ pub enum SemanticError {
     StructInitFieldCountMismatch {
         expected: usize,
         found: usize,
-        #[label("struct initialization field count mismatch: expected {expected}, found {found}")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -116,7 +118,7 @@ pub enum SemanticError {
     ApplyOpOnType {
         ty: NType,
         op: String,
-        #[label("can't apply operator '{op}' to type {ty}")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -124,7 +126,7 @@ pub enum SemanticError {
     #[diagnostic(code(semantic::function_undefined))]
     FunctionUndefined {
         name: String,
-        #[label("function '{name}' is not defined")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -136,9 +138,7 @@ pub enum SemanticError {
         function_name: String,
         expected: usize,
         found: usize,
-        #[label(
-            "function '{function_name}' argument count mismatch: expected {expected}, found {found}"
-        )]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -146,21 +146,21 @@ pub enum SemanticError {
     #[diagnostic(code(semantic::assign_to_const))]
     AssignToConst {
         name: String,
-        #[label("'{name}' is const")]
+        #[label("here")]
         range: TextRange,
     },
 
     #[error("break statement outside loop")]
     #[diagnostic(code(semantic::break_outside_loop))]
     BreakOutsideLoop {
-        #[label("break outside loop")]
+        #[label("here")]
         range: TextRange,
     },
 
     #[error("continue statement outside loop")]
     #[diagnostic(code(semantic::continue_outside_loop))]
     ContinueOutsideLoop {
-        #[label("continue outside loop")]
+        #[label("here")]
         range: TextRange,
     },
 
@@ -169,21 +169,21 @@ pub enum SemanticError {
     ReturnTypeMismatch {
         expected: NType,
         found: NType,
-        #[label("expected {expected}, found {found}")]
+        #[label("here")]
         range: TextRange,
     },
 
     #[error("not a left value")]
     #[diagnostic(code(semantic::invalid_lvalue))]
     NotALValue {
-        #[label("not a left value")]
+        #[label("here")]
         range: TextRange,
     },
 
     #[error("can't take address of right value")]
     #[diagnostic(code(semantic::address_of_non_lvalue))]
     AddressOfRight {
-        #[label("can't take address of right value")]
+        #[label("here")]
         range: TextRange,
     },
 }
