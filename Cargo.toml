@@ -46,7 +46,9 @@ utils = { path = "crates/utils" }
 parser.workspace = true
 codegen.workspace = true
 analyzer.workspace = true
+lexer.workspace = true
 inkwell.workspace = true
-anyhow.workspace = true
 clap.workspace = true
 miette.workspace = true
+thiserror.workspace = true
+rowan.workspace = true

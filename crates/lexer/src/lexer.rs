@@ -1,54 +1,8 @@
 use logos::Logos;
-use miette::Diagnostic;
 use syntax::SyntaxKind;
-use thiserror::Error;
 use tools::TextRange;
 
-/// Lexer 错误类型（用于 logos）
-#[derive(Debug, Default, Clone, PartialEq)]
-pub enum LexerErrorKind {
-    InvalidInteger,
-    InvalidFloat,
-    #[default]
-    Unknown,
-}
-
-/// Lexer 错误（带位置信息，用于诊断）
-#[derive(Debug, Clone, PartialEq, Error, Diagnostic)]
-pub enum LexerError {
-    #[error("invalid integer literal: {text}")]
-    #[diagnostic(code(lexer::invalid_integer))]
-    InvalidInteger {
-        text: String,
-        #[label("invalid integer literal: {text}")]
-        range: TextRange,
-    },
-
-    #[error("invalid float literal: {text}")]
-    #[diagnostic(code(lexer::invalid_float))]
-    InvalidFloat {
-        text: String,
-        #[label("invalid float literal: {text}")]
-        range: TextRange,
-    },
-
-    #[error("unknown lexer error")]
-    #[diagnostic(code(lexer::unknown))]
-    Unknown {
-        #[label("unknown lexer error")]
-        range: TextRange,
-    },
-}
-
-impl LexerError {
-    pub fn range(&self) -> &TextRange {
-        match self {
-            LexerError::InvalidInteger { range, .. }
-            | LexerError::InvalidFloat { range, .. }
-            | LexerError::Unknown { range } => range,
-        }
-    }
-}
+pub use crate::error::{LexerError, LexerErrorKind};
 
 /// 词法单元
 #[derive(Logos, Debug, PartialEq, Clone)]
@@ -305,12 +259,15 @@ impl<'a> Lexer<'a> {
 
     /// 返回当前 range
     pub fn current_range(&self) -> TextRange {
-        self.tokens.get(self.pos).map(|t| t.2).unwrap_or(
-            self.tokens
-                .last()
-                .map(|t| t.2)
-                .unwrap_or(TextRange::new(0, 0)),
-        )
+        self.tokens
+            .get(self.pos_skip_trivia)
+            .map(|t| t.2)
+            .unwrap_or(
+                self.tokens
+                    .last()
+                    .map(|t| t.2)
+                    .unwrap_or(TextRange::new(0, 0)),
+            )
     }
 
     pub fn get_tokens(&self) -> &[(SyntaxKind, &str, TextRange)] {

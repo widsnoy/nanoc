@@ -31,12 +31,14 @@ name = "airyc-compiler"
 version = "0.1.0"
 dependencies = [
  "analyzer",
- "anyhow",
  "clap",
  "codegen",
  "inkwell",
+ "lexer",
  "miette",
  "parser",
+ "rowan",
+ "thiserror",
 ]
 
 [[package]]

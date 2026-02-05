@@ -65,6 +65,7 @@ impl Parser<'_> {
             self.parse_name() // 传播返回值
         } else {
             let range = self.current_range();
+            self.bump(); // eat it
             self.parse_errors.push(ParserError::Expected {
                 expected: vec![SyntaxKind::PRIMIT_TYPE],
                 range,
