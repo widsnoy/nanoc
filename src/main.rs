@@ -70,7 +70,7 @@ fn main() -> Result<()> {
 
     // Parse
     let parser = parser::parse::Parser::new(&input);
-    let (green_node, errors) = parser.parse();
+    let (green_node, _errors) = parser.parse(); // FIXME
 
     if args.emit == EmitTarget::Ast {
         // FIXME:

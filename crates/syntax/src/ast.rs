@@ -1,4 +1,4 @@
-use rowan::TextRange;
+use tools::TextRange;
 
 use crate::syntax_kind::{
     AirycLanguage,
@@ -15,6 +15,10 @@ pub trait AstNode {
     where
         Self: Sized;
     fn syntax(&self) -> &rowan::SyntaxNode<Self::Language>;
+
+    fn text_range(&self) -> TextRange {
+        TextRange(self.syntax().text_range())
+    }
 }
 
 macro_rules! ast_node {
@@ -356,7 +360,7 @@ impl Name {
         self.ident().map(|i| i.text().to_string())
     }
     pub fn var_range(&self) -> Option<TextRange> {
-        self.ident().map(|i| i.text_range())
+        self.ident().map(|i| TextRange(i.text_range()))
     }
 }
 

@@ -1,6 +1,6 @@
 use analyzer::module::Module;
-use line_index::LineIndex;
 use parser::parse::Parser;
+use tools::LineIndex;
 use tower_lsp_server::ls_types::SemanticToken;
 
 /// 文档状态管理

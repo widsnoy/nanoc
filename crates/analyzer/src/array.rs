@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 
 use syntax::{AirycLanguage, AstNode, Expr, InitVal};
-use text_size::TextRange;
+use tools::TextRange;
 
 use crate::{
     error::SemanticError,
@@ -65,7 +65,7 @@ impl ArrayTreeTrait for InitVal {
     fn try_expr(&self) -> Option<ArrayTreeValue> {
         self.syntax()
             .children()
-            .find_map(|x| Expr::cast(x).map(|x| ArrayTreeValue::Expr(x.syntax().text_range())))
+            .find_map(|x| Expr::cast(x).map(|x| ArrayTreeValue::Expr(x.text_range())))
     }
 }
 
@@ -109,7 +109,7 @@ impl ArrayTree {
             NType::Int | NType::Float | NType::Pointer { .. } => {
                 let Some(u) = cursor else { unreachable!() };
                 if let Some(expr) = u.try_expr() {
-                    let range = u.syntax().text_range();
+                    let range = u.text_range();
                     *is_const &= m.value_table.contains_key(&range);
                     *cursor = u.next_sibling();
                     return Ok(ArrayTree::Val(expr));
@@ -126,10 +126,10 @@ impl ArrayTree {
                     .map_err(ArrayInitError::InitialStructValue)?;
                 *is_const &= v.is_some();
                 if let Some(v) = v {
-                    m.value_table.insert(u.syntax().text_range(), v);
+                    m.value_table.insert(u.text_range(), v);
                 }
                 Ok(ArrayTree::Val(ArrayTreeValue::Struct {
-                    init_list: u.syntax().text_range(),
+                    init_list: u.text_range(),
                     struct_id: *struct_id,
                 }))
             }

@@ -50,7 +50,7 @@ impl Module {
         struct_id: StructID,
         init_val_node: InitVal,
     ) -> Result<Option<Value>, SemanticError> {
-        let range = init_val_node.syntax().text_range();
+        let range = init_val_node.text_range();
         // 获取 struct 定义
         let struct_def = self
             .get_struct(struct_id)
@@ -104,7 +104,7 @@ impl Module {
         field_ty: &NType,
         init_val_node: InitVal,
     ) -> Result<Option<Value>, SemanticError> {
-        let range = init_val_node.syntax().text_range();
+        let range = init_val_node.text_range();
         // 去掉 Const 包装
         let inner_ty = field_ty.unwrap_const();
 
@@ -115,13 +115,13 @@ impl Module {
                     // 期望表达式，但得到了初始化列表
                     return Err(SemanticError::ConstantExprExpected { range });
                 };
-                let expr_range = expr.syntax().text_range();
+                let expr_range = expr.text_range();
                 Ok(self.value_table.get(&expr_range).cloned())
             }
 
             // 数组类型：使用 ArrayTree 解析
             NType::Array(_, _) => {
-                let range = init_val_node.syntax().text_range();
+                let range = init_val_node.text_range();
                 let (array_tree, is_const) = ArrayTree::new(self, field_ty, init_val_node)
                     .map_err(|e| SemanticError::ArrayError {
                         message: Box::new(e),
@@ -178,19 +178,20 @@ impl Module {
         let Some(name_node) = node.name() else {
             return false;
         };
-        let Some(ident_token) = name_node.ident() else {
+        let Some(var_name) = name_node.var_name() else {
             return false;
         };
-        let var_name = ident_token.text();
-        let var_range = ident_token.text_range();
+        let Some(var_range) = name_node.var_range() else {
+            return false;
+        };
 
-        let Some(def_id) = self.find_variable_def(var_name) else {
+        let Some(def_id) = self.find_variable_def(&var_name) else {
             return false;
         };
 
         let var = self.variables.get(*def_id).unwrap();
 
-        let Some(result_ty) = self.get_expr_type(node.syntax().text_range()) else {
+        let Some(result_ty) = self.get_expr_type(node.text_range()) else {
             return false;
         };
 
@@ -207,11 +208,11 @@ impl Module {
 
     /// 检查 PostfixExpr 是否可赋值（检测 const 并报错）
     fn check_postfix_assignable(&mut self, node: &PostfixExpr) -> bool {
-        if let Some(ty) = self.get_expr_type(node.syntax().text_range()) {
+        if let Some(ty) = self.get_expr_type(node.text_range()) {
             if ty.is_const() {
                 self.new_error(SemanticError::AssignToConst {
                     name: "field".to_string(),
-                    range: node.syntax().text_range(),
+                    range: node.text_range(),
                 });
                 return false;
             }
@@ -232,14 +233,14 @@ impl Module {
             return true;
         }
 
-        let Some(expr_ty) = self.get_expr_type(node.syntax().text_range()) else {
+        let Some(expr_ty) = self.get_expr_type(node.text_range()) else {
             return false;
         };
 
         if expr_ty.is_const() {
             self.new_error(SemanticError::AssignToConst {
                 name: "*ptr".to_string(),
-                range: node.syntax().text_range(),
+                range: node.text_range(),
             });
             false
         } else {

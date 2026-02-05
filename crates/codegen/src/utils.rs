@@ -8,7 +8,7 @@ use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, FloatValue, FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, FloatPredicate, IntPredicate};
 use parser::ast::AstNode;
-use rowan::TextRange;
+use tools::TextRange;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::{LoopContext, Program, Symbol, SymbolTable};
@@ -286,7 +286,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     ) -> Result<BasicValueEnum<'ctx>> {
         let value = self
             .analyzer
-            .get_value(ast_node.syntax().text_range())
+            .get_value(ast_node.text_range())
             .ok_or(CodegenError::Missing("constant value"))?;
         self.convert_value(value, ty)
     }

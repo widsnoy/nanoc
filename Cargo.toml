@@ -13,8 +13,7 @@ members = [
     "crates/runtime",
     "crates/test",
     "crates/language_server", 
-    "crates/utils", 
-    "crates/line_index",
+    "crates/utils", "crates/tools", 
 ]
 resolver = "2"
 
@@ -39,7 +38,7 @@ lexer = { path = "crates/lexer" }
 parser = { path = "crates/parser" }
 codegen = { path = "crates/codegen" }
 analyzer = { path = "crates/analyzer" }
-line_index = { path = "crates/line_index" }
+tools = {path = "crates/tools"}
 utils = { path = "crates/utils" }
 
 [dependencies]

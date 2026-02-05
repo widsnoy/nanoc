@@ -8,11 +8,11 @@ syntax.workspace = true
 lexer.workspace = true
 parser.workspace = true
 analyzer.workspace = true
-line_index.workspace = true
+utils.workspace = true
+tools.workspace = true
 
 logos.workspace = true
 thiserror.workspace = true
-text-size.workspace = true
 rowan.workspace = true
 tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread", "io-std"] }
 serde = { version = "1.0", features = ["derive"] }

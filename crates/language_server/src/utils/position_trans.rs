@@ -1,6 +1,6 @@
 //! position <-> line_position
 
-use line_index::LineIndex;
+use tools::LineIndex;
 use tower_lsp_server::ls_types::Position;
 
 #[allow(dead_code)]
