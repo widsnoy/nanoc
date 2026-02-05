@@ -20,7 +20,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .ok_or_else(|| CodegenError::UndefinedFunc(name.clone()))?;
         let func_info = self
             .analyzer
-            .get_function(func_id)
+            .get_function_by_id(func_id)
             .ok_or_else(|| CodegenError::UndefinedFunc(name.clone()))?;
 
         let ret_ty = &func_info.ret_type;

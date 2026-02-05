@@ -216,6 +216,7 @@ impl SyntaxKind {
                 | SyntaxKind::FN_KW
                 | SyntaxKind::EOF
                 | SyntaxKind::SEMI
+                | SyntaxKind::R_BRACE
         )
     }
 }

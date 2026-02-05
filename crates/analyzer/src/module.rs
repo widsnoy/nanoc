@@ -1,4 +1,7 @@
-use std::{collections::HashMap, ops::Deref};
+use std::{
+    collections::{BTreeMap, HashMap},
+    ops::Deref,
+};
 
 use parser::visitor::Visitor;
 use rowan::GreenNode;
@@ -27,10 +30,10 @@ pub struct Module {
     pub expand_array: HashMap<TextRange, ArrayTree>,
 
     /// 变量索引：TextRange -> VariableID
-    pub variable_map: HashMap<TextRange, VariableID>,
+    pub variable_map: BTreeMap<TextRange, VariableID>,
 
     /// 引用索引：TextRange -> ReferenceID
-    pub reference_map: HashMap<TextRange, ReferenceID>,
+    pub reference_map: BTreeMap<TextRange, ReferenceID>,
 
     /// Struct 索引：Name -> StructID
     pub struct_map: HashMap<String, StructID>,
@@ -97,7 +100,7 @@ impl Module {
         self.value_table.contains_key(&range)
     }
 
-    pub fn get_value(&self, range: TextRange) -> Option<&Value> {
+    pub fn get_value_by_range(&self, range: TextRange) -> Option<&Value> {
         self.value_table.get(&range)
     }
 
@@ -123,48 +126,45 @@ impl Module {
         name: String,
         params: Vec<VariableID>,
         ret_type: NType,
+        range: TextRange,
     ) -> FunctionID {
         let function = Function {
             name,
             params,
             ret_type,
+            range,
         };
         let id = self.functions.insert(function);
         FunctionID(id)
     }
 
-    /// 更新函数定义（用于在 leave_func_def 中更新预注册的函数）
-    pub fn update_function(
-        &mut self,
-        func_id: FunctionID,
-        params: Vec<VariableID>,
-        ret_type: NType,
-    ) {
-        if let Some(func) = self.functions.get_mut(*func_id) {
-            func.params = params;
-            func.ret_type = ret_type;
-        }
+    pub fn get_varaible_by_id(&self, var_id: VariableID) -> Option<&Variable> {
+        self.variables.get(*var_id)
     }
 
-    pub fn get_varaible(&self, range: TextRange) -> Option<&Variable> {
+    pub fn get_varaible_by_range(&self, range: TextRange) -> Option<&Variable> {
         self.variable_map
             .get(&range)
             .and_then(|f| self.variables.get(**f))
     }
 
-    pub fn get_reference(&self, range: TextRange) -> Option<&Reference> {
+    pub fn get_reference_by_id(&self, ref_id: ReferenceID) -> Option<&Reference> {
+        self.reference.get(*ref_id)
+    }
+
+    pub fn get_reference_by_range(&self, range: TextRange) -> Option<&Reference> {
         self.reference_map
             .get(&range)
             .and_then(|f| self.reference.get(**f))
     }
 
     /// 获取 struct 定义
-    pub fn get_struct(&self, id: StructID) -> Option<&Struct> {
+    pub fn get_struct_by_id(&self, id: StructID) -> Option<&Struct> {
         self.structs.get(*id)
     }
 
     /// 获取可变 struct 定义
-    pub fn get_struct_mut(&mut self, id: StructID) -> Option<&mut Struct> {
+    pub fn get_struct_mut_by_id(&mut self, id: StructID) -> Option<&mut Struct> {
         self.structs.get_mut(*id)
     }
 
@@ -179,8 +179,13 @@ impl Module {
     }
 
     /// 获取函数定义
-    pub fn get_function(&self, id: FunctionID) -> Option<&Function> {
+    pub fn get_function_by_id(&self, id: FunctionID) -> Option<&Function> {
         self.functions.get(*id)
+    }
+
+    /// 获取函数定义
+    pub fn get_function_mut_by_id(&mut self, id: FunctionID) -> Option<&mut Function> {
+        self.functions.get_mut(*id)
     }
 
     /// 添加新的 struct 定义
@@ -199,16 +204,9 @@ impl Module {
         StructID(id)
     }
 
-    /// 记录变量引用（Read 或 Write）
-    /// 返回定义处的 VariableID（如果找到）
-    pub fn record_variable_reference(
-        &mut self,
-        var_id: VariableID,
-        range: TextRange,
-        tag: ReferenceTag,
-    ) {
-        // 创建新的引用记录
-        let ref_var = Reference { var_id, range, tag };
+    /// 记录引用
+    pub fn new_reference(&mut self, range: TextRange, tag: ReferenceTag) {
+        let ref_var = Reference { range, tag };
         let ref_idx = self.reference.insert(ref_var);
         let ref_id = ReferenceID(ref_idx);
 
@@ -285,21 +283,22 @@ impl Variable {
 
 #[derive(Debug, Clone)]
 pub struct Reference {
-    pub var_id: VariableID,
     pub tag: ReferenceTag,
     pub range: TextRange,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReferenceTag {
-    Write,
-    Read,
+    // TODO: VarWrite,
+    VarRead(VariableID),
+    FuncCall(FunctionID),
 }
 #[derive(Debug)]
 pub struct Function {
     pub name: String,
     pub params: Vec<VariableID>,
     pub ret_type: NType,
+    pub range: TextRange,
 }
 
 #[derive(Debug, Clone)]
@@ -354,7 +353,7 @@ impl Scope {
     pub fn new_variable(
         &mut self,
         variables: &mut Arena<Variable>,
-        variable_map: &mut HashMap<TextRange, VariableID>,
+        variable_map: &mut BTreeMap<TextRange, VariableID>,
         name: String,
         ty: NType,
         range: TextRange,

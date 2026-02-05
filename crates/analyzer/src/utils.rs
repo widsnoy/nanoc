@@ -53,7 +53,7 @@ impl Module {
         let range = init_val_node.text_range();
         // 获取 struct 定义
         let struct_def = self
-            .get_struct(struct_id)
+            .get_struct_by_id(struct_id)
             .ok_or(SemanticError::TypeUndefined { range })?;
 
         // 否则是初始化列表 { init1, init2, ... }

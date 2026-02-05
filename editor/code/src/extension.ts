@@ -13,10 +13,14 @@ export function activate(context: vscode.ExtensionContext) {
     // 确定平台和可执行文件名
     const platform = process.platform === 'win32' ? 'windows' : 'linux';
     const executableName = process.platform === 'win32' ? 'language_server.exe' : 'language_server';
-    
+
     // 固定路径：editor/code/server/{platform}/{debug|release}/language_server
     const debugServerPath = path.join(context.extensionPath, 'server', platform, 'debug', executableName);
     const releaseServerPath = path.join(context.extensionPath, 'server', platform, 'release', executableName);
+
+    // 从环境变量读取日志级别，如果未设置则使用默认值
+    // AIRYC_LS_LOG_LEVEL 可以在 launch.json 中设置
+    const logLevel = process.env.AIRYC_LS_LOG_LEVEL || 'info';
 
     // 配置服务器选项
     const run: Executable = {
@@ -24,7 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
         options: {
             env: {
                 ...process.env,
-                RUST_LOG: 'info',
+                RUST_LOG: logLevel,
             },
         },
     };
@@ -34,7 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
         options: {
             env: {
                 ...process.env,
-                RUST_LOG: 'debug',
+                RUST_LOG: logLevel,
                 RUST_BACKTRACE: '1',
             },
         },

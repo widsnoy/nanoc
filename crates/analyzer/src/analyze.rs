@@ -61,6 +61,9 @@ impl Visitor for Module {
             let Some(field_name) = field_name_node.var_name() else {
                 continue;
             };
+            let Some(field_range) = field_name_node.var_range() else {
+                continue;
+            };
             let Some(ty_node) = field_node.ty() else {
                 continue;
             };
@@ -69,7 +72,7 @@ impl Visitor for Module {
             if !field_names.insert(field_name.clone()) {
                 self.new_error(SemanticError::VariableDefined {
                     name: field_name.clone(),
-                    range: field_name_node.text_range(),
+                    range: field_range,
                 });
                 continue;
             }
@@ -84,7 +87,6 @@ impl Visitor for Module {
                 continue;
             };
 
-            let field_range = field_name_node.text_range();
             field_infos.push((field_name, field_ty, field_range));
         }
 
@@ -108,7 +110,7 @@ impl Visitor for Module {
         }
 
         // 更新 struct 定义的字段
-        let struct_def = self.get_struct_mut(struct_id).unwrap();
+        let struct_def = self.get_struct_mut_by_id(struct_id).unwrap();
         struct_def.fields = field_ids;
 
         self.analyzing.current_scope = parent_scope;
@@ -241,8 +243,9 @@ impl Visitor for Module {
             return;
         }
 
+        // FIXME: 把 body 和 block 拆开；
         // 提前创建占位，以支持递归函数
-        let func_id = self.new_function(name.clone(), vec![], NType::Void);
+        let func_id = self.new_function(name.clone(), vec![], NType::Void, range);
         self.function_map.insert(name.clone(), func_id);
 
         // 记录当前正在定义的函数名称
@@ -307,9 +310,12 @@ impl Visitor for Module {
         };
         let name = ident.text().to_string();
 
-        // 获取已创建的函数 ID（在 enter_func_def 中创建）并更新
-        if let Some(func_id) = self.find_function(&name) {
-            self.update_function(func_id, param_list, ret_type);
+        // 更新函数定义
+        if let Some(func_id) = self.find_function(&name)
+            && let Some(function) = self.get_function_mut_by_id(func_id)
+        {
+            function.params = param_list;
+            function.ret_type = ret_type;
         }
 
         self.analyzing.current_scope = parent_scope;
@@ -524,7 +530,9 @@ impl Visitor for Module {
             return;
         };
 
-        let func = self.get_function(func_id).unwrap();
+        self.new_reference(func_range, ReferenceTag::FuncCall(func_id));
+
+        let func = self.get_function_by_id(func_id).unwrap();
         let expected_arg_count = func.params.len();
 
         // 检查是否是正在定义的函数（递归调用）
@@ -704,7 +712,7 @@ impl Visitor for Module {
 
         let node_range = node.text_range();
         // 记录 Read 引用
-        self.record_variable_reference(var_id, node_range, ReferenceTag::Read);
+        self.new_reference(node_range, ReferenceTag::VarRead(var_id));
 
         let var = self.variables.get(*var_id).unwrap();
         let index_count = node.indices().count();
@@ -731,7 +739,7 @@ impl Visitor for Module {
             let mut indices = Vec::new();
             for indice in node.indices() {
                 let range = indice.text_range();
-                let Some(v) = self.get_value(range) else {
+                let Some(v) = self.get_value_by_range(range) else {
                     return;
                 };
                 let Value::Int(index) = v else {
@@ -844,7 +852,7 @@ impl Visitor for Module {
         };
 
         // 查找 struct 定义
-        let struct_def = self.get_struct(struct_id).unwrap();
+        let struct_def = self.get_struct_by_id(struct_id).unwrap();
         let struct_def: *const crate::module::Struct = struct_def;
 
         // 查找字段并设置类型
@@ -873,7 +881,7 @@ impl Visitor for Module {
 
             self.set_expr_type(range, result_ty);
 
-            self.record_variable_reference(field_id, filed_access_range, ReferenceTag::Read);
+            self.new_reference(filed_access_range, ReferenceTag::VarRead(field_id));
 
             // 常量处理：如果基础表达式是常量 struct，提取字段值
             if let Some(Value::Struct(_struct_id, field_values)) =
@@ -888,7 +896,7 @@ impl Visitor for Module {
                     let mut idx_values = Vec::new();
                     for idx_expr in field_access_node.indices() {
                         let idx_range = idx_expr.text_range();
-                        if let Some(Value::Int(idx)) = self.get_value(idx_range) {
+                        if let Some(Value::Int(idx)) = self.get_value_by_range(idx_range) {
                             idx_values.push(*idx);
                         } else {
                             return; // 索引不是常量
@@ -958,7 +966,7 @@ impl Visitor for Module {
 
             let size = if let Some(expr_node) = size_expr_node {
                 let expr_range = expr_node.text_range();
-                if let Some(x) = self.get_value(expr_range).cloned() {
+                if let Some(x) = self.get_value_by_range(expr_range).cloned() {
                     if let Value::Int(n) = x {
                         n
                     } else {
