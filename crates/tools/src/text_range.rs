@@ -1,8 +1,17 @@
 use std::ops::Deref;
 
-/// 包装 `rowan::TextRange`, 实现 Ord
+/// 包装 `text_size::TextRange`, 实现 Ord
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct TextRange(pub text_size::TextRange);
+
+impl TextRange {
+    pub fn new(start: u32, end: u32) -> Self {
+        Self(text_size::TextRange::new(
+            text_size::TextSize::new(start),
+            text_size::TextSize::new(end),
+        ))
+    }
+}
 
 impl Ord for TextRange {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
@@ -24,5 +33,17 @@ impl Deref for TextRange {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl From<text_size::TextRange> for TextRange {
+    fn from(value: text_size::TextRange) -> Self {
+        Self(value)
+    }
+}
+
+impl From<TextRange> for text_size::TextRange {
+    fn from(value: TextRange) -> Self {
+        value.0
     }
 }

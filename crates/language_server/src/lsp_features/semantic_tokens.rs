@@ -1,8 +1,8 @@
 use analyzer::module::Module;
 use rowan::NodeOrToken;
+use rowan::TextRange;
 use syntax::{SyntaxKind, SyntaxToken};
 use tools::LineIndex;
-use tools::TextRange;
 use tower_lsp_server::ls_types::{SemanticToken, SemanticTokenModifier, SemanticTokenType};
 
 /// LSP 语义 token 类型定义
@@ -106,7 +106,7 @@ pub fn compute_semantic_tokens(module: &Module, line_index: &LineIndex) -> Vec<S
             };
 
             if let Some(token_type) = token_type {
-                builder.push(line as u32, col as u32, length, token_type, modifiers);
+                builder.push(line, col, length, token_type, modifiers);
             }
         }
     }
@@ -178,7 +178,7 @@ fn classify_identifier(
     _token: &SyntaxToken,
 ) -> (Option<u32>, u32) {
     // 直接查询 module 中的变量信息
-    if let Some(var) = module.get_varaible(range) {
+    if let Some(var) = module.get_varaible_by_range(range.into()) {
         let mut modifiers = 1 << 1;
 
         // 检查是否为 const

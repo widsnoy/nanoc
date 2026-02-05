@@ -21,7 +21,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         let var = self
             .analyzer
-            .get_varaible(name_range)
+            .get_varaible_by_range(name_range)
             .ok_or(CodegenError::Missing("variable info"))?;
         let var_ty = &var.ty;
         let llvm_ty = self.convert_ntype_to_type(var_ty)?;
@@ -136,7 +136,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .ok_or(CodegenError::TypeMismatch("expected struct type".into()))?;
         let struct_def = self
             .analyzer
-            .get_struct(struct_id)
+            .get_struct_by_id(struct_id)
             .ok_or(CodegenError::NotImplemented("undefined struct"))?;
 
         // Safety: struct_def 的生命周期与 self.analyzer 相同，
@@ -287,7 +287,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             return Ok(ty.const_zero());
         };
         let range = init.text_range();
-        if let Some(value) = self.analyzer.get_value(range) {
+        if let Some(value) = self.analyzer.get_value_by_range(range) {
             return self.convert_value(value, Some(ty));
         }
         Err(CodegenError::Missing("init value"))

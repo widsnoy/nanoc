@@ -114,7 +114,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 // 获取 struct 定义
                 let struct_def = self
                     .analyzer
-                    .get_struct(*struct_id)
+                    .get_struct_by_id(*struct_id)
                     .ok_or(CodegenError::NotImplemented("undefined struct"))?;
 
                 // 转换字段类型
@@ -286,7 +286,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     ) -> Result<BasicValueEnum<'ctx>> {
         let value = self
             .analyzer
-            .get_value(ast_node.text_range())
+            .get_value_by_range(ast_node.text_range())
             .ok_or(CodegenError::Missing("constant value"))?;
         self.convert_value(value, ty)
     }
@@ -300,7 +300,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     ) -> Result<BasicValueEnum<'ctx>> {
         let value = self
             .analyzer
-            .get_value(range)
+            .get_value_by_range(range)
             .ok_or(CodegenError::Missing("constant value"))?;
         self.convert_value(value, ty)
     }
@@ -392,7 +392,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 // 生成 struct 零值
                 let struct_def = self
                     .analyzer
-                    .get_struct(*struct_id)
+                    .get_struct_by_id(*struct_id)
                     .ok_or(CodegenError::NotImplemented("undefined struct"))?;
 
                 // 获取 struct 的 LLVM 类型

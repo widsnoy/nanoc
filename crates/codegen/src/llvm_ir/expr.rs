@@ -451,7 +451,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         let struct_def = self
             .analyzer
-            .get_struct(struct_id)
+            .get_struct_by_id(struct_id)
             .ok_or(CodegenError::NotImplemented("undefined struct"))?;
 
         let field_idx = struct_def

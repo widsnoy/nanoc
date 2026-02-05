@@ -1,15 +1,14 @@
 use analyzer::module::Module;
 use parser::parse::Parser;
 use tools::LineIndex;
-use tower_lsp_server::ls_types::SemanticToken;
 
 /// 文档状态管理
 #[derive(Debug)]
 pub struct Document {
     #[allow(unused)] // FIXME
-    text: String,
-    line_index: LineIndex,
-    module: Module,
+    pub text: String,
+    pub line_index: LineIndex,
+    pub module: Module,
 }
 
 impl Document {
@@ -22,7 +21,7 @@ impl Document {
                 .get_tokens()
                 .iter()
                 .filter(|(kind, _, _)| *kind == syntax::SyntaxKind::NEWLINE)
-                .map(|(_, _, r)| r.end)
+                .map(|(_, _, r)| r.end as u32)
                 .collect::<Vec<_>>(),
         );
 
@@ -39,13 +38,5 @@ impl Document {
     /// 更新文档内容
     pub fn update(&mut self, text: String) {
         *self = Self::new(text);
-    }
-
-    /// 计算语义 tokens
-    pub fn compute_semantic_tokens(&self) -> Vec<SemanticToken> {
-        crate::lsp_features::semantic_tokens::compute_semantic_tokens(
-            &self.module,
-            &self.line_index,
-        )
     }
 }
