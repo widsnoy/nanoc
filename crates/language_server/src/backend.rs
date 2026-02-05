@@ -147,8 +147,15 @@ impl LanguageServer for Backend {
 
     async fn goto_definition(
         &self,
-        _params: GotoDefinitionParams,
+        params: GotoDefinitionParams,
     ) -> Result<Option<GotoDefinitionResponse>> {
+        // let uri = params.text_document.uri;
+        //
+        // // 获取文档
+        // let doc = match self.documents.get(&uri) {
+        //     Some(doc) => doc,
+        //     None => return Ok(None),
+        // };
         Ok(None)
     }
 

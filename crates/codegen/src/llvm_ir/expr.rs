@@ -22,7 +22,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
     fn compile_deref_expr(&mut self, expr: &UnaryExpr) -> Result<BasicValueEnum<'ctx>> {
         // 获取整个解引用表达式的类型（即解引用后的结果类型）
-        let range = expr.syntax().text_range();
+        let range = expr.text_range();
         let operand = expr.expr().ok_or(CodegenError::Missing("* operand"))?;
         let ptr = self.compile_expr(operand)?.into_pointer_value();
         let result_ty = self
@@ -106,7 +106,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             (BasicValueEnum::PointerValue(p), BasicValueEnum::IntValue(i)) => {
                 let lhs_ty = self
                     .analyzer
-                    .get_expr_type(lhs_node.syntax().text_range())
+                    .get_expr_type(lhs_node.text_range())
                     .ok_or(CodegenError::Missing("lhs type"))?;
                 let pointee = lhs_ty
                     .pointer_inner()
@@ -140,7 +140,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             (BasicValueEnum::IntValue(i), BasicValueEnum::PointerValue(p)) => {
                 let rhs_ty = self
                     .analyzer
-                    .get_expr_type(rhs_node.syntax().text_range())
+                    .get_expr_type(rhs_node.text_range())
                     .ok_or(CodegenError::Missing("rhs type"))?;
                 let pointee = rhs_ty
                     .pointer_inner()
@@ -164,7 +164,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 }
                 let lhs_ty = self
                     .analyzer
-                    .get_expr_type(lhs_node.syntax().text_range())
+                    .get_expr_type(lhs_node.text_range())
                     .ok_or(CodegenError::Missing("lhs type"))?;
                 let pointee = lhs_ty
                     .pointer_inner()
@@ -504,7 +504,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let base_expr = postfix
             .expr()
             .ok_or(CodegenError::Missing("base expression"))?;
-        let base_range = base_expr.syntax().text_range();
+        let base_range = base_expr.text_range();
         let base_ty = self
             .analyzer
             .get_expr_type(base_range)

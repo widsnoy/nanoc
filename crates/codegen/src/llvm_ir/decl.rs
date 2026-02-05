@@ -10,34 +10,19 @@ use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
 
 impl<'a, 'ctx> Program<'a, 'ctx> {
-    pub(super) fn compile_global_decl(&mut self, decl: VarDef) -> Result<()> {
-        let name_node = decl.name().ok_or(CodegenError::Missing("variable name"))?;
-        let name_token = name_node
-            .ident()
-            .ok_or(CodegenError::Missing("identifier"))?;
-        let var = self
-            .analyzer
-            .get_varaible(name_token.text_range())
-            .ok_or(CodegenError::Missing("variable info"))?;
-        let is_const = var.ty.is_const();
-        self.compile_var_def(decl, is_const)
-    }
-
-    pub(super) fn compile_local_decl(&mut self, decl: VarDef) -> Result<()> {
-        self.compile_var_def(decl, false)
-    }
-
-    fn compile_var_def(&mut self, def: VarDef, is_const: bool) -> Result<()> {
+    pub(crate) fn compile_var_def(&mut self, def: VarDef) -> Result<()> {
         let name_node = def.name().ok_or(CodegenError::Missing("variable name"))?;
-        let name_token = name_node
-            .ident()
-            .ok_or(CodegenError::Missing("identifier"))?;
+        let name = name_node
+            .var_name()
+            .ok_or(CodegenError::Missing("variable name"))?;
+        let name_range = name_node
+            .var_range()
+            .ok_or(CodegenError::Missing("variable range"))?;
 
         let var = self
             .analyzer
-            .get_varaible(name_token.text_range())
+            .get_varaible(name_range)
             .ok_or(CodegenError::Missing("variable info"))?;
-        let name = name_token.text();
         let var_ty = &var.ty;
         let llvm_ty = self.convert_ntype_to_type(var_ty)?;
 
@@ -45,6 +30,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         if is_global {
             // 全局变量
+            let is_const = var_ty.is_const();
             let init_val = if is_const {
                 // const 变量必须有初始值
                 let init_node = def.init().ok_or(CodegenError::Missing("initial value"))?;
@@ -53,7 +39,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 self.const_init_or_zero(def.init(), llvm_ty)?
             };
 
-            let global = self.module.add_global(llvm_ty, None, name);
+            let global = self.module.add_global(llvm_ty, None, &name);
             global.set_initializer(&init_val);
             if is_const {
                 global.set_constant(true);
@@ -68,13 +54,13 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .symbols
                 .current_function
                 .ok_or(CodegenError::Missing("current function"))?;
-            let alloca = self.create_entry_alloca(func, llvm_ty, name)?;
+            let alloca = self.create_entry_alloca(func, llvm_ty, &name)?;
 
             // 判断变量类型
             let ty = var_ty.unwrap_const();
 
             if let Some(init_node) = def.init() {
-                let range = init_node.syntax().text_range();
+                let range = init_node.text_range();
 
                 if let Some(expr) = init_node.expr() {
                     // 单值初始化
@@ -125,8 +111,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         "unsupported init list type".into(),
                     ));
                 }
-            } else if is_const {
-                return Err(CodegenError::Missing("const requires initial value"));
             } else {
                 // 无初始值，zero init
                 self.builder
@@ -191,10 +175,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
             } else if inner_field_ty.is_array() {
                 // 数组字段：使用 ArrayTree 解析
-                if self
-                    .analyzer
-                    .is_compile_time_constant(init.syntax().text_range())
-                {
+                if self.analyzer.is_compile_time_constant(init.text_range()) {
                     let init_val = self.get_const_var_value(&init, Some(field_llvm_ty))?;
                     self.builder
                         .build_store(field_ptr, init_val)
@@ -205,19 +186,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         .build_store(field_ptr, field_llvm_ty.const_zero())
                         .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
                     let mut indices = vec![self.context.i32_type().const_zero()];
-                    let array_tree = self
-                        .analyzer
-                        .expand_array
-                        .get(&init.syntax().text_range())
-                        .unwrap();
+                    let array_tree = self.analyzer.expand_array.get(&init.text_range()).unwrap();
                     self.store_on_array_tree(array_tree, &mut indices, field_ptr, field_llvm_ty)?;
                 }
             } else if inner_field_ty.is_struct() {
                 // 嵌套 struct 字段：递归处理（不需要 zero init）
-                if self
-                    .analyzer
-                    .is_compile_time_constant(init.syntax().text_range())
-                {
+                if self.analyzer.is_compile_time_constant(init.text_range()) {
                     let init_val = self.get_const_var_value(&init, Some(field_llvm_ty))?;
                     self.builder
                         .build_store(field_ptr, init_val)
@@ -312,7 +286,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let Some(init) = init else {
             return Ok(ty.const_zero());
         };
-        let range = init.syntax().text_range();
+        let range = init.text_range();
         if let Some(value) = self.analyzer.get_value(range) {
             return self.convert_value(value, Some(ty));
         }

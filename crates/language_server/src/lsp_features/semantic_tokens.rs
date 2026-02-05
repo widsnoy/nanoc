@@ -1,8 +1,8 @@
-use analyzer::module::{Module, VariableTag};
-use line_index::LineIndex;
+use analyzer::module::Module;
 use rowan::NodeOrToken;
 use syntax::{SyntaxKind, SyntaxToken};
-use text_size::TextRange;
+use tools::LineIndex;
+use tools::TextRange;
 use tower_lsp_server::ls_types::{SemanticToken, SemanticTokenModifier, SemanticTokenType};
 
 /// LSP 语义 token 类型定义
@@ -179,20 +179,17 @@ fn classify_identifier(
 ) -> (Option<u32>, u32) {
     // 直接查询 module 中的变量信息
     if let Some(var) = module.get_varaible(range) {
-        let mut modifiers = 0u32;
+        let mut modifiers = 1 << 1;
 
         // 检查是否为 const
         if var.is_const() {
             modifiers |= 1 << 0; // READONLY
         }
 
-        // 检查是否为定义处
-        if var.tag == VariableTag::Define {
-            modifiers |= 1 << 1; // DECLARATION
-        }
-
         return (Some(4), modifiers); // VARIABLE
     }
+
+    // FIXME: Refer
 
     // 默认为变量（可能是未解析的标识符）
     (Some(4), 0) // VARIABLE

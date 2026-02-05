@@ -1,11 +1,7 @@
 [package]
-name = "utils"
+name = "tools"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-syntax.workspace = true
-tools.workspace = true
-
-rowan.workspace = true
 text-size.workspace = true

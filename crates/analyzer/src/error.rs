@@ -1,4 +1,4 @@
-use rowan::TextRange;
+use tools::TextRange;
 
 use crate::{array::ArrayInitError, r#type::NType};
 

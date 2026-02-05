@@ -3,8 +3,8 @@ use std::{collections::HashMap, ops::Deref};
 use parser::visitor::Visitor;
 use rowan::GreenNode;
 use syntax::SyntaxNode;
-use text_size::TextRange;
 use thunderdome::Arena;
+use tools::TextRange;
 
 use crate::{array::ArrayTree, error::SemanticError, r#type::NType, value::Value};
 

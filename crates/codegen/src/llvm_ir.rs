@@ -52,7 +52,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         self.declare_sysy_runtime();
         for global in node.global_decls() {
             match global {
-                GlobalDecl::VarDef(decl) => self.compile_global_decl(decl)?,
+                GlobalDecl::VarDef(decl) => self.compile_var_def(decl)?,
                 GlobalDecl::FuncDef(func) => self.compile_func_def(func)?,
                 GlobalDecl::StructDef(_) => {}
             }

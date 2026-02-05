@@ -69,22 +69,22 @@ impl Visitor for Module {
             if !field_names.insert(field_name.clone()) {
                 self.new_error(SemanticError::VariableDefined {
                     name: field_name.clone(),
-                    range: field_name_node.syntax().text_range(),
+                    range: field_name_node.text_range(),
                 });
                 continue;
             }
 
             // 获取字段类型（已经在 leave_type 中构建好）
-            let field_ty = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
+            let field_ty = if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
                 ty.clone()
             } else {
                 self.new_error(SemanticError::TypeUndefined {
-                    range: ty_node.syntax().text_range(),
+                    range: ty_node.text_range(),
                 });
                 continue;
             };
 
-            let field_range = field_name_node.syntax().text_range();
+            let field_range = field_name_node.text_range();
             field_infos.push((field_name, field_ty, field_range));
         }
 
@@ -128,11 +128,11 @@ impl Visitor for Module {
             return;
         };
 
-        let var_type = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
+        let var_type = if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
             ty.clone()
         } else {
             self.new_error(SemanticError::TypeUndefined {
-                range: ty_node.syntax().text_range(),
+                range: ty_node.text_range(),
             });
             return;
         };
@@ -152,11 +152,11 @@ impl Visitor for Module {
         // 处理初始值
         if let Some(init_val_node) = def.init() {
             // 如果是表达式，已经在 expr 处理，所以只用考虑 Array 和 Struct 类型
-            let init_range = init_val_node.syntax().text_range();
+            let init_range = init_val_node.text_range();
             // 如果 InitVal 包含一个表达式，使用表达式的范围
             let expr_range = init_val_node
                 .expr()
-                .map(|e| e.syntax().text_range())
+                .map(|e| e.text_range())
                 .unwrap_or(init_range);
             if var_type.is_array() {
                 let (array_tree, is_const_list) =
@@ -228,17 +228,16 @@ impl Visitor for Module {
         let Some(name_node) = node.name() else {
             return;
         };
-        let Some(ident) = name_node.ident() else {
+        let Some(name) = name_node.var_name() else {
             return;
         };
-        let name = ident.text().to_string();
+        let Some(range) = name_node.var_range() else {
+            return;
+        };
 
         // 检查函数是否重复定义
         if self.function_map.contains_key(&name) {
-            self.new_error(SemanticError::FunctionDefined {
-                name,
-                range: ident.text_range(),
-            });
+            self.new_error(SemanticError::FunctionDefined { name, range });
             return;
         }
 
@@ -254,7 +253,7 @@ impl Visitor for Module {
 
         // 记录返回类型的范围，用于在 leave_type 中识别
         if let Some(ty_node) = node.ret_type() {
-            self.analyzing.func_ret_type_range = Some(ty_node.syntax().text_range());
+            self.analyzing.func_ret_type_range = Some(ty_node.text_range());
         }
 
         // 默认返回类型为 Void（如果没有声明返回类型）
@@ -288,11 +287,11 @@ impl Visitor for Module {
         }
 
         let ret_type = if let Some(ty_node) = node.ret_type() {
-            if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
+            if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
                 ty.clone()
             } else {
                 self.new_error(SemanticError::TypeUndefined {
-                    range: ty_node.syntax().text_range(),
+                    range: ty_node.text_range(),
                 });
                 return;
             }
@@ -325,11 +324,11 @@ impl Visitor for Module {
             return;
         };
 
-        let param_type = if let Some(ty) = self.get_expr_type(ty_node.syntax().text_range()) {
+        let param_type = if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
             ty.clone()
         } else {
             self.new_error(SemanticError::TypeUndefined {
-                range: ty_node.syntax().text_range(),
+                range: ty_node.text_range(),
             });
             return;
         };
@@ -340,10 +339,9 @@ impl Visitor for Module {
         let Some(name) = name_node.var_name() else {
             return;
         };
-        let Some(ident) = name_node.ident() else {
+        let Some(range) = name_node.var_range() else {
             return;
         };
-        let range = ident.text_range();
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
         if scope.have_variable_def(&name) {
@@ -389,8 +387,8 @@ impl Visitor for Module {
             return;
         };
 
-        let lhs_range = lhs.syntax().text_range();
-        let rhs_range = rhs.syntax().text_range();
+        let lhs_range = lhs.text_range();
+        let rhs_range = rhs.text_range();
 
         // 检查是否是左值
         let is_valid_lvalue = self.is_lvalue_expr(&lhs);
@@ -424,7 +422,7 @@ impl Visitor for Module {
     fn enter_break_stmt(&mut self, node: BreakStmt) {
         if self.analyzing.loop_depth == 0 {
             self.new_error(SemanticError::BreakOutsideLoop {
-                range: node.syntax().text_range(),
+                range: node.text_range(),
             });
         }
     }
@@ -432,13 +430,13 @@ impl Visitor for Module {
     fn enter_continue_stmt(&mut self, node: ContinueStmt) {
         if self.analyzing.loop_depth == 0 {
             self.new_error(SemanticError::ContinueOutsideLoop {
-                range: node.syntax().text_range(),
+                range: node.text_range(),
             });
         }
     }
 
     fn leave_return_stmt(&mut self, node: ReturnStmt) {
-        let range = node.syntax().text_range();
+        let range = node.text_range();
 
         // 获取当前函数的返回类型
         let Some(expected_ret_type) = &self.analyzing.current_function_ret_type else {
@@ -447,7 +445,7 @@ impl Visitor for Module {
 
         // 获取 return 表达式的类型
         let actual_ret_type = if let Some(expr) = node.expr() {
-            let expr_range = expr.syntax().text_range();
+            let expr_range = expr.text_range();
             match self.get_expr_type(expr_range) {
                 Some(v) => v,
                 None => return,
@@ -473,7 +471,7 @@ impl Visitor for Module {
         let Some(func_name) = name_node.var_name() else {
             return;
         };
-        let func_range = name_node.syntax().text_range();
+        let func_range = name_node.text_range();
 
         // FIXME: 内置函数列表（运行时库提供）
         let builtin_functions = [
@@ -503,7 +501,7 @@ impl Visitor for Module {
             .find(|(name, _, _)| *name == func_name)
         {
             // 设置返回类型
-            self.set_expr_type(node.syntax().text_range(), ret_type.clone());
+            self.set_expr_type(node.text_range(), ret_type.clone());
 
             // 检查参数数量（-1 表示可变参数，不检查）
             if *expected_args >= 0 && arg_count != *expected_args as usize {
@@ -547,7 +545,7 @@ impl Visitor for Module {
         };
 
         // 设置返回类型
-        self.set_expr_type(node.syntax().text_range(), ret_type);
+        self.set_expr_type(node.text_range(), ret_type);
 
         // 检查参数数量（跳过正在定义的函数，因为参数列表还未完成）
         if !is_current_func && arg_count != expected_arg_count {
@@ -572,8 +570,8 @@ impl Visitor for Module {
         };
         let op_kind = op.op().kind();
 
-        let lhs_ty = self.get_expr_type(lhs.syntax().text_range()).cloned();
-        let rhs_ty = self.get_expr_type(rhs.syntax().text_range()).cloned();
+        let lhs_ty = self.get_expr_type(lhs.text_range()).cloned();
+        let rhs_ty = self.get_expr_type(rhs.text_range()).cloned();
         if let (Some(l), Some(r)) = (&lhs_ty, &rhs_ty) {
             let result_ty = match op_kind {
                 SyntaxKind::PLUS | SyntaxKind::MINUS
@@ -593,17 +591,17 @@ impl Visitor for Module {
                 | SyntaxKind::PIPEPIPE => NType::Int,
                 _ => l.clone(),
             };
-            self.set_expr_type(node.syntax().text_range(), result_ty);
+            self.set_expr_type(node.text_range(), result_ty);
         }
 
-        if self.is_compile_time_constant(lhs.syntax().text_range())
-            && self.is_compile_time_constant(rhs.syntax().text_range())
+        if self.is_compile_time_constant(lhs.text_range())
+            && self.is_compile_time_constant(rhs.text_range())
         {
-            let lhs_val = self.value_table.get(&lhs.syntax().text_range()).unwrap();
-            let rhs_val = self.value_table.get(&rhs.syntax().text_range()).unwrap();
+            let lhs_val = self.value_table.get(&lhs.text_range()).unwrap();
+            let rhs_val = self.value_table.get(&rhs.text_range()).unwrap();
 
             if let Ok(val) = Value::eval(lhs_val, rhs_val, &op.op_str()) {
-                self.value_table.insert(node.syntax().text_range(), val);
+                self.value_table.insert(node.text_range(), val);
             }
         }
     }
@@ -617,11 +615,11 @@ impl Visitor for Module {
         };
         let op_kind = op.op().kind();
 
-        if let Some(inner_ty) = self.get_expr_type(expr.syntax().text_range()) {
+        if let Some(inner_ty) = self.get_expr_type(expr.text_range()) {
             let result_ty = if op_kind == SyntaxKind::AMP {
                 if !self.is_lvalue_expr(&expr) {
                     self.new_error(SemanticError::AddressOfNonLvalue {
-                        range: expr.syntax().text_range(),
+                        range: expr.text_range(),
                     });
 
                     return;
@@ -655,21 +653,17 @@ impl Visitor for Module {
             } else {
                 inner_ty.clone()
             };
-            self.set_expr_type(node.syntax().text_range(), result_ty);
+            self.set_expr_type(node.text_range(), result_ty);
         }
 
         if matches!(op_kind, SyntaxKind::STAR | SyntaxKind::AMP) {
             return;
         }
 
-        if self.is_compile_time_constant(expr.syntax().text_range()) {
-            let val = self
-                .value_table
-                .get(&expr.syntax().text_range())
-                .unwrap()
-                .clone();
+        if self.is_compile_time_constant(expr.text_range()) {
+            let val = self.value_table.get(&expr.text_range()).unwrap().clone();
             if let Ok(res) = Value::eval_unary(val, &op.op_str()) {
-                self.value_table.insert(node.syntax().text_range(), res);
+                self.value_table.insert(node.text_range(), res);
             }
         }
     }
@@ -678,13 +672,13 @@ impl Visitor for Module {
         let Some(expr) = node.expr() else {
             return;
         };
-        if let Some(ty) = self.get_expr_type(expr.syntax().text_range()) {
-            self.set_expr_type(node.syntax().text_range(), ty.clone());
+        if let Some(ty) = self.get_expr_type(expr.text_range()) {
+            self.set_expr_type(node.text_range(), ty.clone());
         }
-        let expr_range = expr.syntax().text_range();
+        let expr_range = expr.text_range();
         if self.is_compile_time_constant(expr_range) {
             let val = self.value_table.get(&expr_range).unwrap().clone();
-            self.value_table.insert(node.syntax().text_range(), val);
+            self.value_table.insert(node.text_range(), val);
         }
     }
 
@@ -692,14 +686,15 @@ impl Visitor for Module {
         let Some(name_node) = node.name() else {
             return;
         };
-        let Some(ident_token) = name_node.ident() else {
+        let Some(var_name) = name_node.var_name() else {
             return;
         };
-        let var_range = ident_token.text_range();
-        let var_name = ident_token.text();
+        let Some(var_range) = name_node.var_range() else {
+            return;
+        };
 
         // 查找变量定义
-        let Some(var_id) = self.find_variable_def(var_name) else {
+        let Some(var_id) = self.find_variable_def(&var_name) else {
             self.new_error(SemanticError::VariableUndefined {
                 name: var_name.to_string(),
                 range: var_range,
@@ -707,7 +702,7 @@ impl Visitor for Module {
             return;
         };
 
-        let node_range = node.syntax().text_range();
+        let node_range = node.text_range();
         // 记录 Read 引用
         self.record_variable_reference(var_id, node_range, ReferenceTag::Read);
 
@@ -735,7 +730,7 @@ impl Visitor for Module {
         if let Value::Array(tree) = value {
             let mut indices = Vec::new();
             for indice in node.indices() {
-                let range = indice.syntax().text_range();
+                let range = indice.text_range();
                 let Some(v) = self.get_value(range) else {
                     return;
                 };
@@ -754,7 +749,7 @@ impl Visitor for Module {
                 Err(e) => {
                     self.new_error(SemanticError::ArrayError {
                         message: Box::new(e),
-                        range: node.syntax().text_range(),
+                        range: node.text_range(),
                     });
                     return;
                 }
@@ -778,12 +773,12 @@ impl Visitor for Module {
                 ArrayTreeValue::Empty => &const_zero,
             };
         }
-        let range = node.syntax().text_range();
+        let range = node.text_range();
         self.value_table.insert(range, value.clone());
     }
 
     fn leave_postfix_expr(&mut self, node: PostfixExpr) {
-        let range = node.syntax().text_range();
+        let range = node.text_range();
 
         // 获取操作符类型
         let Some(op_node) = node.op() else {
@@ -795,6 +790,7 @@ impl Visitor for Module {
         let Some(field_access_node) = node.field() else {
             return;
         };
+        let filed_access_range = field_access_node.text_range();
         let Some(name_node) = field_access_node.name() else {
             return;
         };
@@ -807,7 +803,7 @@ impl Visitor for Module {
             return;
         };
 
-        let base_range = base_expr.syntax().text_range();
+        let base_range = base_expr.text_range();
         let Some(base_ty) = self.get_expr_type(base_range) else {
             return;
         };
@@ -877,6 +873,8 @@ impl Visitor for Module {
 
             self.set_expr_type(range, result_ty);
 
+            self.record_variable_reference(field_id, filed_access_range, ReferenceTag::Read);
+
             // 常量处理：如果基础表达式是常量 struct，提取字段值
             if let Some(Value::Struct(_struct_id, field_values)) =
                 self.value_table.get(&base_range).cloned()
@@ -889,7 +887,7 @@ impl Visitor for Module {
                     // 处理数组索引
                     let mut idx_values = Vec::new();
                     for idx_expr in field_access_node.indices() {
-                        let idx_range = idx_expr.syntax().text_range();
+                        let idx_range = idx_expr.text_range();
                         if let Some(Value::Int(idx)) = self.get_value(idx_range) {
                             idx_values.push(*idx);
                         } else {
@@ -913,7 +911,7 @@ impl Visitor for Module {
     }
 
     fn enter_literal(&mut self, node: Literal) {
-        let range = node.syntax().text_range();
+        let range = node.text_range();
         let v = if let Some(n) = node.float_token() {
             let s = n.text();
             self.set_expr_type(range, NType::Float);
@@ -941,7 +939,7 @@ impl Visitor for Module {
     }
 
     fn leave_type(&mut self, node: Type) {
-        let range = node.syntax().text_range();
+        let range = node.text_range();
 
         let ntype = if node.l_brack_token().is_some() {
             // 数组类型: [Type; Expr]
@@ -949,7 +947,7 @@ impl Visitor for Module {
             let size_expr_node = node.size_expr();
 
             let inner = if let Some(inner_node) = inner_type_node {
-                if let Some(ty) = self.get_expr_type(inner_node.syntax().text_range()) {
+                if let Some(ty) = self.get_expr_type(inner_node.text_range()) {
                     ty.clone()
                 } else {
                     return;
@@ -959,7 +957,7 @@ impl Visitor for Module {
             };
 
             let size = if let Some(expr_node) = size_expr_node {
-                let expr_range = expr_node.syntax().text_range();
+                let expr_range = expr_node.text_range();
                 if let Some(x) = self.get_value(expr_range).cloned() {
                     if let Value::Int(n) = x {
                         n
@@ -984,7 +982,7 @@ impl Visitor for Module {
             let inner_type_node = node.inner_type();
 
             let inner = if let Some(inner_node) = inner_type_node {
-                if let Some(ty) = self.get_expr_type(inner_node.syntax().text_range()) {
+                if let Some(ty) = self.get_expr_type(inner_node.text_range()) {
                     ty.clone()
                 } else {
                     return;
