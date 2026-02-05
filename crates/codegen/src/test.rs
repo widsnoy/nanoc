@@ -8,7 +8,7 @@ use crate::llvm_ir;
 
 fn try_it(code: &str) -> String {
     let parser = parser::parse::Parser::new(code);
-    let (green_node, errors) = parser.parse();
+    let (green_node, errors, _) = parser.parse();
     assert!(errors.is_empty(), "Parser errors: {:?}", errors);
 
     let root = SyntaxNode::new_root(green_node.clone());

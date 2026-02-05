@@ -2,13 +2,14 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use clap::{Parser, ValueEnum};
 use codegen::llvm_ir::Program;
 use inkwell::OptimizationLevel;
 use inkwell::context::Context as LlvmContext;
 use inkwell::targets::TargetMachine;
 use inkwell::targets::{CodeModel, InitializationConfig, RelocMode, Target};
+use miette::NamedSource;
 use parser::SyntaxNode;
 use parser::ast::{AstNode, CompUnit};
 
@@ -66,11 +67,23 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     let input_path = args.input_path;
-    let input = fs::read_to_string(&input_path).context("failed to read input file")?;
+    let input = fs::read_to_string(&input_path)
+        .map_err(|e| anyhow::anyhow!("failed to read input file: {}", e))?;
 
     // Parse
     let parser = parser::parse::Parser::new(&input);
-    let (green_node, _errors) = parser.parse(); // FIXME
+    let (green_node, parser_errors, lexer_errors) = parser.parse();
+
+    // 报告 Parser 错误
+    if !parser_errors.is_empty() {
+        let source = NamedSource::new(input_path.to_string_lossy().to_string(), input.clone());
+        eprintln!("Parser errors:");
+        for error in &parser_errors {
+            let report = miette::Report::new(error.clone()).with_source_code(source.clone());
+            eprintln!("{:?}", report);
+        }
+        bail!("Parsing failed");
+    }
 
     if args.emit == EmitTarget::Ast {
         // FIXME:
@@ -93,9 +106,11 @@ fn main() -> Result<()> {
     analyzer.analyze();
 
     if !analyzer.semantic_errors.is_empty() {
+        let source = NamedSource::new(input_path.to_string_lossy().to_string(), input.clone());
         eprintln!("Semantic errors:");
         for err in &analyzer.semantic_errors {
-            eprintln!("- {:?}", err);
+            let report = miette::Report::new(err.clone()).with_source_code(source.clone());
+            eprintln!("{:?}", report);
         }
         bail!("semantic analysis failed");
     }
@@ -108,10 +123,11 @@ fn main() -> Result<()> {
         symbols: Default::default(),
     };
 
-    let comp_unit = CompUnit::cast(root).context("Root node is not CompUnit")?;
+    let comp_unit =
+        CompUnit::cast(root).ok_or_else(|| anyhow::anyhow!("Root node is not CompUnit"))?;
     program
         .compile_comp_unit(comp_unit)
-        .context("codegen failed")?;
+        .map_err(|e| anyhow::anyhow!("codegen failed: {}", e))?;
 
     let opt_level: OptimizationLevel = args.opt_level.into();
     Target::initialize_all(&InitializationConfig::default());
@@ -127,7 +143,7 @@ fn main() -> Result<()> {
             RelocMode::Default,
             CodeModel::Default,
         )
-        .context("failed to create target machine")?;
+        .ok_or_else(|| anyhow::anyhow!("failed to create target machine"))?;
 
     module.set_triple(&machine.get_triple());
     module.set_data_layout(&machine.get_target_data().get_data_layout());
@@ -161,7 +177,7 @@ fn main() -> Result<()> {
                 .arg("-o")
                 .arg(&output_path)
                 .status()
-                .context("link failed")?;
+                .map_err(|e| anyhow::anyhow!("link failed: {}", e))?;
             if !status.success() {
                 bail!("linker returned non-zero status");
             }

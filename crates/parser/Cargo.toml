@@ -6,8 +6,10 @@ edition.workspace = true
 [dependencies]
 syntax.workspace = true
 lexer.workspace = true
+tools.workspace = true
 
 text-size.workspace = true
 rowan.workspace = true
 insta.workspace = true
 thiserror.workspace = true
+miette.workspace = true

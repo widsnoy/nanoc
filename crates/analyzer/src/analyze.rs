@@ -399,7 +399,7 @@ impl Visitor for Module {
         // 检查是否是左值
         let is_valid_lvalue = self.is_lvalue_expr(&lhs);
         if !is_valid_lvalue {
-            self.new_error(SemanticError::InvalidLValue { range: lhs_range });
+            self.new_error(SemanticError::NotALValue { range: lhs_range });
             return;
         }
 
@@ -626,7 +626,7 @@ impl Visitor for Module {
         if let Some(inner_ty) = self.get_expr_type(expr.text_range()) {
             let result_ty = if op_kind == SyntaxKind::AMP {
                 if !self.is_lvalue_expr(&expr) {
-                    self.new_error(SemanticError::AddressOfNonLvalue {
+                    self.new_error(SemanticError::AddressOfRight {
                         range: expr.text_range(),
                     });
 
@@ -655,6 +655,7 @@ impl Visitor for Module {
                     self.new_error(SemanticError::ApplyOpOnType {
                         ty: inner_ty.clone(),
                         op: "*".to_string(),
+                        range: expr.text_range(),
                     });
                     return;
                 }
@@ -716,7 +717,7 @@ impl Visitor for Module {
 
         let var = self.variables.get(*var_id).unwrap();
         let index_count = node.indices().count();
-        let result_ty = match Self::compute_indexed_type(&var.ty, index_count) {
+        let result_ty = match Self::compute_indexed_type(&var.ty, index_count, node_range) {
             Ok(ty) => ty,
             Err(e) => {
                 self.new_error(e);
@@ -846,6 +847,7 @@ impl Visitor for Module {
                 self.new_error(SemanticError::ApplyOpOnType {
                     ty: base_ty.clone(),
                     op: op_node.op().text().to_string(),
+                    range: base_range,
                 });
                 return;
             }
@@ -864,7 +866,7 @@ impl Visitor for Module {
                 field.ty.clone()
             } else {
                 // 有数组索引，需要计算索引后的类型
-                match Self::compute_indexed_type(&field.ty, indices.len()) {
+                match Self::compute_indexed_type(&field.ty, indices.len(), filed_access_range) {
                     Ok(ty) => ty,
                     Err(e) => {
                         self.new_error(e);

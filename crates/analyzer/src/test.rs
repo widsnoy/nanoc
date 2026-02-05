@@ -5,7 +5,7 @@ use crate::module::Module;
 
 fn analyze(source: &str) -> Module {
     let parser = Parser::new(source);
-    let (tree, errors) = parser.parse();
+    let (tree, errors, _) = parser.parse();
 
     if !errors.is_empty() {
         panic!("Parser errors: {:?}", errors);

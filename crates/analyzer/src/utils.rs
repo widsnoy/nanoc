@@ -1,5 +1,6 @@
 use parser::ast::{AstNode as _, InitVal};
 use syntax::{Expr, IndexVal, OpNode, PostfixExpr, SyntaxKind, UnaryExpr};
+use tools::TextRange;
 
 use crate::error::SemanticError;
 use crate::{
@@ -15,17 +16,19 @@ impl Module {
     pub(crate) fn compute_indexed_type(
         ty: &NType,
         index_count: usize,
+        range: TextRange,
     ) -> Result<NType, SemanticError> {
         let mut current = ty.clone();
         for _ in 0..index_count {
             current = match current {
                 NType::Array(inner, _) => *inner,
                 NType::Pointer { pointee, .. } => *pointee,
-                NType::Const(inner) => Self::compute_indexed_type(&inner, 1)?,
+                NType::Const(inner) => Self::compute_indexed_type(&inner, 1, range)?,
                 _ => {
                     return Err(SemanticError::ApplyOpOnType {
                         ty: current,
                         op: "[]".to_string(),
+                        range,
                     });
                 }
             };

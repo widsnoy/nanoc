@@ -64,8 +64,11 @@ impl Parser<'_> {
             self.bump();
             self.parse_name() // 传播返回值
         } else {
-            self.parse_errors
-                .push(ParserError::Expected(vec![SyntaxKind::PRIMIT_TYPE]));
+            let range = self.current_range();
+            self.parse_errors.push(ParserError::Expected {
+                expected: vec![SyntaxKind::PRIMIT_TYPE],
+                range,
+            });
             false
         };
 
