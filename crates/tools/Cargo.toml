@@ -5,3 +5,4 @@ edition.workspace = true
 
 [dependencies]
 text-size.workspace = true
+miette.workspace = true

@@ -11,3 +11,5 @@ tools.workspace = true
 thunderdome.workspace = true
 insta.workspace = true
 rowan.workspace = true
+thiserror.workspace = true
+miette.workspace = true

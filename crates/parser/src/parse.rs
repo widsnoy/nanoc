@@ -7,19 +7,38 @@ mod statement;
 mod r#struct;
 mod variable;
 
-use lexer::Lexer;
+use lexer::{Lexer, LexerError};
+use miette::Diagnostic;
 use rowan::{Checkpoint, GreenNode, GreenNodeBuilder};
 use syntax::SyntaxKind;
+use thiserror::Error;
+use tools::TextRange;
 
-#[derive(Debug)]
-pub enum ParserError {
-    Expected(Vec<SyntaxKind>),
+/// 格式化 SyntaxKind 列表为字符串
+fn format_kinds(kinds: &[SyntaxKind]) -> String {
+    kinds
+        .iter()
+        .map(|k| format!("{:?}", k))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
-impl std::fmt::Display for ParserError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+#[derive(Debug, Clone, Error, Diagnostic)]
+pub enum ParserError {
+    #[error("expected one of: {}", format_kinds(expected))]
+    #[diagnostic(code(parser::expected_token))]
+    Expected {
+        expected: Vec<SyntaxKind>,
+        #[label("expected {}", format_kinds(expected))]
+        range: TextRange,
+    },
+}
+
+impl ParserError {
+    /// 获取错误的位置范围
+    pub fn range(&self) -> &TextRange {
         match self {
-            ParserError::Expected(kind) => write!(f, "expected token: {:?}", kind),
+            Self::Expected { range, .. } => range,
         }
     }
 }
@@ -40,13 +59,22 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(mut self) -> (GreenNode, Vec<ParserError>) {
+    pub fn parse(mut self) -> (GreenNode, Vec<ParserError>, Vec<LexerError>) {
         self.parse_root();
-        self.finish()
+        (
+            self.builder.finish(),
+            self.parse_errors,
+            self.lexer.lexer_errors,
+        )
     }
 
     pub(crate) fn checkpoint(&self) -> Checkpoint {
         self.builder.checkpoint()
+    }
+
+    /// 获取当前 token 的位置范围
+    pub(crate) fn current_range(&self) -> TextRange {
+        self.lexer.current_range()
     }
 
     pub(crate) fn start_node(&mut self, kind: SyntaxKind) {
@@ -63,11 +91,11 @@ impl<'a> Parser<'a> {
 
     /// 消费当前 token 并添加到语法树
     pub(crate) fn bump(&mut self) {
-        if self.lexer.current() == SyntaxKind::EOF {
+        if self.lexer.current_kind() == SyntaxKind::EOF {
             return;
         }
         self.bump_trivia();
-        let kind = self.lexer.current();
+        let kind = self.lexer.current_kind();
         let text = self.lexer.current_text();
 
         self.builder.token(rowan::SyntaxKind(kind as u16), text);
@@ -76,18 +104,13 @@ impl<'a> Parser<'a> {
 
     /// 消费 token 直到遇到非空白字符
     pub(crate) fn bump_trivia(&mut self) {
-        while self.lexer.current().is_trivia() {
+        while self.lexer.current_kind().is_trivia() {
             self.builder.token(
-                rowan::SyntaxKind(self.lexer.current() as u16),
+                rowan::SyntaxKind(self.lexer.current_kind() as u16),
                 self.lexer.current_text(),
             );
             self.lexer.bump();
         }
-    }
-
-    /// 完成解析并返回 GreenNode
-    pub(crate) fn finish(self) -> (GreenNode, Vec<ParserError>) {
-        (self.builder.finish(), self.parse_errors)
     }
 
     /// 检查当前 token 是否匹配 `kind`（跳过空白）

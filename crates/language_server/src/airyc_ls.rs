@@ -64,26 +64,39 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let uri = params.text_document.uri;
+        let uri = params.text_document.uri.clone();
         let text = params.text_document.text;
 
         // 创建文档
         let document = Document::new(text);
-        self.documents.insert(uri, document);
 
-        // TODO: 发布诊断信息
+        // 发布诊断信息
+        let diagnostics =
+            lsp_features::diagnostics::compute_diagnostics(&document.errors, &document.line_index);
+
+        self.documents.insert(uri.clone(), document);
+        self.client
+            .publish_diagnostics(uri, diagnostics, None)
+            .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let uri = params.text_document.uri;
+        let uri = params.text_document.uri.clone();
 
         if let Some(change) = params.content_changes.first() {
             // 更新文档内容
             if let Some(mut doc) = self.documents.get_mut(&uri) {
                 doc.update(change.text.clone());
-            }
 
-            //TODO: 重新发布诊断信息
+                // 重新发布诊断信息
+                let diagnostics =
+                    lsp_features::diagnostics::compute_diagnostics(&doc.errors, &doc.line_index);
+
+                drop(doc); // 释放锁
+                self.client
+                    .publish_diagnostics(uri, diagnostics, None)
+                    .await;
+            }
         }
     }
 

@@ -1,4 +1,5 @@
 use crate::{module::StructID, value::Value};
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NType {
@@ -9,6 +10,26 @@ pub enum NType {
     Pointer { pointee: Box<NType>, is_const: bool },
     Struct(StructID),
     Const(Box<NType>),
+}
+
+impl fmt::Display for NType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NType::Int => write!(f, "i32"),
+            NType::Float => write!(f, "f32"),
+            NType::Void => write!(f, "void"),
+            NType::Array(inner, size) => write!(f, "[{}; {}]", inner, size),
+            NType::Pointer { pointee, is_const } => {
+                if *is_const {
+                    write!(f, "*const {}", pointee)
+                } else {
+                    write!(f, "*mut {}", pointee)
+                }
+            }
+            NType::Struct(id) => write!(f, "struct#{:?}", id.0),
+            NType::Const(inner) => write!(f, "const {}", inner),
+        }
+    }
 }
 
 impl NType {

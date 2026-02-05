@@ -1,5 +1,6 @@
 mod airyc_ls;
 mod document;
+mod error;
 mod lsp_features;
 mod utils;
 

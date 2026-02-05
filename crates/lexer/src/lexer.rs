@@ -1,7 +1,10 @@
 use logos::Logos;
-use std::ops::Range;
+use miette::Diagnostic;
 use syntax::SyntaxKind;
+use thiserror::Error;
+use tools::TextRange;
 
+/// Lexer 错误类型（用于 logos）
 #[derive(Debug, Default, Clone, PartialEq)]
 pub enum LexerErrorKind {
     InvalidInteger,
@@ -10,12 +13,41 @@ pub enum LexerErrorKind {
     Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq, thiserror::Error)]
-#[error("Lexer error: {kind:?} at {span:?}: {text}")]
-pub struct LexerError {
-    pub kind: LexerErrorKind,
-    pub text: String,
-    pub span: Range<usize>,
+/// Lexer 错误（带位置信息，用于诊断）
+#[derive(Debug, Clone, PartialEq, Error, Diagnostic)]
+pub enum LexerError {
+    #[error("invalid integer literal: {text}")]
+    #[diagnostic(code(lexer::invalid_integer))]
+    InvalidInteger {
+        text: String,
+        #[label("invalid integer literal: {text}")]
+        range: TextRange,
+    },
+
+    #[error("invalid float literal: {text}")]
+    #[diagnostic(code(lexer::invalid_float))]
+    InvalidFloat {
+        text: String,
+        #[label("invalid float literal: {text}")]
+        range: TextRange,
+    },
+
+    #[error("unknown lexer error")]
+    #[diagnostic(code(lexer::unknown))]
+    Unknown {
+        #[label("unknown lexer error")]
+        range: TextRange,
+    },
+}
+
+impl LexerError {
+    pub fn range(&self) -> &TextRange {
+        match self {
+            LexerError::InvalidInteger { range, .. }
+            | LexerError::InvalidFloat { range, .. }
+            | LexerError::Unknown { range } => range,
+        }
+    }
 }
 
 /// 词法单元
@@ -197,9 +229,10 @@ impl From<Token> for SyntaxKind {
 
 /// 词法分析器
 pub struct Lexer<'a> {
-    tokens: Vec<(SyntaxKind, &'a str, Range<usize>)>,
+    tokens: Vec<(SyntaxKind, &'a str, TextRange)>,
     pos: usize,
     pos_skip_trivia: usize,
+    pub lexer_errors: Vec<LexerError>,
 }
 
 impl<'a> Lexer<'a> {
@@ -207,12 +240,29 @@ impl<'a> Lexer<'a> {
         let mut tokens = Vec::new();
         let inner = Token::lexer(text).spanned();
 
+        let mut lexer_errors = vec![];
         for (res, span) in inner {
             let kind = match res {
                 Ok(token) => token.into(),
-                Err(_) => SyntaxKind::ERROR,
+                Err(e) => {
+                    let err = match e {
+                        LexerErrorKind::InvalidInteger => LexerError::InvalidInteger {
+                            text: text[span.clone()].to_string(),
+                            range: span.clone().into(),
+                        },
+                        LexerErrorKind::InvalidFloat => LexerError::InvalidFloat {
+                            text: text[span.clone()].to_string(),
+                            range: span.clone().into(),
+                        },
+                        LexerErrorKind::Unknown => LexerError::Unknown {
+                            range: span.clone().into(),
+                        },
+                    };
+                    lexer_errors.push(err);
+                    SyntaxKind::ERROR
+                }
             };
-            tokens.push((kind, &text[span.clone()], span));
+            tokens.push((kind, &text[span.clone()], span.into()));
         }
 
         let pos_skip_trivia = Self::get_next_non_trivia_pos(&tokens, 0usize);
@@ -220,12 +270,13 @@ impl<'a> Lexer<'a> {
             tokens,
             pos: 0,
             pos_skip_trivia,
+            lexer_errors,
         }
     }
 
     /// 从当前位置获取第一个非空白 token 的位置
     fn get_next_non_trivia_pos(
-        tokens: &[(SyntaxKind, &str, Range<usize>)],
+        tokens: &[(SyntaxKind, &str, TextRange)],
         start_pos: usize,
     ) -> usize {
         let mut pos = start_pos;
@@ -240,7 +291,7 @@ impl<'a> Lexer<'a> {
     }
 
     /// 返回当前 token 类型
-    pub fn current(&self) -> SyntaxKind {
+    pub fn current_kind(&self) -> SyntaxKind {
         self.tokens
             .get(self.pos)
             .map(|t| t.0)
@@ -252,7 +303,17 @@ impl<'a> Lexer<'a> {
         self.tokens.get(self.pos).map(|t| t.1).unwrap_or("")
     }
 
-    pub fn get_tokens(&self) -> &[(SyntaxKind, &str, Range<usize>)] {
+    /// 返回当前 range
+    pub fn current_range(&self) -> TextRange {
+        self.tokens.get(self.pos).map(|t| t.2).unwrap_or(
+            self.tokens
+                .last()
+                .map(|t| t.2)
+                .unwrap_or(TextRange::new(0, 0)),
+        )
+    }
+
+    pub fn get_tokens(&self) -> &[(SyntaxKind, &str, TextRange)] {
         &self.tokens
     }
 
@@ -284,7 +345,7 @@ mod tests {
     fn check(source: &str, expected_tokens: &[(SyntaxKind, &str)]) {
         let mut lexer = Lexer::new(source);
         for (expected_kind, expected_text) in expected_tokens {
-            let kind = lexer.current();
+            let kind = lexer.current_kind();
             let text = lexer.current_text();
 
             assert_eq!(kind, *expected_kind);
@@ -292,7 +353,7 @@ mod tests {
 
             lexer.bump();
         }
-        assert_eq!(lexer.current(), EOF);
+        assert_eq!(lexer.current_kind(), EOF);
     }
 
     #[test]

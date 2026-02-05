@@ -32,6 +32,7 @@ thunderdome = "0.6.1"
 # smol_str = "0.3.4"
 anyhow = "1.0"
 clap = { version = "4.5.54", features = ["derive"] }
+miette = { version = "7.6.0", features = ["fancy"] }
 
 syntax = { path = "crates/syntax" }
 lexer = { path = "crates/lexer" }
@@ -48,3 +49,4 @@ analyzer.workspace = true
 inkwell.workspace = true
 anyhow.workspace = true
 clap.workspace = true
+miette.workspace = true

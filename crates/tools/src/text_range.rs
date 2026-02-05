@@ -1,4 +1,5 @@
-use std::ops::Deref;
+use miette::SourceSpan;
+use std::ops::{Deref, Range};
 
 /// 包装 `text_size::TextRange`, 实现 Ord
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
@@ -10,6 +11,24 @@ impl TextRange {
             text_size::TextSize::new(start),
             text_size::TextSize::new(end),
         ))
+    }
+}
+
+impl From<TextRange> for Range<usize> {
+    fn from(value: TextRange) -> Self {
+        value.0.start().into()..value.0.end().into()
+    }
+}
+
+impl From<Range<usize>> for TextRange {
+    fn from(value: Range<usize>) -> Self {
+        TextRange::new(value.start as u32, value.end as u32)
+    }
+}
+
+impl From<TextRange> for SourceSpan {
+    fn from(value: TextRange) -> Self {
+        SourceSpan::from(value.0.start().into()..value.0.end().into())
     }
 }
 

@@ -1,7 +1,9 @@
 //! array 的初始化
 use std::collections::HashMap;
 
+use miette::Diagnostic;
 use syntax::{AirycLanguage, AstNode, Expr, InitVal};
+use thiserror::Error;
 use tools::TextRange;
 
 use crate::{
@@ -69,16 +71,23 @@ impl ArrayTreeTrait for InitVal {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Error, Diagnostic)]
 pub enum ArrayInitError {
-    /// 将数组赋值给标量
+    #[error("Cannot assign array to scalar")]
+    #[diagnostic(code(array::assign_array_to_number))]
     AssignArrayToNumber,
-    /// 数组索引越界
+
+    #[error("Array index out of bound")]
+    #[diagnostic(code(array::index_out_of_bound))]
     IndexOutOfBound,
-    /// 索引和类型不匹配
+
+    #[error("Index and type mismatch")]
+    #[diagnostic(code(array::mismatch_index_and_type))]
     MisMatchIndexAndType,
-    /// 初始化 struct 出错
-    InitialStructValue(SemanticError),
+
+    #[error("Struct initialization error: {0}")]
+    #[diagnostic(code(array::initial_struct_value))]
+    InitialStructValue(#[from] SemanticError),
 }
 
 impl ArrayTree {

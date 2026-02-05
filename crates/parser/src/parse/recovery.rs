@@ -15,8 +15,11 @@ impl<'a> Parser<'a> {
         }
 
         // 记录错误
-        self.parse_errors
-            .push(ParserError::Expected(vec![expect_token]));
+        let range = self.current_range();
+        self.parse_errors.push(ParserError::Expected {
+            expected: vec![expect_token],
+            range,
+        });
 
         // 如果当前 token 是恢复词，不 bump，返回 false
         if cond(self.peek()) {
@@ -39,8 +42,11 @@ impl<'a> Parser<'a> {
     /// 要保证有 SyntaxKind::EOF
     pub(crate) fn skip_until(&mut self, next_start_token: &[SyntaxKind]) {
         assert!(next_start_token.contains(&SyntaxKind::EOF));
-        self.parse_errors
-            .push(ParserError::Expected(next_start_token.to_vec()));
+        let range = self.current_range();
+        self.parse_errors.push(ParserError::Expected {
+            expected: next_start_token.to_vec(),
+            range,
+        });
         if next_start_token.iter().any(|x| self.at(*x)) {
             return;
         }
