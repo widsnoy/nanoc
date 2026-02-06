@@ -82,7 +82,7 @@ impl TypeVisitor for Module {
                 } else if pt_node.struct_token().is_some() {
                     let name_node = pt_node.name();
                     if let Some(Some(name)) = name_node.map(|n| n.var_name()) {
-                        if let Some(sid) = self.get_struct_by_name(&name) {
+                        if let Some(sid) = self.get_struct_id_by_name(&name) {
                             NType::Struct(sid)
                         } else {
                             self.new_error(SemanticError::StructUndefined {
