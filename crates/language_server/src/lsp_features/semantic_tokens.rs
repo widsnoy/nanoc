@@ -119,7 +119,7 @@ fn classify_token(
     kind: SyntaxKind,
     range: TextRange,
     module: &Module,
-    token: &rowan::SyntaxToken<syntax::AirycLanguage>,
+    token: &SyntaxToken,
 ) -> (Option<u32>, u32) {
     match kind {
         // 关键字
@@ -171,11 +171,11 @@ fn classify_token(
     }
 }
 
-/// 分类标识符（关键：结合语义信息）
+/// 分类标识符
 fn classify_identifier(
     range: TextRange,
     module: &Module,
-    _token: &SyntaxToken,
+    token: &SyntaxToken,
 ) -> (Option<u32>, u32) {
     // 直接查询 module 中的变量信息
     if let Some(var) = module.get_varaible_by_range(range.into()) {
@@ -189,7 +189,25 @@ fn classify_identifier(
         return (Some(4), modifiers); // VARIABLE
     }
 
-    // FIXME: Refer
+    // funcation
+    if let Some(node) = token.parent().and_then(|n| n.parent())
+        && matches!(
+            node.kind(),
+            SyntaxKind::FUNC_SIGN | SyntaxKind::FUNC_ATTACH | SyntaxKind::CALL_EXPR
+        )
+    {
+        return (Some(3), 0);
+    }
+
+    // struct
+    if let Some(node) = token.parent().and_then(|n| n.parent())
+        && matches!(
+            node.kind(),
+            SyntaxKind::PRIMIT_TYPE | SyntaxKind::STRUCT_DEF
+        )
+    {
+        return (Some(2), 0);
+    }
 
     // 默认为变量（可能是未解析的标识符）
     (Some(4), 0) // VARIABLE
