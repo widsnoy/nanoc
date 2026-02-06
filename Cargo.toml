@@ -13,7 +13,8 @@ members = [
     "crates/runtime",
     "crates/test",
     "crates/language_server", 
-    "crates/utils", "crates/tools", 
+    "crates/utils", 
+    "crates/tools", 
 ]
 resolver = "2"
 

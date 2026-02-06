@@ -24,6 +24,7 @@ pub enum SyntaxKind {
     LET_KW,      // "let"
     FN_KW,       // "fn"
     MUT_KW,      // "mut"
+    ATTACH_KW,   // "attach"
 
     IDENT,         // my_var
     INT_LITERAL,   // 123, 0xFF
@@ -61,6 +62,8 @@ pub enum SyntaxKind {
 
     FUNC_DEF,
     FUNC_SIGN,
+    FUNC_ATTACH,
+
     VAR_DEF,
     INIT_VAL,
     STRUCT_DEF,

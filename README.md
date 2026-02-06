@@ -6,7 +6,7 @@ A toy programming language
 
 ```text
 CompUnit    := {GlobalDecl}
-GlobalDecl  := VarDef | FuncDef | StructDef
+GlobalDecl  := VarDef | FuncDef | StructDef | FuncAttach
 
 Type        := ['const'] PrimitType | Pointer Type | '[' Type ';' Expr ']'
 PrimitType  := 'void' | 'i32' | 'f32' | 'struct' Name
@@ -20,6 +20,8 @@ FuncSign    := 'fn' Name '(' [FuncFParams] ')' ['->' Type]
 FuncFParams := FuncFParam {',' FuncFParam}
 FuncFParam  := Name: Type
 FuncRParams := Expr {',' Expr}
+
+FuncAttach  := 'attach' Name Block
 
 StructDef   := 'struct' Name '{' [StructField {',' StructField}] '}'
 StructField := Name: Type
