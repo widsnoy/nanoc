@@ -82,7 +82,7 @@ impl DeclVisitor for Module {
                 ty.clone()
             } else {
                 self.new_error(SemanticError::TypeUndefined {
-                    range: ty_node.text_range(),
+                    range: utils::trim_node_text_range(&ty_node),
                 });
                 continue;
             };
@@ -134,7 +134,7 @@ impl DeclVisitor for Module {
             ty.clone()
         } else {
             self.new_error(SemanticError::TypeUndefined {
-                range: ty_node.text_range(),
+                range: utils::trim_node_text_range(&ty_node),
             });
             return;
         };
@@ -155,6 +155,7 @@ impl DeclVisitor for Module {
         if let Some(init_val_node) = def.init() {
             // 如果是表达式，已经在 expr 处理，所以只用考虑 Array 和 Struct 类型
             let init_range = init_val_node.text_range();
+            let init_range_trimmed = utils::trim_node_text_range(&init_val_node);
             // 如果 InitVal 包含一个表达式，使用表达式的范围
             let expr_range = init_val_node
                 .expr()
@@ -167,7 +168,7 @@ impl DeclVisitor for Module {
                         Err(e) => {
                             self.new_error(SemanticError::ArrayError {
                                 message: Box::new(e),
-                                range: init_range,
+                                range: init_range_trimmed,
                             });
                             return;
                         }
@@ -201,7 +202,9 @@ impl DeclVisitor for Module {
                 None => {
                     // global 变量必须编译时能求值
                     if is_global {
-                        self.new_error(SemanticError::ConstantExprExpected { range: init_range });
+                        self.new_error(SemanticError::ConstantExprExpected {
+                            range: init_range_trimmed,
+                        });
                         return;
                     }
                 }

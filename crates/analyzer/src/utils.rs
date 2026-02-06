@@ -53,11 +53,12 @@ impl Module {
         struct_id: StructID,
         init_val_node: InitVal,
     ) -> Result<Option<Value>, SemanticError> {
-        let range = init_val_node.text_range();
-        // 获取 struct 定义
+        let range_trimmed = utils::trim_node_text_range(&init_val_node); // 获取 struct 定义
         let struct_def = self
             .get_struct_by_id(struct_id)
-            .ok_or(SemanticError::TypeUndefined { range })?;
+            .ok_or(SemanticError::TypeUndefined {
+                range: range_trimmed,
+            })?;
 
         // 否则是初始化列表 { init1, init2, ... }
         let inits: Vec<_> = init_val_node.inits().collect();
@@ -67,7 +68,7 @@ impl Module {
             return Err(SemanticError::StructInitFieldCountMismatch {
                 expected: struct_def.fields.len(),
                 found: inits.len(),
-                range,
+                range: range_trimmed,
             });
         }
 
@@ -215,7 +216,7 @@ impl Module {
             if ty.is_const() {
                 self.new_error(SemanticError::AssignToConst {
                     name: "field".to_string(),
-                    range: node.text_range(),
+                    range: utils::trim_node_text_range(node),
                 });
                 return false;
             }
@@ -243,7 +244,7 @@ impl Module {
         if expr_ty.is_const() {
             self.new_error(SemanticError::AssignToConst {
                 name: "*ptr".to_string(),
-                range: node.text_range(),
+                range: utils::trim_node_text_range(node),
             });
             false
         } else {

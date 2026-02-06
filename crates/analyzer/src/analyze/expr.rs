@@ -1,8 +1,8 @@
 //! 表达式相关的语义分析
 
+use syntax::SyntaxKind;
 use syntax::ast::*;
 use syntax::visitor::ExprVisitor;
-use syntax::{SyntaxKind, *};
 
 use crate::array::ArrayTreeValue;
 use crate::error::SemanticError;
@@ -154,7 +154,7 @@ impl ExprVisitor for Module {
             let result_ty = if op_kind == SyntaxKind::AMP {
                 if !self.is_lvalue_expr(&expr) {
                     self.new_error(SemanticError::AddressOfRight {
-                        range: expr.text_range(),
+                        range: utils::trim_node_text_range(&expr),
                     });
 
                     return;
@@ -244,7 +244,11 @@ impl ExprVisitor for Module {
 
         let var = self.variables.get(*var_id).unwrap();
         let index_count = node.indices().count();
-        let result_ty = match Self::compute_indexed_type(&var.ty, index_count, node_range) {
+        let result_ty = match Self::compute_indexed_type(
+            &var.ty,
+            index_count,
+            utils::trim_node_text_range(&node),
+        ) {
             Ok(ty) => ty,
             Err(e) => {
                 self.new_error(e);
@@ -274,7 +278,7 @@ impl ExprVisitor for Module {
                     self.new_error(SemanticError::TypeMismatch {
                         expected: NType::Int,
                         found: NType::Float,
-                        range,
+                        range: utils::trim_node_text_range(&indice),
                     });
                     return;
                 };
@@ -285,7 +289,7 @@ impl ExprVisitor for Module {
                 Err(e) => {
                     self.new_error(SemanticError::ArrayError {
                         message: Box::new(e),
-                        range: node.text_range(),
+                        range: utils::trim_node_text_range(&node),
                     });
                     return;
                 }
@@ -353,7 +357,7 @@ impl ExprVisitor for Module {
                 } else {
                     self.new_error(SemanticError::NotAStruct {
                         ty: base_ty.clone(),
-                        range: base_range,
+                        range: utils::trim_node_text_range(&base_expr),
                     });
                     return;
                 }
@@ -365,7 +369,7 @@ impl ExprVisitor for Module {
                 } else {
                     self.new_error(SemanticError::NotAStructPointer {
                         ty: base_ty.clone(),
-                        range: base_range,
+                        range: utils::trim_node_text_range(&base_expr),
                     });
                     return;
                 }
@@ -374,7 +378,7 @@ impl ExprVisitor for Module {
                 self.new_error(SemanticError::ApplyOpOnType {
                     ty: base_ty.clone(),
                     op: op_node.op().text().to_string(),
-                    range: base_range,
+                    range: utils::trim_node_text_range(&base_expr),
                 });
                 return;
             }
@@ -393,7 +397,11 @@ impl ExprVisitor for Module {
                 field.ty.clone()
             } else {
                 // 有数组索引，需要计算索引后的类型
-                match Self::compute_indexed_type(&field.ty, indices.len(), filed_access_range) {
+                match Self::compute_indexed_type(
+                    &field.ty,
+                    indices.len(),
+                    utils::trim_node_text_range(&field_access_node),
+                ) {
                     Ok(ty) => ty,
                     Err(e) => {
                         self.new_error(e);
@@ -442,7 +450,7 @@ impl ExprVisitor for Module {
             self.new_error(SemanticError::FieldNotFound {
                 struct_name: unsafe { &*struct_def }.name.clone(),
                 field_name: member_name,
-                range,
+                range: utils::trim_node_text_range(&node),
             });
         }
     }
