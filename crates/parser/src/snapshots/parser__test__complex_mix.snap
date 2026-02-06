@@ -7,15 +7,15 @@ COMP_UNIT@0..214
   WHITESPACE@1..5 "    "
   VAR_DEF@5..30
     LET_KW@5..8 "let"
-    NAME@8..12
-      WHITESPACE@8..9 " "
+    WHITESPACE@8..9 " "
+    NAME@9..12
       IDENT@9..12 "MAX"
     COLON@12..13 ":"
-    TYPE@13..23
-      WHITESPACE@13..14 " "
+    WHITESPACE@13..14 " "
+    TYPE@14..23
       CONST_KW@14..19 "const"
-      PRIMIT_TYPE@19..23
-        WHITESPACE@19..20 " "
+      WHITESPACE@19..20 " "
+      PRIMIT_TYPE@20..23
         INT_KW@20..23 "i32"
     WHITESPACE@23..24 " "
     EQ@24..25 "="
@@ -28,70 +28,71 @@ COMP_UNIT@0..214
   WHITESPACE@31..35 "    "
   VAR_DEF@35..55
     LET_KW@35..38 "let"
-    NAME@38..40
-      WHITESPACE@38..39 " "
+    WHITESPACE@38..39 " "
+    NAME@39..40
       IDENT@39..40 "p"
     COLON@40..41 ":"
-    TYPE@41..54
-      PRIMIT_TYPE@41..54
-        WHITESPACE@41..42 " "
+    WHITESPACE@41..42 " "
+    TYPE@42..54
+      PRIMIT_TYPE@42..54
         STRUCT_KW@42..48 "struct"
-        NAME@48..54
-          WHITESPACE@48..49 " "
+        WHITESPACE@48..49 " "
+        NAME@49..54
           IDENT@49..54 "Point"
     SEMI@54..55 ";"
   NEWLINE@55..56 "\n"
   NEWLINE@56..57 "\n"
   WHITESPACE@57..61 "    "
   FUNC_DEF@61..209
-    FN_KW@61..63 "fn"
-    NAME@63..68
+    FUNC_SIGN@61..113
+      FN_KW@61..63 "fn"
       WHITESPACE@63..64 " "
-      IDENT@64..68 "main"
-    L_PAREN@68..69 "("
-    FUNC_F_PARAMS@69..105
-      FUNC_F_PARAM@69..78
-        NAME@69..73
-          IDENT@69..73 "argc"
-        COLON@73..74 ":"
-        TYPE@74..78
-          PRIMIT_TYPE@74..78
-            WHITESPACE@74..75 " "
-            INT_KW@75..78 "i32"
-      COMMA@78..79 ","
-      FUNC_F_PARAM@79..105
-        NAME@79..84
+      NAME@64..68
+        IDENT@64..68 "main"
+      L_PAREN@68..69 "("
+      FUNC_F_PARAMS@69..105
+        FUNC_F_PARAM@69..78
+          NAME@69..73
+            IDENT@69..73 "argc"
+          COLON@73..74 ":"
+          WHITESPACE@74..75 " "
+          TYPE@75..78
+            PRIMIT_TYPE@75..78
+              INT_KW@75..78 "i32"
+        COMMA@78..79 ","
+        FUNC_F_PARAM@79..105
           WHITESPACE@79..80 " "
-          IDENT@80..84 "argv"
-        COLON@84..85 ":"
-        TYPE@85..105
-          POINTER@85..90
-            WHITESPACE@85..86 " "
-            STAR@86..87 "*"
-            MUT_KW@87..90 "mut"
-          TYPE@90..105
+          NAME@80..84
+            IDENT@80..84 "argv"
+          COLON@84..85 ":"
+          WHITESPACE@85..86 " "
+          TYPE@86..105
+            POINTER@86..90
+              STAR@86..87 "*"
+              MUT_KW@87..90 "mut"
             WHITESPACE@90..91 " "
-            L_BRACK@91..92 "["
-            TYPE@92..100
-              POINTER@92..96
-                STAR@92..93 "*"
-                MUT_KW@93..96 "mut"
-              TYPE@96..100
-                PRIMIT_TYPE@96..100
-                  WHITESPACE@96..97 " "
-                  INT_KW@97..100 "i32"
-            SEMI@100..101 ";"
-            LITERAL@101..104
-              WHITESPACE@101..102 " "
-              INT_LITERAL@102..104 "10"
-            R_BRACK@104..105 "]"
-    R_PAREN@105..106 ")"
-    WHITESPACE@106..107 " "
-    ARROW@107..109 "->"
-    TYPE@109..113
-      PRIMIT_TYPE@109..113
-        WHITESPACE@109..110 " "
-        INT_KW@110..113 "i32"
+            TYPE@91..105
+              L_BRACK@91..92 "["
+              TYPE@92..100
+                POINTER@92..96
+                  STAR@92..93 "*"
+                  MUT_KW@93..96 "mut"
+                WHITESPACE@96..97 " "
+                TYPE@97..100
+                  PRIMIT_TYPE@97..100
+                    INT_KW@97..100 "i32"
+              SEMI@100..101 ";"
+              LITERAL@101..104
+                WHITESPACE@101..102 " "
+                INT_LITERAL@102..104 "10"
+              R_BRACK@104..105 "]"
+      R_PAREN@105..106 ")"
+      WHITESPACE@106..107 " "
+      ARROW@107..109 "->"
+      WHITESPACE@109..110 " "
+      TYPE@110..113
+        PRIMIT_TYPE@110..113
+          INT_KW@110..113 "i32"
     BLOCK@113..209
       WHITESPACE@113..114 " "
       L_BRACE@114..115 "{"
@@ -99,13 +100,13 @@ COMP_UNIT@0..214
         NEWLINE@115..116 "\n"
         WHITESPACE@116..124 "        "
         LET_KW@124..127 "let"
-        NAME@127..129
-          WHITESPACE@127..128 " "
+        WHITESPACE@127..128 " "
+        NAME@128..129
           IDENT@128..129 "a"
         COLON@129..130 ":"
-        TYPE@130..134
-          PRIMIT_TYPE@130..134
-            WHITESPACE@130..131 " "
+        WHITESPACE@130..131 " "
+        TYPE@131..134
+          PRIMIT_TYPE@131..134
             INT_KW@131..134 "i32"
         WHITESPACE@134..135 " "
         EQ@135..136 "="
@@ -118,18 +119,18 @@ COMP_UNIT@0..214
         NEWLINE@139..140 "\n"
         WHITESPACE@140..148 "        "
         LET_KW@148..151 "let"
-        NAME@151..155
-          WHITESPACE@151..152 " "
+        WHITESPACE@151..152 " "
+        NAME@152..155
           IDENT@152..155 "ptr"
         COLON@155..156 ":"
-        TYPE@156..165
-          POINTER@156..161
-            WHITESPACE@156..157 " "
+        WHITESPACE@156..157 " "
+        TYPE@157..165
+          POINTER@157..161
             STAR@157..158 "*"
             MUT_KW@158..161 "mut"
-          TYPE@161..165
-            PRIMIT_TYPE@161..165
-              WHITESPACE@161..162 " "
+          WHITESPACE@161..162 " "
+          TYPE@162..165
+            PRIMIT_TYPE@162..165
               INT_KW@162..165 "i32"
         WHITESPACE@165..166 " "
         EQ@166..167 "="
@@ -146,22 +147,22 @@ COMP_UNIT@0..214
         NEWLINE@171..172 "\n"
         WHITESPACE@172..180 "        "
         LET_KW@180..183 "let"
-        NAME@183..185
-          WHITESPACE@183..184 " "
+        WHITESPACE@183..184 " "
+        NAME@184..185
           IDENT@184..185 "b"
         COLON@185..186 ":"
-        TYPE@186..196
-          WHITESPACE@186..187 " "
+        WHITESPACE@186..187 " "
+        TYPE@187..196
           CONST_KW@187..192 "const"
-          PRIMIT_TYPE@192..196
-            WHITESPACE@192..193 " "
+          WHITESPACE@192..193 " "
+          PRIMIT_TYPE@193..196
             INT_KW@193..196 "i32"
         WHITESPACE@196..197 " "
         EQ@197..198 "="
         INIT_VAL@198..202
           INDEX_VAL@198..202
-            NAME@198..202
-              WHITESPACE@198..199 " "
+            WHITESPACE@198..199 " "
+            NAME@199..202
               IDENT@199..202 "MAX"
         SEMI@202..203 ";"
       NEWLINE@203..204 "\n"

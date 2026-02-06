@@ -5,10 +5,7 @@ impl<'a> Parser<'a> {
     /// 期望特定 token，如果不匹配则尝试恢复
     /// 返回 true 表示成功找到期望的 token
     /// 返回 false 表示遇到恢复词或恢复后仍未找到，需要调用者退出
-    pub(crate) fn expect_or_else_recovery<F>(&mut self, expect_token: SyntaxKind, cond: F) -> bool
-    where
-        F: Fn(SyntaxKind) -> bool,
-    {
+    pub(crate) fn expect(&mut self, expect_token: SyntaxKind) -> bool {
         if self.at(expect_token) {
             self.bump();
             return true;
@@ -21,14 +18,13 @@ impl<'a> Parser<'a> {
             range,
         });
 
-        // 如果当前 token 是恢复词，不 bump，返回 false
-        if cond(self.peek()) {
+        if self.at(SyntaxKind::EOF) {
             return false;
         }
 
         // 尝试恢复：跳过 token 直到遇到恢复词或 EOF
         self.start_node(SyntaxKind::ERROR);
-        while !cond(self.peek()) && !self.at(SyntaxKind::EOF) {
+        while !self.peek().is_sync_token() {
             self.bump();
         }
         self.finish_node();

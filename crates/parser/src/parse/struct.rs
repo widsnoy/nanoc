@@ -5,7 +5,7 @@ impl Parser<'_> {
     pub(super) fn parse_struct_def(&mut self) -> bool {
         self.start_node(SyntaxKind::STRUCT_DEF);
 
-        if !self.expect_or_else_recovery(SyntaxKind::STRUCT_KW, SyntaxKind::is_decl_recovery) {
+        if !self.expect(SyntaxKind::STRUCT_KW) {
             self.finish_node();
             return false;
         }
@@ -13,7 +13,7 @@ impl Parser<'_> {
             self.finish_node();
             return false;
         }
-        if !self.expect_or_else_recovery(SyntaxKind::L_BRACE, SyntaxKind::is_decl_recovery) {
+        if !self.expect(SyntaxKind::L_BRACE) {
             self.finish_node();
             return false;
         }
@@ -35,8 +35,7 @@ impl Parser<'_> {
             }
         }
 
-        let success =
-            self.expect_or_else_recovery(SyntaxKind::R_BRACE, SyntaxKind::is_decl_recovery);
+        let success = self.expect(SyntaxKind::R_BRACE);
         self.finish_node();
         success
     }
@@ -48,7 +47,7 @@ impl Parser<'_> {
             self.finish_node();
             return false;
         }
-        if !self.expect_or_else_recovery(SyntaxKind::COLON, SyntaxKind::is_decl_recovery) {
+        if !self.expect(SyntaxKind::COLON) {
             self.finish_node();
             return false;
         }

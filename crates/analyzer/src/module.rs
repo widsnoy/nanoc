@@ -48,23 +48,15 @@ pub struct Module {
     pub semantic_errors: Vec<SemanticError>,
 
     /// 分析上下文，使用后清除
-    pub analyzing: AnalyzeContext,
+    pub(crate) analyzing: AnalyzeContext,
 }
 
 #[derive(Debug, Default)]
 pub struct AnalyzeContext {
     pub current_scope: ScopeID,
     pub current_var_type: Option<NType>,
-    /// 当前所在函数的返回类型（用于 return 类型检查）
     pub current_function_ret_type: Option<NType>,
-    /// 循环嵌套深度（用于 break/continue 检查）
     pub loop_depth: usize,
-    /// 是否正在处理函数定义（用于识别返回类型）
-    pub in_func_def: bool,
-    /// 当前函数定义节点的返回类型范围（用于识别返回类型）
-    pub func_ret_type_range: Option<TextRange>,
-    /// 当前正在定义的函数名称（用于递归调用时跳过参数检查）
-    pub current_func_name: Option<String>,
 }
 
 impl Module {

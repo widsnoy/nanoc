@@ -7,49 +7,49 @@ COMP_UNIT@0..261
   WHITESPACE@1..5 "    "
   VAR_DEF@5..28
     LET_KW@5..8 "let"
-    NAME@8..10
-      WHITESPACE@8..9 " "
+    WHITESPACE@8..9 " "
+    NAME@9..10
       IDENT@9..10 "x"
     COLON@10..11 ":"
-    TYPE@11..15
-      PRIMIT_TYPE@11..15
-        WHITESPACE@11..12 " "
+    WHITESPACE@11..12 " "
+    TYPE@12..15
+      PRIMIT_TYPE@12..15
         INT_KW@12..15 "i32"
     WHITESPACE@15..16 " "
     EQ@16..17 "="
     INIT_VAL@17..27
       BINARY_EXPR@17..27
         INDEX_VAL@17..19
-          NAME@17..19
-            WHITESPACE@17..18 " "
+          WHITESPACE@17..18 " "
+          NAME@18..19
             IDENT@18..19 "a"
         BINARY_OP@19..21
           WHITESPACE@19..20 " "
           PLUS@20..21 "+"
         BINARY_EXPR@21..27
           INDEX_VAL@21..23
-            NAME@21..23
-              WHITESPACE@21..22 " "
+            WHITESPACE@21..22 " "
+            NAME@22..23
               IDENT@22..23 "b"
           BINARY_OP@23..25
             WHITESPACE@23..24 " "
             STAR@24..25 "*"
           INDEX_VAL@25..27
-            NAME@25..27
-              WHITESPACE@25..26 " "
+            WHITESPACE@25..26 " "
+            NAME@26..27
               IDENT@26..27 "c"
     SEMI@27..28 ";"
   NEWLINE@28..29 "\n"
   WHITESPACE@29..33 "    "
   VAR_DEF@33..58
     LET_KW@33..36 "let"
-    NAME@36..38
-      WHITESPACE@36..37 " "
+    WHITESPACE@36..37 " "
+    NAME@37..38
       IDENT@37..38 "y"
     COLON@38..39 ":"
-    TYPE@39..43
-      PRIMIT_TYPE@39..43
-        WHITESPACE@39..40 " "
+    WHITESPACE@39..40 " "
+    TYPE@40..43
+      PRIMIT_TYPE@40..43
         INT_KW@40..43 "i32"
     WHITESPACE@43..44 " "
     EQ@44..45 "="
@@ -66,121 +66,121 @@ COMP_UNIT@0..261
               WHITESPACE@48..49 " "
               PLUS@49..50 "+"
             INDEX_VAL@50..52
-              NAME@50..52
-                WHITESPACE@50..51 " "
+              WHITESPACE@50..51 " "
+              NAME@51..52
                 IDENT@51..52 "b"
           R_PAREN@52..53 ")"
         BINARY_OP@53..55
           WHITESPACE@53..54 " "
           STAR@54..55 "*"
         INDEX_VAL@55..57
-          NAME@55..57
-            WHITESPACE@55..56 " "
+          WHITESPACE@55..56 " "
+          NAME@56..57
             IDENT@56..57 "c"
     SEMI@57..58 ";"
   NEWLINE@58..59 "\n"
   WHITESPACE@59..63 "    "
   VAR_DEF@63..88
     LET_KW@63..66 "let"
-    NAME@66..68
-      WHITESPACE@66..67 " "
+    WHITESPACE@66..67 " "
+    NAME@67..68
       IDENT@67..68 "z"
     COLON@68..69 ":"
-    TYPE@69..73
-      PRIMIT_TYPE@69..73
-        WHITESPACE@69..70 " "
+    WHITESPACE@69..70 " "
+    TYPE@70..73
+      PRIMIT_TYPE@70..73
         INT_KW@70..73 "i32"
     WHITESPACE@73..74 " "
     EQ@74..75 "="
     INIT_VAL@75..87
       BINARY_EXPR@75..87
         INDEX_VAL@75..77
-          NAME@75..77
-            WHITESPACE@75..76 " "
+          WHITESPACE@75..76 " "
+          NAME@76..77
             IDENT@76..77 "a"
         BINARY_OP@77..80
           WHITESPACE@77..78 " "
           PIPEPIPE@78..80 "||"
         BINARY_EXPR@80..87
           INDEX_VAL@80..82
-            NAME@80..82
-              WHITESPACE@80..81 " "
+            WHITESPACE@80..81 " "
+            NAME@81..82
               IDENT@81..82 "b"
           BINARY_OP@82..85
             WHITESPACE@82..83 " "
             AMPAMP@83..85 "&&"
           INDEX_VAL@85..87
-            NAME@85..87
-              WHITESPACE@85..86 " "
+            WHITESPACE@85..86 " "
+            NAME@86..87
               IDENT@86..87 "c"
     SEMI@87..88 ";"
   NEWLINE@88..89 "\n"
   WHITESPACE@89..93 "    "
   VAR_DEF@93..113
     LET_KW@93..96 "let"
-    NAME@96..98
-      WHITESPACE@96..97 " "
+    WHITESPACE@96..97 " "
+    NAME@97..98
       IDENT@97..98 "w"
     COLON@98..99 ":"
-    TYPE@99..103
-      PRIMIT_TYPE@99..103
-        WHITESPACE@99..100 " "
+    WHITESPACE@99..100 " "
+    TYPE@100..103
+      PRIMIT_TYPE@100..103
         INT_KW@100..103 "i32"
     WHITESPACE@103..104 " "
     EQ@104..105 "="
     INIT_VAL@105..112
       BINARY_EXPR@105..112
         INDEX_VAL@105..107
-          NAME@105..107
-            WHITESPACE@105..106 " "
+          WHITESPACE@105..106 " "
+          NAME@106..107
             IDENT@106..107 "a"
         BINARY_OP@107..110
           WHITESPACE@107..108 " "
           EQEQ@108..110 "=="
         INDEX_VAL@110..112
-          NAME@110..112
-            WHITESPACE@110..111 " "
+          WHITESPACE@110..111 " "
+          NAME@111..112
             IDENT@111..112 "b"
     SEMI@112..113 ";"
   NEWLINE@113..114 "\n"
   WHITESPACE@114..118 "    "
   VAR_DEF@118..139
     LET_KW@118..121 "let"
-    NAME@121..125
-      WHITESPACE@121..122 " "
+    WHITESPACE@121..122 " "
+    NAME@122..125
       IDENT@122..125 "rel"
     COLON@125..126 ":"
-    TYPE@126..130
-      PRIMIT_TYPE@126..130
-        WHITESPACE@126..127 " "
+    WHITESPACE@126..127 " "
+    TYPE@127..130
+      PRIMIT_TYPE@127..130
         INT_KW@127..130 "i32"
     WHITESPACE@130..131 " "
     EQ@131..132 "="
     INIT_VAL@132..138
       BINARY_EXPR@132..138
         INDEX_VAL@132..134
-          NAME@132..134
-            WHITESPACE@132..133 " "
+          WHITESPACE@132..133 " "
+          NAME@133..134
             IDENT@133..134 "a"
         BINARY_OP@134..136
           WHITESPACE@134..135 " "
           LT@135..136 "<"
         INDEX_VAL@136..138
-          NAME@136..138
-            WHITESPACE@136..137 " "
+          WHITESPACE@136..137 " "
+          NAME@137..138
             IDENT@137..138 "b"
     SEMI@138..139 ";"
   NEWLINE@139..140 "\n"
   WHITESPACE@140..144 "    "
   VAR_DEF@144..169
     LET_KW@144..147 "let"
-    NAME@147..153
-      WHITESPACE@147..148 " "
+    WHITESPACE@147..148 " "
+    NAME@148..153
       IDENT@148..153 "unary"
     COLON@153..154 ":"
-    TYPE@154..158
-      PRIMIT_TYPE@154..158
-        WHITESPACE@154..155 " "
+    WHITESPACE@154..155 " "
+    TYPE@155..158
+      PRIMIT_TYPE@155..158
         INT_KW@155..158 "i32"
     WHITESPACE@158..159 " "
     EQ@159..160 "="
@@ -208,13 +208,13 @@ COMP_UNIT@0..261
   WHITESPACE@170..174 "    "
   VAR_DEF@174..197
     LET_KW@174..177 "let"
-    NAME@177..181
-      WHITESPACE@177..178 " "
+    WHITESPACE@177..178 " "
+    NAME@178..181
       IDENT@178..181 "ptr"
     COLON@181..182 ":"
-    TYPE@182..186
-      PRIMIT_TYPE@182..186
-        WHITESPACE@182..183 " "
+    WHITESPACE@182..183 " "
+    TYPE@183..186
+      PRIMIT_TYPE@183..186
         INT_KW@183..186 "i32"
     WHITESPACE@186..187 " "
     EQ@187..188 "="
@@ -242,20 +242,20 @@ COMP_UNIT@0..261
   WHITESPACE@198..202 "    "
   VAR_DEF@202..225
     LET_KW@202..205 "let"
-    NAME@205..209
-      WHITESPACE@205..206 " "
+    WHITESPACE@205..206 " "
+    NAME@206..209
       IDENT@206..209 "arr"
     COLON@209..210 ":"
-    TYPE@210..214
-      PRIMIT_TYPE@210..214
-        WHITESPACE@210..211 " "
+    WHITESPACE@210..211 " "
+    TYPE@211..214
+      PRIMIT_TYPE@211..214
         INT_KW@211..214 "i32"
     WHITESPACE@214..215 " "
     EQ@215..216 "="
     INIT_VAL@216..224
       INDEX_VAL@216..224
-        NAME@216..218
-          WHITESPACE@216..217 " "
+        WHITESPACE@216..217 " "
+        NAME@217..218
           IDENT@217..218 "a"
         L_BRACK@218..219 "["
         LITERAL@219..220
@@ -270,20 +270,20 @@ COMP_UNIT@0..261
   WHITESPACE@226..230 "    "
   VAR_DEF@230..256
     LET_KW@230..233 "let"
-    NAME@233..238
-      WHITESPACE@233..234 " "
+    WHITESPACE@233..234 " "
+    NAME@234..238
       IDENT@234..238 "call"
     COLON@238..239 ":"
-    TYPE@239..243
-      PRIMIT_TYPE@239..243
-        WHITESPACE@239..240 " "
+    WHITESPACE@239..240 " "
+    TYPE@240..243
+      PRIMIT_TYPE@240..243
         INT_KW@240..243 "i32"
     WHITESPACE@243..244 " "
     EQ@244..245 "="
     INIT_VAL@245..255
       CALL_EXPR@245..255
-        NAME@245..249
-          WHITESPACE@245..246 " "
+        WHITESPACE@245..246 " "
+        NAME@246..249
           IDENT@246..249 "foo"
         L_PAREN@249..250 "("
         FUNC_R_PARAMS@250..254
@@ -292,8 +292,8 @@ COMP_UNIT@0..261
               IDENT@250..251 "a"
           COMMA@251..252 ","
           INDEX_VAL@252..254
-            NAME@252..254
-              WHITESPACE@252..253 " "
+            WHITESPACE@252..253 " "
+            NAME@253..254
               IDENT@253..254 "b"
         R_PAREN@254..255 ")"
     SEMI@255..256 ";"

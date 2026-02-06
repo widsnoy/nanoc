@@ -11,7 +11,7 @@ impl Parser<'_> {
             self.finish_node();
             return false;
         }
-        if !self.expect_or_else_recovery(SyntaxKind::COLON, SyntaxKind::is_decl_recovery) {
+        if !self.expect(SyntaxKind::COLON) {
             self.finish_node();
             return false;
         }
@@ -26,7 +26,7 @@ impl Parser<'_> {
                 return false;
             }
         }
-        let success = self.expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_decl_recovery);
+        let success = self.expect(SyntaxKind::SEMI);
         self.finish_node();
         success
     }
@@ -40,10 +40,13 @@ impl Parser<'_> {
 
             let mut is_first = true;
             while !matches!(self.peek(), SyntaxKind::R_BRACE | SyntaxKind::EOF) {
-                if !is_first
-                    && !self
-                        .expect_or_else_recovery(SyntaxKind::COMMA, SyntaxKind::is_decl_recovery)
-                {
+                let start_pos = self.current_range().start();
+
+                if !is_first && !self.expect(SyntaxKind::COMMA) {
+                    // 检查是否有进展，防止死循环
+                    if self.current_range().start() == start_pos {
+                        break;
+                    }
                     continue;
                 }
 
@@ -52,8 +55,7 @@ impl Parser<'_> {
                 }
                 is_first = false;
             }
-            let success =
-                self.expect_or_else_recovery(SyntaxKind::R_BRACE, SyntaxKind::is_decl_recovery);
+            let success = self.expect(SyntaxKind::R_BRACE);
             self.finish_node();
             success
         } else {

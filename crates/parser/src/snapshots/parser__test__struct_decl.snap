@@ -5,15 +5,15 @@ expression: try_it(source2)
 COMP_UNIT@0..20
   VAR_DEF@0..20
     LET_KW@0..3 "let"
-    NAME@3..5
-      WHITESPACE@3..4 " "
+    WHITESPACE@3..4 " "
+    NAME@4..5
       IDENT@4..5 "p"
     COLON@5..6 ":"
-    TYPE@6..19
-      PRIMIT_TYPE@6..19
-        WHITESPACE@6..7 " "
+    WHITESPACE@6..7 " "
+    TYPE@7..19
+      PRIMIT_TYPE@7..19
         STRUCT_KW@7..13 "struct"
-        NAME@13..19
-          WHITESPACE@13..14 " "
+        WHITESPACE@13..14 " "
+        NAME@14..19
           IDENT@14..19 "Point"
     SEMI@19..20 ";"

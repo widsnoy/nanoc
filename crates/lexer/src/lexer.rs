@@ -270,6 +270,11 @@ impl<'a> Lexer<'a> {
             )
     }
 
+    /// 返回当前位置
+    pub fn current_pos(&self) -> usize {
+        self.pos
+    }
+
     pub fn get_tokens(&self) -> &[(SyntaxKind, &str, TextRange)] {
         &self.tokens
     }
