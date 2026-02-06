@@ -35,7 +35,7 @@ impl TypeVisitor for Module {
                         self.new_error(SemanticError::TypeMismatch {
                             expected: NType::Const(Box::new(NType::Int)),
                             found: x.get_type(),
-                            range: expr_range,
+                            range: utils::trim_node_text_range(&expr_node),
                         });
                         return;
                     }
@@ -82,7 +82,9 @@ impl TypeVisitor for Module {
                         if let Some(sid) = self.find_struct(&name) {
                             NType::Struct(sid)
                         } else {
-                            self.new_error(SemanticError::TypeUndefined { range });
+                            self.new_error(SemanticError::TypeUndefined {
+                                range: utils::trim_node_text_range(&node),
+                            });
                             return;
                         }
                     } else {

@@ -12,3 +12,25 @@ where
 
     element.ancestors().find_map(|n| N::cast(n))
 }
+
+/// 获取去掉首尾的换行、空格的范围
+pub fn trim_node_text_range(node: &impl AstNode<Language = AirycLanguage>) -> TextRange {
+    let mut l = u32::MAX;
+    let mut r = 0u32;
+    node.syntax().children_with_tokens().for_each(|x| match x {
+        rowan::NodeOrToken::Node(x) if !x.kind().is_trivia() => {
+            l = l.min(x.text_range().start().into());
+            r = r.max(x.text_range().end().into());
+        }
+        rowan::NodeOrToken::Token(x) if !x.kind().is_trivia() => {
+            l = l.min(x.text_range().start().into());
+            r = r.max(x.text_range().end().into());
+        }
+        _ => {}
+    });
+    if l > r {
+        TextRange::new(0, 0)
+    } else {
+        TextRange::new(l, r)
+    }
+}

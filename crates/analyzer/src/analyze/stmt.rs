@@ -43,7 +43,9 @@ impl StmtVisitor for Module {
         // 检查是否是左值
         let is_valid_lvalue = self.is_lvalue_expr(&lhs);
         if !is_valid_lvalue {
-            self.new_error(SemanticError::NotALValue { range: lhs_range });
+            self.new_error(SemanticError::NotALValue {
+                range: utils::trim_node_text_range(&lhs),
+            });
             return;
         }
 
@@ -64,7 +66,7 @@ impl StmtVisitor for Module {
             self.new_error(SemanticError::TypeMismatch {
                 expected: lhs_ty.clone(),
                 found: rhs_ty.clone(),
-                range: rhs_range,
+                range: utils::trim_node_text_range(&rhs),
             });
         }
     }
@@ -72,7 +74,7 @@ impl StmtVisitor for Module {
     fn enter_break_stmt(&mut self, node: BreakStmt) {
         if self.analyzing.loop_depth == 0 {
             self.new_error(SemanticError::BreakOutsideLoop {
-                range: node.text_range(),
+                range: utils::trim_node_text_range(&node),
             });
         }
     }
@@ -80,14 +82,12 @@ impl StmtVisitor for Module {
     fn enter_continue_stmt(&mut self, node: ContinueStmt) {
         if self.analyzing.loop_depth == 0 {
             self.new_error(SemanticError::ContinueOutsideLoop {
-                range: node.text_range(),
+                range: utils::trim_node_text_range(&node),
             });
         }
     }
 
     fn leave_return_stmt(&mut self, node: ReturnStmt) {
-        let range = node.text_range();
-
         // 获取当前函数的返回类型
         let Some(expected_ret_type) = &self.analyzing.current_function_ret_type else {
             return;
@@ -109,7 +109,7 @@ impl StmtVisitor for Module {
             self.new_error(SemanticError::ReturnTypeMismatch {
                 expected: expected_ret_type.clone(),
                 found: actual_ret_type.clone(),
-                range,
+                range: utils::trim_node_text_range(&node),
             });
         }
     }

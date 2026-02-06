@@ -52,7 +52,7 @@ impl FuncVisitor for Module {
                 ty.clone()
             } else {
                 self.new_error(SemanticError::TypeUndefined {
-                    range: ty_node.text_range(),
+                    range: utils::trim_node_text_range(&ty_node),
                 });
                 return;
             }
@@ -85,7 +85,7 @@ impl FuncVisitor for Module {
             ty.clone()
         } else {
             self.new_error(SemanticError::TypeUndefined {
-                range: ty_node.text_range(),
+                range: utils::trim_node_text_range(&ty_node),
             });
             return;
         };

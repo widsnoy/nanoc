@@ -8,7 +8,6 @@ syntax.workspace = true
 lexer.workspace = true
 parser.workspace = true
 analyzer.workspace = true
-utils.workspace = true
 tools.workspace = true
 
 logos.workspace = true
