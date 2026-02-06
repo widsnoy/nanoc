@@ -47,4 +47,3 @@ pub(crate) fn get_references(
 
     None
 }
-
