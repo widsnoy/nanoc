@@ -49,6 +49,9 @@ pub struct Module {
 
     /// 分析上下文，使用后清除
     pub(crate) analyzing: AnalyzeContext,
+
+    /// 各种索引
+    pub index: ModuleIndex,
 }
 
 #[derive(Debug, Default)]
@@ -57,6 +60,12 @@ pub struct AnalyzeContext {
     pub current_var_type: Option<NType>,
     pub current_function_ret_type: Option<NType>,
     pub loop_depth: usize,
+}
+
+#[derive(Debug, Default)]
+pub struct ModuleIndex {
+    pub variable_reference: HashMap<VariableID, Vec<ReferenceID>>,
+    pub function_reference: HashMap<FunctionID, Vec<ReferenceID>>,
 }
 
 impl Module {
@@ -78,6 +87,7 @@ impl Module {
             type_table: Default::default(),
             semantic_errors: Default::default(),
             analyzing: Default::default(),
+            index: Default::default(),
         }
     }
     /// 分析
@@ -163,7 +173,7 @@ impl Module {
     }
 
     /// 根据名称查找 struct
-    pub fn get_struct_by_name(&self, name: &str) -> Option<StructID> {
+    pub fn get_struct_id_by_name(&self, name: &str) -> Option<StructID> {
         self.struct_map.get(name).copied()
     }
 
@@ -205,6 +215,21 @@ impl Module {
         let ref_id = ReferenceID(ref_idx);
 
         self.reference_map.insert(range, ref_id);
+
+        match tag {
+            ReferenceTag::VarRead(variable_id) => self
+                .index
+                .variable_reference
+                .entry(variable_id)
+                .or_default()
+                .push(ref_id),
+            ReferenceTag::FuncCall(function_id) => self
+                .index
+                .function_reference
+                .entry(function_id)
+                .or_default()
+                .push(ref_id),
+        };
     }
 
     /// 查找变量定义，返回定义处的 VariableID

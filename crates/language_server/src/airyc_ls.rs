@@ -33,8 +33,15 @@ impl LanguageServer for Backend {
                 version: Some(env!("CARGO_PKG_VERSION").to_string()),
             }),
             capabilities: ServerCapabilities {
-                text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    TextDocumentSyncKind::FULL,
+                text_document_sync: Some(TextDocumentSyncCapability::Options(
+                    TextDocumentSyncOptions {
+                        open_close: Some(true),
+                        change: Some(TextDocumentSyncKind::FULL),
+                        save: Some(TextDocumentSyncSaveOptions::SaveOptions(SaveOptions {
+                            include_text: Some(false),
+                        })),
+                        ..Default::default()
+                    },
                 )),
                 semantic_tokens_provider: Some(
                     SemanticTokensServerCapabilities::SemanticTokensOptions(
@@ -52,6 +59,7 @@ impl LanguageServer for Backend {
                     ),
                 ),
                 definition_provider: Some(OneOf::Left(true)),
+                references_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
         })
@@ -87,21 +95,20 @@ impl LanguageServer for Backend {
             // 更新文档内容
             if let Some(mut doc) = self.documents.get_mut(&uri) {
                 doc.update(change.text.clone());
-
-                // 重新发布诊断信息
-                let diagnostics =
-                    lsp_features::diagnostics::compute_diagnostics(&doc.errors, &doc.line_index);
-
-                drop(doc); // 释放锁
-                self.client
-                    .publish_diagnostics(uri, diagnostics, None)
-                    .await;
             }
         }
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let _uri = params.text_document.uri;
+        let uri = params.text_document.uri;
+        if let Some(doc) = self.documents.get(&uri) {
+            let diagnostics =
+                lsp_features::diagnostics::compute_diagnostics(&doc.errors, &doc.line_index);
+            drop(doc);
+            self.client
+                .publish_diagnostics(uri, diagnostics, None)
+                .await;
+        }
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
@@ -148,8 +155,20 @@ impl LanguageServer for Backend {
         ))
     }
 
-    async fn references(&self, _params: ReferenceParams) -> Result<Option<Vec<Location>>> {
-        Ok(None)
+    async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
+        let uri = params.text_document_position.text_document.uri;
+
+        let doc = match self.documents.get(&uri) {
+            Some(doc) => doc,
+            None => return Ok(None),
+        };
+
+        Ok(lsp_features::references::get_references(
+            uri,
+            params.text_document_position.position,
+            &doc.line_index,
+            &doc.module,
+        ))
     }
 
     async fn completion(&self, _params: CompletionParams) -> Result<Option<CompletionResponse>> {

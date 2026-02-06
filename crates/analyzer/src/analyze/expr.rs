@@ -238,9 +238,7 @@ impl ExprVisitor for Module {
             return;
         };
 
-        let node_range = node.text_range();
-        // 记录 Read 引用
-        self.new_reference(node_range, ReferenceTag::VarRead(var_id));
+        self.new_reference(var_range, ReferenceTag::VarRead(var_id));
 
         let var = self.variables.get(*var_id).unwrap();
         let index_count = node.indices().count();
@@ -258,7 +256,7 @@ impl ExprVisitor for Module {
         let is_const = var.ty.is_const() && result_ty.is_const();
         let var_range = var.range;
         let const_zero = var.ty.const_zero();
-        self.set_expr_type(node_range, result_ty);
+        self.set_expr_type(node.text_range(), result_ty);
 
         if !is_const {
             return;

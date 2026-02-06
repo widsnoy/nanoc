@@ -21,7 +21,7 @@ impl DeclVisitor for Module {
             return;
         };
         // 检查是否重复定义
-        if self.get_struct_by_name(&name).is_some() {
+        if self.get_struct_id_by_name(&name).is_some() {
             self.new_error(SemanticError::StructDefined {
                 name: name.clone(),
                 range,
@@ -42,7 +42,7 @@ impl DeclVisitor for Module {
             return;
         };
         // 获取 struct id
-        let Some(struct_id) = self.get_struct_by_name(&name) else {
+        let Some(struct_id) = self.get_struct_id_by_name(&name) else {
             return;
         };
 

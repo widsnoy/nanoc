@@ -1,9 +1,12 @@
 use analyzer::module::Module;
-use rowan::TextSize;
-use tools::{LineIndex, TextRange};
+use tools::LineIndex;
 use tower_lsp_server::ls_types::{GotoDefinitionResponse, Location, Position, Uri};
 
-use crate::utils::position_trans::{ls_position_to_offset, text_range_to_ls_range};
+use crate::utils::get_at_position::{get_function_id_at_postition, get_struct_id_at_postition};
+use crate::utils::{
+    get_at_position::{get_reference_id_at_position, get_variable_id_at_position},
+    position_trans::text_range_to_ls_range,
+};
 
 pub(crate) fn goto_definition(
     source_uri: Uri,
@@ -11,20 +14,8 @@ pub(crate) fn goto_definition(
     line_index: &LineIndex,
     module: &Module,
 ) -> Option<GotoDefinitionResponse> {
-    let offset = ls_position_to_offset(line_index, &pos);
-    let text_size = TextSize::from(offset);
-
-    let it = module
-        .reference_map
-        .range(..TextRange::new(offset, u32::MAX));
-
-    let target = it
-        .rev()
-        .take(2)
-        .find(|(range, _)| range.contains_inclusive(text_size));
-
     // 先找是不是分析好的引用
-    if let Some((_, ref_id)) = target
+    if let Some(ref_id) = get_reference_id_at_position(module, line_index, &pos)
         && let Some(refer) = module.get_reference_by_id(*ref_id)
     {
         let range = match refer.tag {
@@ -35,15 +26,40 @@ pub(crate) fn goto_definition(
                 module.get_function_by_id(function_id).map(|v| v.range)
             }
         };
-        tracing::info!("woria: target_range: {range:?}");
-        range.map(|range| {
+        return range.map(|range| {
             GotoDefinitionResponse::Scalar(Location::new(
                 source_uri,
                 text_range_to_ls_range(line_index, range),
             ))
-        })
-    } else {
-        // TODO: 也可以是 struct Name
-        None
+        });
     }
+
+    if let Some(var_id) = get_variable_id_at_position(module, line_index, &pos)
+        && let Some(variable) = module.get_varaible_by_id(*var_id)
+    {
+        let range = variable.range;
+        return Some(GotoDefinitionResponse::Scalar(Location::new(
+            source_uri,
+            text_range_to_ls_range(line_index, range),
+        )));
+    }
+
+    if let Some(func_id) = get_function_id_at_postition(module, line_index, &pos)
+        && let Some(f) = module.get_function_by_id(func_id)
+    {
+        return Some(GotoDefinitionResponse::Scalar(Location::new(
+            source_uri,
+            text_range_to_ls_range(line_index, f.range),
+        )));
+    }
+
+    if let Some(struct_id) = get_struct_id_at_postition(module, line_index, &pos)
+        && let Some(s) = module.get_struct_by_id(struct_id)
+    {
+        return Some(GotoDefinitionResponse::Scalar(Location::new(
+            source_uri,
+            text_range_to_ls_range(line_index, s.range),
+        )));
+    }
+    None
 }

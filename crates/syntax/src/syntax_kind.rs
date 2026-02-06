@@ -189,6 +189,7 @@ impl SyntaxKind {
                 | SyntaxKind::R_PAREN
                 | SyntaxKind::R_BRACK
                 | SyntaxKind::COMMA
+                | SyntaxKind::EQ
                 | SyntaxKind::EOF
         )
     }
