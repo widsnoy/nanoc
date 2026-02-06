@@ -51,26 +51,26 @@ impl FuncVisitor for Module {
             if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
                 ty.clone()
             } else {
-                self.new_error(SemanticError::TypeUndefined {
-                    range: utils::trim_node_text_range(&ty_node),
-                });
                 return;
             }
         } else {
             NType::Void
         };
 
-        let Some(name_node) = node.name() else {
-            return;
-        };
-        let Some(name) = name_node.var_name() else {
-            return;
-        };
-        let Some(range) = name_node.var_range() else {
+        let Some((name, range)) = node.name().and_then(|n| utils::extract_name_and_range(&n))
+        else {
             return;
         };
 
-        let func_id = self.new_function(name.clone(), param_list, ret_type.clone(), range);
+        let have_impl = node
+            .syntax()
+            .parent()
+            .and_then(FuncDef::cast)
+            .and_then(|x| x.block())
+            .is_some();
+
+        let func_id =
+            self.new_function(name.clone(), param_list, ret_type.clone(), have_impl, range);
         self.function_map.insert(name, func_id);
 
         self.analyzing.current_function_ret_type = Some(ret_type);
@@ -84,19 +84,11 @@ impl FuncVisitor for Module {
         let param_type = if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
             ty.clone()
         } else {
-            self.new_error(SemanticError::TypeUndefined {
-                range: utils::trim_node_text_range(&ty_node),
-            });
             return;
         };
 
-        let Some(name_node) = node.name() else {
-            return;
-        };
-        let Some(name) = name_node.var_name() else {
-            return;
-        };
-        let Some(range) = name_node.var_range() else {
+        let Some((name, range)) = node.name().and_then(|n| utils::extract_name_and_range(&n))
+        else {
             return;
         };
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
@@ -113,5 +105,32 @@ impl FuncVisitor for Module {
             param_type,
             range,
         );
+    }
+    fn enter_func_attach(&mut self, node: FuncAttach) {
+        let Some((func_name, func_var)) =
+            node.name().and_then(|n| utils::extract_name_and_range(&n))
+        else {
+            return;
+        };
+
+        let Some(func_id) = self.get_function_id_by_name(&func_name) else {
+            self.new_error(SemanticError::FunctionUndefined {
+                name: func_name,
+                range: func_var,
+            });
+            return;
+        };
+
+        let func = self.get_function_mut_by_id(func_id).unwrap();
+
+        if func.have_impl {
+            self.new_error(SemanticError::FunctionImplemented {
+                name: func_name,
+                range: func_var,
+            });
+            return;
+        }
+
+        func.have_impl = true;
     }
 }

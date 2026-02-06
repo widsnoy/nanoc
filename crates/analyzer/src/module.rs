@@ -118,12 +118,14 @@ impl Module {
         name: String,
         params: Vec<VariableID>,
         ret_type: NType,
+        have_impl: bool,
         range: TextRange,
     ) -> FunctionID {
         let function = Function {
             name,
             params,
             ret_type,
+            have_impl,
             range,
         };
         let id = self.functions.insert(function);
@@ -161,12 +163,12 @@ impl Module {
     }
 
     /// 根据名称查找 struct
-    pub fn find_struct(&self, name: &str) -> Option<StructID> {
+    pub fn get_struct_by_name(&self, name: &str) -> Option<StructID> {
         self.struct_map.get(name).copied()
     }
 
     /// 根据名称查找函数
-    pub fn find_function(&self, name: &str) -> Option<FunctionID> {
+    pub fn get_function_id_by_name(&self, name: &str) -> Option<FunctionID> {
         self.function_map.get(name).copied()
     }
 
@@ -290,6 +292,7 @@ pub struct Function {
     pub name: String,
     pub params: Vec<VariableID>,
     pub ret_type: NType,
+    pub have_impl: bool,
     pub range: TextRange,
 }
 

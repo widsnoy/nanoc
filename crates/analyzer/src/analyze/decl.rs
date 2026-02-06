@@ -6,6 +6,7 @@ use syntax::visitor::DeclVisitor;
 use crate::array::ArrayTree;
 use crate::error::SemanticError;
 use crate::module::Module;
+use crate::r#type::NType;
 use crate::value::Value;
 
 impl DeclVisitor for Module {
@@ -15,17 +16,12 @@ impl DeclVisitor for Module {
     }
 
     fn enter_struct_def(&mut self, node: StructDef) {
-        let Some(name_node) = node.name() else {
-            return;
-        };
-        let Some(name) = name_node.var_name() else {
-            return;
-        };
-        let Some(range) = name_node.var_range() else {
+        let Some((name, range)) = node.name().and_then(|n| utils::extract_name_and_range(&n))
+        else {
             return;
         };
         // 检查是否重复定义
-        if self.find_struct(&name).is_some() {
+        if self.get_struct_by_name(&name).is_some() {
             self.new_error(SemanticError::StructDefined {
                 name: name.clone(),
                 range,
@@ -45,8 +41,8 @@ impl DeclVisitor for Module {
         let Some(Some(name)) = node.name().map(|n| n.var_name()) else {
             return;
         };
-        // 获取已创建的 struct ID（在 enter_struct_def 中创建）
-        let Some(struct_id) = self.find_struct(&name) else {
+        // 获取 struct id
+        let Some(struct_id) = self.get_struct_by_name(&name) else {
             return;
         };
 
@@ -55,13 +51,10 @@ impl DeclVisitor for Module {
         let mut field_names = std::collections::HashSet::new();
 
         for field_node in node.fields() {
-            let Some(field_name_node) = field_node.name() else {
-                continue;
-            };
-            let Some(field_name) = field_name_node.var_name() else {
-                continue;
-            };
-            let Some(field_range) = field_name_node.var_range() else {
+            let Some((field_name, field_range)) = field_node
+                .name()
+                .and_then(|n| utils::extract_name_and_range(&n))
+            else {
                 continue;
             };
             let Some(ty_node) = field_node.ty() else {
@@ -77,15 +70,30 @@ impl DeclVisitor for Module {
                 continue;
             }
 
-            // 获取字段类型（已经在 leave_type 中构建好）
+            // 获取字段类型
             let field_ty = if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
                 ty.clone()
             } else {
-                self.new_error(SemanticError::TypeUndefined {
-                    range: utils::trim_node_text_range(&ty_node),
-                });
                 continue;
             };
+
+            // 检查是否自引用
+            let mut ty = &field_ty.clone();
+            let self_refer = loop {
+                match ty {
+                    NType::Struct(idx) if *idx == struct_id => break true,
+                    NType::Array(inner, _) => ty = inner,
+                    _ => break false,
+                }
+            };
+
+            if self_refer {
+                self.new_error(SemanticError::StructSelfRef {
+                    name: field_name,
+                    range: field_range,
+                });
+                return;
+            }
 
             field_infos.push((field_name, field_ty, field_range));
         }
@@ -117,13 +125,9 @@ impl DeclVisitor for Module {
     }
 
     fn leave_var_def(&mut self, def: VarDef) {
-        let Some(name_node) = def.name() else {
-            return;
-        };
-        let Some(var_name) = name_node.var_name() else {
-            return;
-        };
-        let Some(var_range) = name_node.var_range() else {
+        let Some((var_name, var_range)) =
+            def.name().and_then(|n| utils::extract_name_and_range(&n))
+        else {
             return;
         };
         let Some(ty_node) = def.ty() else {
@@ -133,9 +137,6 @@ impl DeclVisitor for Module {
         let var_type = if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
             ty.clone()
         } else {
-            self.new_error(SemanticError::TypeUndefined {
-                range: utils::trim_node_text_range(&ty_node),
-            });
             return;
         };
 

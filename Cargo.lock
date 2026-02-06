@@ -54,6 +54,7 @@ dependencies = [
  "thiserror",
  "thunderdome",
  "tools",
+ "utils",
 ]
 
 [[package]]
@@ -507,7 +508,6 @@ dependencies = [
  "tower-lsp-server",
  "tracing",
  "tracing-subscriber",
- "utils",
 ]
 
 [[package]]

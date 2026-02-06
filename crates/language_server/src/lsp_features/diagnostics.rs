@@ -21,7 +21,7 @@ fn error_to_diagnostic(error: &LspError, line_index: &LineIndex) -> Option<Diagn
         severity: Some(DiagnosticSeverity::ERROR),
         code: code.map(NumberOrString::String),
         message,
-        source: Some("airyc".to_string()),
+        source: None,
         ..Default::default()
     })
 }
