@@ -7,7 +7,7 @@ use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicValueEnum, FloatValue, FunctionValue, IntValue, PointerValue};
 use inkwell::{AddressSpace, FloatPredicate, IntPredicate};
-use parser::ast::AstNode;
+use syntax::ast::AstNode;
 use tools::TextRange;
 
 use crate::error::{CodegenError, Result};

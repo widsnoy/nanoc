@@ -3,7 +3,6 @@ use std::fs;
 use clap::Parser;
 use inkwell::context::Context as LlvmContext;
 use inkwell::targets::{CodeModel, InitializationConfig, RelocMode, Target};
-use parser::SyntaxNode;
 
 mod analyzing;
 mod cli;
@@ -13,6 +12,7 @@ mod linking;
 mod parsing;
 
 use cli::{Args, EmitTarget};
+use syntax::SyntaxNode;
 
 fn main() {
     let args = Args::parse();

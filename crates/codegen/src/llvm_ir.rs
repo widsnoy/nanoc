@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use inkwell::basic_block::BasicBlock;
 use inkwell::values::{FunctionValue, PointerValue};
 use inkwell::{builder::Builder, context::Context};
-use parser::ast::*;
+use syntax::ast::*;
 
 use crate::error::Result;
 

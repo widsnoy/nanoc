@@ -1,5 +1,5 @@
 use inkwell::context::Context;
-use parser::{
+use syntax::{
     SyntaxNode,
     ast::{AstNode, CompUnit},
 };

@@ -2,7 +2,8 @@
 use std::collections::HashMap;
 
 use miette::Diagnostic;
-use syntax::{AirycLanguage, AstNode, Expr, InitVal};
+use syntax::ast::{Expr, InitVal};
+use syntax::{AirycLanguage, AstNode};
 use thiserror::Error;
 use tools::TextRange;
 

@@ -1,4 +1,5 @@
-use crate::{parse::Parser, syntax_kind::SyntaxKind};
+use crate::parse::Parser;
+use syntax::syntax_kind::SyntaxKind;
 
 impl Parser<'_> {
     /// 解析结构体定义

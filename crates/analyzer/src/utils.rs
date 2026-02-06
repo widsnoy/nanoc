@@ -1,5 +1,5 @@
-use parser::ast::{AstNode as _, InitVal};
-use syntax::{Expr, IndexVal, OpNode, PostfixExpr, SyntaxKind, UnaryExpr};
+use syntax::SyntaxKind;
+use syntax::ast::{AstNode as _, Expr, IndexVal, InitVal, OpNode, PostfixExpr, UnaryExpr};
 use tools::TextRange;
 
 use crate::error::SemanticError;
