@@ -3,7 +3,7 @@ use analyzer::module::VariableID;
 use analyzer::r#type::NType;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::{BasicValueEnum, IntValue, PointerValue};
-use parser::ast::*;
+use syntax::ast::*;
 use utils::find_node_by_range;
 
 use crate::error::{CodegenError, Result};

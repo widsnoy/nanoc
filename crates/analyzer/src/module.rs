@@ -3,9 +3,9 @@ use std::{
     ops::Deref,
 };
 
-use parser::visitor::Visitor;
 use rowan::GreenNode;
 use syntax::SyntaxNode;
+use syntax::Visitor;
 use thunderdome::Arena;
 use tools::TextRange;
 

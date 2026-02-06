@@ -48,6 +48,8 @@ parser.workspace = true
 codegen.workspace = true
 analyzer.workspace = true
 lexer.workspace = true
+syntax.workspace = true
+
 inkwell.workspace = true
 clap.workspace = true
 miette.workspace = true

@@ -201,7 +201,7 @@ fn test_postfix_expressions() {
 
 #[test]
 fn test_struct_ast_nodes() {
-    use crate::ast::*;
+    use syntax::ast::*;
 
     // 测试 StructDef AST 节点
     let source = "struct Point { x: i32, y: i32 }";

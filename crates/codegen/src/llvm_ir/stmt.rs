@@ -1,4 +1,4 @@
-use parser::ast::*;
+use syntax::ast::*;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;

@@ -4,9 +4,9 @@ use inkwell::builder::Builder;
 use inkwell::context::Context as LlvmContext;
 use inkwell::module::Module as LlvmModule;
 use inkwell::targets::TargetMachine;
-use parser::SyntaxNode;
-use parser::ast::{AstNode, CompUnit};
 use rowan::GreenNode;
+use syntax::SyntaxNode;
+use syntax::ast::{AstNode, CompUnit};
 
 use crate::error::{CompilerError, Result};
 

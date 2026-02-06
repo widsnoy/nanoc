@@ -38,6 +38,7 @@ dependencies = [
  "miette",
  "parser",
  "rowan",
+ "syntax",
  "thiserror",
 ]
 
