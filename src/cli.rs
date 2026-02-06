@@ -5,9 +5,9 @@ use inkwell::OptimizationLevel;
 
 /// airyc 编译器命令行参数
 #[derive(Parser, Debug)]
-#[command(name = "airyc", version = "0.0.1", about = "airyc compiler")]
+#[command(name = "airyc cli", version = "0.0.1", about = "airyc compiler")]
 pub struct Args {
-    /// source file (.yc) path
+    /// source file (.ariy) path
     #[arg(short, long)]
     pub input_path: PathBuf,
 
@@ -35,8 +35,10 @@ pub enum EmitTarget {
     Ir,
     /// 输出可执行文件
     Exe,
-    /// 输出 AST（调试用）
+    /// 输出 AST
     Ast,
+    /// 静态分析
+    Check,
 }
 
 /// 优化级别

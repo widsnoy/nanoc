@@ -12,13 +12,9 @@ use crate::value::Value;
 
 impl ExprVisitor for Module {
     fn leave_call_expr(&mut self, node: CallExpr) {
-        let Some(name_node) = node.name() else {
-            return;
-        };
-        let Some(func_name) = name_node.var_name() else {
-            return;
-        };
-        let Some(func_range) = name_node.var_range() else {
+        let Some((func_name, func_range)) =
+            node.name().and_then(|n| utils::extract_name_and_range(&n))
+        else {
             return;
         };
 
@@ -65,7 +61,7 @@ impl ExprVisitor for Module {
         }
 
         // 查找用户定义的函数
-        let Some(func_id) = self.find_function(&func_name) else {
+        let Some(func_id) = self.get_function_id_by_name(&func_name) else {
             self.new_error(SemanticError::FunctionUndefined {
                 name: func_name,
                 range: func_range,
@@ -78,11 +74,19 @@ impl ExprVisitor for Module {
         let func = self.get_function_by_id(func_id).unwrap();
         let expected_arg_count = func.params.len();
         let ret_type = func.ret_type.clone();
+        let have_impl = func.have_impl;
 
         // 设置返回类型
         self.set_expr_type(node.text_range(), ret_type);
 
-        // 检查参数数量（跳过正在定义的函数，因为参数列表还未完成）
+        // 检查函数是否有实现
+        if !have_impl {
+            self.new_error(SemanticError::FunctionUnImplemented {
+                name: func_name.clone(),
+                range: func_range,
+            });
+        }
+        // 检查参数数量
         if arg_count != expected_arg_count {
             self.new_error(SemanticError::ArgumentCountMismatch {
                 function_name: func_name,
@@ -219,13 +223,9 @@ impl ExprVisitor for Module {
     }
 
     fn leave_index_val(&mut self, node: IndexVal) {
-        let Some(name_node) = node.name() else {
-            return;
-        };
-        let Some(var_name) = name_node.var_name() else {
-            return;
-        };
-        let Some(var_range) = name_node.var_range() else {
+        let Some((var_name, var_range)) =
+            node.name().and_then(|n| utils::extract_name_and_range(&n))
+        else {
             return;
         };
 
@@ -330,11 +330,10 @@ impl ExprVisitor for Module {
         let Some(field_access_node) = node.field() else {
             return;
         };
-        let filed_access_range = field_access_node.text_range();
-        let Some(name_node) = field_access_node.name() else {
-            return;
-        };
-        let Some(member_name) = name_node.var_name() else {
+        let Some((member_name, member_range)) = field_access_node
+            .name()
+            .and_then(|n| utils::extract_name_and_range(&n))
+        else {
             return;
         };
 
@@ -418,7 +417,7 @@ impl ExprVisitor for Module {
 
             self.set_expr_type(range, result_ty);
 
-            self.new_reference(filed_access_range, ReferenceTag::VarRead(field_id));
+            self.new_reference(member_range, ReferenceTag::VarRead(field_id));
 
             // 常量处理：如果基础表达式是常量 struct，提取字段值
             if let Some(Value::Struct(_struct_id, field_values)) =

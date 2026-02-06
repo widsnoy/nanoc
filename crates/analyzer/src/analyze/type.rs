@@ -40,6 +40,9 @@ impl TypeVisitor for Module {
                         return;
                     }
                 } else {
+                    self.new_error(SemanticError::ConstantExprExpected {
+                        range: utils::trim_node_text_range(&expr_node),
+                    });
                     return;
                 }
             } else {
@@ -79,10 +82,11 @@ impl TypeVisitor for Module {
                 } else if pt_node.struct_token().is_some() {
                     let name_node = pt_node.name();
                     if let Some(Some(name)) = name_node.map(|n| n.var_name()) {
-                        if let Some(sid) = self.find_struct(&name) {
+                        if let Some(sid) = self.get_struct_by_name(&name) {
                             NType::Struct(sid)
                         } else {
-                            self.new_error(SemanticError::TypeUndefined {
+                            self.new_error(SemanticError::StructUndefined {
+                                name,
                                 range: utils::trim_node_text_range(&node),
                             });
                             return;

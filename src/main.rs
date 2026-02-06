@@ -51,6 +51,10 @@ fn main() {
         }
     };
 
+    if args.emit == EmitTarget::Check {
+        return;
+    }
+
     // 5. 初始化 LLVM
     let context = LlvmContext::create();
     let module_name = input_path
@@ -119,8 +123,6 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        EmitTarget::Ast => {
-            // 已在前面处理
-        }
+        EmitTarget::Ast | EmitTarget::Check => {}
     }
 }

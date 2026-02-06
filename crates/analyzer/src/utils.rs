@@ -54,11 +54,12 @@ impl Module {
         init_val_node: InitVal,
     ) -> Result<Option<Value>, SemanticError> {
         let range_trimmed = utils::trim_node_text_range(&init_val_node); // 获取 struct 定义
-        let struct_def = self
-            .get_struct_by_id(struct_id)
-            .ok_or(SemanticError::TypeUndefined {
-                range: range_trimmed,
-            })?;
+        let struct_def =
+            self.get_struct_by_id(struct_id)
+                .ok_or(SemanticError::StructUndefined {
+                    name: "<uname>".to_string(),
+                    range: range_trimmed,
+                })?;
 
         // 否则是初始化列表 { init1, init2, ... }
         let inits: Vec<_> = init_val_node.inits().collect();

@@ -23,7 +23,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         // 直接从 analyzer 获取函数信息
         let func_id = self
             .analyzer
-            .find_function(&name)
+            .get_function_id_by_name(&name)
             .ok_or_else(|| CodegenError::UndefinedFunc(name.clone()))?;
         let func_info = self
             .analyzer
@@ -85,7 +85,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         // 从 analyzer 获取函数信息
         let func_id = self
             .analyzer
-            .find_function(&name)
+            .get_function_id_by_name(&name)
             .ok_or_else(|| CodegenError::UndefinedFunc(name.clone()))?;
         let func_info = self
             .analyzer

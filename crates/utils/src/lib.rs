@@ -34,3 +34,11 @@ pub fn trim_node_text_range(node: &impl AstNode<Language = AirycLanguage>) -> Te
         TextRange::new(l, r)
     }
 }
+
+/// 从 Name 节点中提取变量名和范围
+/// 返回 Some((name, range)) 如果两者都存在，否则返回 None
+pub fn extract_name_and_range(name_node: &syntax::ast::Name) -> Option<(String, TextRange)> {
+    let name = name_node.var_name()?;
+    let range = name_node.var_range()?;
+    Some((name, range))
+}

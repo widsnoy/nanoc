@@ -40,6 +40,22 @@ pub enum SemanticError {
         range: TextRange,
     },
 
+    #[error("function '{name}' have been implemented")]
+    #[diagnostic(code(semantic::function_implemented))]
+    FunctionImplemented {
+        name: String,
+        #[label("here")]
+        range: TextRange,
+    },
+
+    #[error("function '{name}' is not implemented")]
+    #[diagnostic(code(semantic::function_unimplemented))]
+    FunctionUnImplemented {
+        name: String,
+        #[label("here")]
+        range: TextRange,
+    },
+
     #[error("variable '{name}' is not defined")]
     #[diagnostic(code(semantic::variable_undefined))]
     VariableUndefined {
@@ -72,9 +88,18 @@ pub enum SemanticError {
         range: TextRange,
     },
 
-    #[error("type is not defined")]
-    #[diagnostic(code(semantic::type_undefined))]
-    TypeUndefined {
+    #[error("struct '{name}' undefined")]
+    #[diagnostic(code(semantic::struct_undefined))]
+    StructUndefined {
+        name: String,
+        #[label("here")]
+        range: TextRange,
+    },
+
+    #[error("field '{name}' reference itself")]
+    #[diagnostic(code(semantic::struct_self_reference))]
+    StructSelfRef {
+        name: String,
         #[label("here")]
         range: TextRange,
     },
@@ -200,7 +225,8 @@ impl SemanticError {
             | Self::ExpectInitialVal { range, .. }
             | Self::ArrayError { range, .. }
             | Self::StructDefined { range, .. }
-            | Self::TypeUndefined { range }
+            | Self::StructUndefined { range, .. }
+            | Self::StructSelfRef { range, .. }
             | Self::FieldNotFound { range, .. }
             | Self::NotAStruct { range, .. }
             | Self::NotAStructPointer { range, .. }
@@ -213,7 +239,9 @@ impl SemanticError {
             | Self::ReturnTypeMismatch { range, .. }
             | Self::NotALValue { range }
             | Self::ApplyOpOnType { range, .. }
-            | Self::AddressOfRight { range } => range,
+            | Self::AddressOfRight { range }
+            | Self::FunctionImplemented { range, .. }
+            | Self::FunctionUnImplemented { range, .. } => range,
         }
     }
 }
