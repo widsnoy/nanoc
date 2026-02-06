@@ -5,7 +5,7 @@ impl Parser<'_> {
     pub(super) fn parse_block(&mut self) -> bool {
         self.start_node(SyntaxKind::BLOCK);
 
-        if !self.expect_or_else_recovery(SyntaxKind::L_BRACE, SyntaxKind::is_decl_recovery) {
+        if !self.expect(SyntaxKind::L_BRACE) {
             self.finish_node();
             return false;
         }
@@ -17,8 +17,7 @@ impl Parser<'_> {
             }
         }
 
-        let success =
-            self.expect_or_else_recovery(SyntaxKind::R_BRACE, SyntaxKind::is_decl_recovery);
+        let success = self.expect(SyntaxKind::R_BRACE);
         self.finish_node();
         success
     }

@@ -164,7 +164,7 @@ impl Parser<'_> {
                 self.finish_node();
                 return false;
             }
-            if !self.expect_or_else_recovery(SyntaxKind::R_BRACK, SyntaxKind::is_expr_recovery) {
+            if !self.expect(SyntaxKind::R_BRACK) {
                 self.finish_node();
                 return false;
             }
@@ -176,7 +176,7 @@ impl Parser<'_> {
     fn parse_primary_exp(&mut self) -> bool {
         if self.at(SyntaxKind::L_PAREN) {
             self.start_node(SyntaxKind::PAREN_EXPR);
-            if !self.expect_or_else_recovery(SyntaxKind::L_PAREN, SyntaxKind::is_expr_recovery) {
+            if !self.expect(SyntaxKind::L_PAREN) {
                 self.finish_node();
                 return false;
             }
@@ -184,8 +184,7 @@ impl Parser<'_> {
                 self.finish_node();
                 return false;
             }
-            let success =
-                self.expect_or_else_recovery(SyntaxKind::R_PAREN, SyntaxKind::is_expr_recovery);
+            let success = self.expect(SyntaxKind::R_PAREN);
             self.finish_node();
             success
         } else if self.peek().is_number() {
@@ -206,7 +205,7 @@ impl Parser<'_> {
         }
         if self.at(SyntaxKind::L_PAREN) {
             self.start_node_at(cp, SyntaxKind::CALL_EXPR);
-            if !self.expect_or_else_recovery(SyntaxKind::L_PAREN, SyntaxKind::is_expr_recovery) {
+            if !self.expect(SyntaxKind::L_PAREN) {
                 self.finish_node();
                 return false;
             }
@@ -214,8 +213,7 @@ impl Parser<'_> {
                 self.finish_node();
                 return false;
             }
-            let success =
-                self.expect_or_else_recovery(SyntaxKind::R_PAREN, SyntaxKind::is_expr_recovery);
+            let success = self.expect(SyntaxKind::R_PAREN);
             self.finish_node();
             success
         } else {
@@ -226,8 +224,7 @@ impl Parser<'_> {
                     self.finish_node();
                     return false;
                 }
-                if !self.expect_or_else_recovery(SyntaxKind::R_BRACK, SyntaxKind::is_expr_recovery)
-                {
+                if !self.expect(SyntaxKind::R_BRACK) {
                     self.finish_node();
                     return false;
                 }

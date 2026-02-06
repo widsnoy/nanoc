@@ -60,6 +60,7 @@ pub enum SyntaxKind {
     COMP_UNIT,
 
     FUNC_DEF,
+    FUNC_SIGN,
     VAR_DEF,
     INIT_VAL,
     STRUCT_DEF,
@@ -177,8 +178,7 @@ impl SyntaxKind {
 }
 
 impl SyntaxKind {
-    /// 检查是否为表达式恢复点
-    pub fn is_expr_recovery(self) -> bool {
+    pub fn is_sync_token(self) -> bool {
         matches!(
             self,
             SyntaxKind::SEMI
@@ -187,36 +187,6 @@ impl SyntaxKind {
                 | SyntaxKind::R_BRACK
                 | SyntaxKind::COMMA
                 | SyntaxKind::EOF
-        )
-    }
-
-    /// 检查是否为语句恢复点
-    pub fn is_stmt_recovery(self) -> bool {
-        matches!(
-            self,
-            SyntaxKind::SEMI
-                | SyntaxKind::R_BRACE
-                | SyntaxKind::IF_KW
-                | SyntaxKind::WHILE_KW
-                | SyntaxKind::RETURN_KW
-                | SyntaxKind::LET_KW
-                | SyntaxKind::EOF
-        )
-    }
-
-    /// 检查是否为声明恢复点
-    pub fn is_decl_recovery(self) -> bool {
-        matches!(
-            self,
-            SyntaxKind::IF_KW
-                | SyntaxKind::WHILE_KW
-                | SyntaxKind::RETURN_KW
-                | SyntaxKind::STRUCT_KW
-                | SyntaxKind::LET_KW
-                | SyntaxKind::FN_KW
-                | SyntaxKind::EOF
-                | SyntaxKind::SEMI
-                | SyntaxKind::R_BRACE
         )
     }
 }

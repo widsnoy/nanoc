@@ -28,14 +28,12 @@ impl Parser<'_> {
                         self.finish_node();
                         return false;
                     }
-                    let success = self
-                        .expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_stmt_recovery);
+                    let success = self.expect(SyntaxKind::SEMI);
                     self.finish_node();
                     success
                 } else {
                     self.start_node_at(cp, SyntaxKind::EXPR_STMT);
-                    let success = self
-                        .expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_stmt_recovery);
+                    let success = self.expect(SyntaxKind::SEMI);
                     self.finish_node();
                     success
                 }
@@ -46,11 +44,11 @@ impl Parser<'_> {
     fn parse_if_statement(&mut self) -> bool {
         self.start_node(SyntaxKind::IF_STMT);
 
-        if !self.expect_or_else_recovery(SyntaxKind::IF_KW, SyntaxKind::is_stmt_recovery) {
+        if !self.expect(SyntaxKind::IF_KW) {
             self.finish_node();
             return false;
         }
-        if !self.expect_or_else_recovery(SyntaxKind::L_PAREN, SyntaxKind::is_stmt_recovery) {
+        if !self.expect(SyntaxKind::L_PAREN) {
             self.finish_node();
             return false;
         }
@@ -58,7 +56,7 @@ impl Parser<'_> {
             self.finish_node();
             return false;
         }
-        if !self.expect_or_else_recovery(SyntaxKind::R_PAREN, SyntaxKind::is_stmt_recovery) {
+        if !self.expect(SyntaxKind::R_PAREN) {
             self.finish_node();
             return false;
         }
@@ -80,11 +78,11 @@ impl Parser<'_> {
     fn parse_while_statement(&mut self) -> bool {
         self.start_node(SyntaxKind::WHILE_STMT);
 
-        if !self.expect_or_else_recovery(SyntaxKind::WHILE_KW, SyntaxKind::is_stmt_recovery) {
+        if !self.expect(SyntaxKind::WHILE_KW) {
             self.finish_node();
             return false;
         }
-        if !self.expect_or_else_recovery(SyntaxKind::L_PAREN, SyntaxKind::is_stmt_recovery) {
+        if !self.expect(SyntaxKind::L_PAREN) {
             self.finish_node();
             return false;
         }
@@ -92,7 +90,7 @@ impl Parser<'_> {
             self.finish_node();
             return false;
         }
-        if !self.expect_or_else_recovery(SyntaxKind::R_PAREN, SyntaxKind::is_stmt_recovery) {
+        if !self.expect(SyntaxKind::R_PAREN) {
             self.finish_node();
             return false;
         }
@@ -104,11 +102,11 @@ impl Parser<'_> {
     fn parse_break_statement(&mut self) -> bool {
         self.start_node(SyntaxKind::BREAK_STMT);
 
-        if !self.expect_or_else_recovery(SyntaxKind::BREAK_KW, SyntaxKind::is_stmt_recovery) {
+        if !self.expect(SyntaxKind::BREAK_KW) {
             self.finish_node();
             return false;
         }
-        let success = self.expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_stmt_recovery);
+        let success = self.expect(SyntaxKind::SEMI);
         self.finish_node();
         success
     }
@@ -116,11 +114,11 @@ impl Parser<'_> {
     fn parse_continue_statement(&mut self) -> bool {
         self.start_node(SyntaxKind::CONTINUE_STMT);
 
-        if !self.expect_or_else_recovery(SyntaxKind::CONTINUE_KW, SyntaxKind::is_stmt_recovery) {
+        if !self.expect(SyntaxKind::CONTINUE_KW) {
             self.finish_node();
             return false;
         }
-        let success = self.expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_stmt_recovery);
+        let success = self.expect(SyntaxKind::SEMI);
         self.finish_node();
         success
     }
@@ -128,7 +126,7 @@ impl Parser<'_> {
     fn parse_return_statement(&mut self) -> bool {
         self.start_node(SyntaxKind::RETURN_STMT);
 
-        if !self.expect_or_else_recovery(SyntaxKind::RETURN_KW, SyntaxKind::is_stmt_recovery) {
+        if !self.expect(SyntaxKind::RETURN_KW) {
             self.finish_node();
             return false;
         }
@@ -136,7 +134,7 @@ impl Parser<'_> {
             self.finish_node();
             return false;
         }
-        let success = self.expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_stmt_recovery);
+        let success = self.expect(SyntaxKind::SEMI);
         self.finish_node();
         success
     }

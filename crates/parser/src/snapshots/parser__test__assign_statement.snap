@@ -6,20 +6,21 @@ COMP_UNIT@0..78
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
   FUNC_DEF@5..73
-    FN_KW@5..7 "fn"
-    NAME@7..12
+    FUNC_SIGN@5..14
+      FN_KW@5..7 "fn"
       WHITESPACE@7..8 " "
-      IDENT@8..12 "test"
-    L_PAREN@12..13 "("
-    R_PAREN@13..14 ")"
+      NAME@8..12
+        IDENT@8..12 "test"
+      L_PAREN@12..13 "("
+      R_PAREN@13..14 ")"
     BLOCK@14..73
       WHITESPACE@14..15 " "
       L_BRACE@15..16 "{"
       ASSIGN_STMT@16..31
         INDEX_VAL@16..26
-          NAME@16..26
-            NEWLINE@16..17 "\n"
-            WHITESPACE@17..25 "        "
+          NEWLINE@16..17 "\n"
+          WHITESPACE@17..25 "        "
+          NAME@25..26
             IDENT@25..26 "a"
         WHITESPACE@26..27 " "
         EQ@27..28 "="
@@ -44,9 +45,9 @@ COMP_UNIT@0..78
         SEMI@46..47 ";"
       ASSIGN_STMT@47..67
         INDEX_VAL@47..62
-          NAME@47..59
-            NEWLINE@47..48 "\n"
-            WHITESPACE@48..56 "        "
+          NEWLINE@47..48 "\n"
+          WHITESPACE@48..56 "        "
+          NAME@56..59
             IDENT@56..59 "arr"
           L_BRACK@59..60 "["
           LITERAL@60..61

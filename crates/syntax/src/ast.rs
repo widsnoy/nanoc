@@ -154,10 +154,16 @@ ast_node!(
 // 4. 函数
 ast_node!(
     FuncDef ~ FUNC_DEF {
+        sign: node(FuncSign),
+        block: node(Block),
+    }
+);
+
+ast_node!(
+    FuncSign ~ FUNC_SIGN {
         name: node(Name),
         params: node(FuncFParams),
         ret_type: node(Type),
-        block: node(Block),
     }
 );
 

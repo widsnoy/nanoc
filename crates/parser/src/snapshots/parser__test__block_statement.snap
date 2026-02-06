@@ -6,12 +6,13 @@ COMP_UNIT@0..76
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
   FUNC_DEF@5..71
-    FN_KW@5..7 "fn"
-    NAME@7..12
+    FUNC_SIGN@5..14
+      FN_KW@5..7 "fn"
       WHITESPACE@7..8 " "
-      IDENT@8..12 "test"
-    L_PAREN@12..13 "("
-    R_PAREN@13..14 ")"
+      NAME@8..12
+        IDENT@8..12 "test"
+      L_PAREN@12..13 "("
+      R_PAREN@13..14 ")"
     BLOCK@14..71
       WHITESPACE@14..15 " "
       L_BRACE@15..16 "{"
@@ -23,13 +24,13 @@ COMP_UNIT@0..76
           NEWLINE@26..27 "\n"
           WHITESPACE@27..39 "            "
           LET_KW@39..42 "let"
-          NAME@42..49
-            WHITESPACE@42..43 " "
+          WHITESPACE@42..43 " "
+          NAME@43..49
             IDENT@43..49 "nested"
           COLON@49..50 ":"
-          TYPE@50..54
-            PRIMIT_TYPE@50..54
-              WHITESPACE@50..51 " "
+          WHITESPACE@50..51 " "
+          TYPE@51..54
+            PRIMIT_TYPE@51..54
               INT_KW@51..54 "i32"
           SEMI@54..55 ";"
         NEWLINE@55..56 "\n"

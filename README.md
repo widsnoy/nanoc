@@ -15,7 +15,8 @@ Pointer     := '*' ('mut' | 'const')
 VarDef      := 'let' Name ':' Type ['=' InitVal] ';'
 InitVal     := Expr | '{' [InitVal {',' InitVal}] '}'
 
-FuncDef     := 'fn' Name '(' [FuncFParams] ')' ['->' Type] Block
+FuncDef     :=  FuncSign (';' | Block)
+FuncSign    := 'fn' Name '(' [FuncFParams] ')' ['->' Type]
 FuncFParams := FuncFParam {',' FuncFParam}
 FuncFParam  := Name: Type
 FuncRParams := Expr {',' Expr}

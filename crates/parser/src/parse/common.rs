@@ -4,14 +4,16 @@ use syntax::SyntaxKind;
 impl Parser<'_> {
     /// 解析名称
     pub(super) fn parse_name(&mut self) -> bool {
+        self.bump_trivia();
         self.start_node(SyntaxKind::NAME);
-        let success = self.expect_or_else_recovery(SyntaxKind::IDENT, SyntaxKind::is_decl_recovery);
+        let success = self.expect(SyntaxKind::IDENT);
         self.finish_node();
         success
     }
 
     /// 解析基础类型: [const] PrimitType | Pointer Type | '[' Type ';' Expr ']'
     pub(super) fn parse_type(&mut self) -> bool {
+        self.bump_trivia();
         self.start_node(SyntaxKind::TYPE);
 
         let success = if self.at(SyntaxKind::STAR) {
@@ -28,7 +30,7 @@ impl Parser<'_> {
                 self.finish_node();
                 return false;
             }
-            if !self.expect_or_else_recovery(SyntaxKind::SEMI, SyntaxKind::is_decl_recovery) {
+            if !self.expect(SyntaxKind::SEMI) {
                 self.finish_node();
                 return false;
             }
@@ -36,7 +38,7 @@ impl Parser<'_> {
                 self.finish_node();
                 return false;
             }
-            self.expect_or_else_recovery(SyntaxKind::R_BRACK, SyntaxKind::is_decl_recovery)
+            self.expect(SyntaxKind::R_BRACK)
         } else {
             // 基础类型（可能带 const 前缀）
             if self.at(SyntaxKind::CONST_KW) {
@@ -51,6 +53,7 @@ impl Parser<'_> {
 
     /// 解析原始类型: 'void' | 'i32' | 'f32' | 'struct' Name
     pub(super) fn parse_primitive_type(&mut self) -> bool {
+        self.bump_trivia();
         self.start_node(SyntaxKind::PRIMIT_TYPE);
         let current_token = self.peek();
 
@@ -88,12 +91,7 @@ impl Parser<'_> {
             true
         } else {
             // 报错：期望 'mut' 或 'const'
-            self.skip_until(&[
-                SyntaxKind::MUT_KW,
-                SyntaxKind::CONST_KW,
-                SyntaxKind::SEMI,
-                SyntaxKind::EOF,
-            ]);
+            self.skip_until(&[SyntaxKind::MUT_KW, SyntaxKind::CONST_KW, SyntaxKind::EOF]);
             self.finish_node();
             false
         }

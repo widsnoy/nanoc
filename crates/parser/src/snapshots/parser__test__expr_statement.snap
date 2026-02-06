@@ -6,20 +6,21 @@ COMP_UNIT@0..68
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
   FUNC_DEF@5..63
-    FN_KW@5..7 "fn"
-    NAME@7..12
+    FUNC_SIGN@5..14
+      FN_KW@5..7 "fn"
       WHITESPACE@7..8 " "
-      IDENT@8..12 "test"
-    L_PAREN@12..13 "("
-    R_PAREN@13..14 ")"
+      NAME@8..12
+        IDENT@8..12 "test"
+      L_PAREN@12..13 "("
+      R_PAREN@13..14 ")"
     BLOCK@14..63
       WHITESPACE@14..15 " "
       L_BRACE@15..16 "{"
       EXPR_STMT@16..32
         CALL_EXPR@16..31
-          NAME@16..29
-            NEWLINE@16..17 "\n"
-            WHITESPACE@17..25 "        "
+          NEWLINE@16..17 "\n"
+          WHITESPACE@17..25 "        "
+          NAME@25..29
             IDENT@25..29 "func"
           L_PAREN@29..30 "("
           R_PAREN@30..31 ")"
@@ -27,16 +28,16 @@ COMP_UNIT@0..68
       EXPR_STMT@32..47
         BINARY_EXPR@32..46
           INDEX_VAL@32..42
-            NAME@32..42
-              NEWLINE@32..33 "\n"
-              WHITESPACE@33..41 "        "
+            NEWLINE@32..33 "\n"
+            WHITESPACE@33..41 "        "
+            NAME@41..42
               IDENT@41..42 "a"
           BINARY_OP@42..44
             WHITESPACE@42..43 " "
             PLUS@43..44 "+"
           INDEX_VAL@44..46
-            NAME@44..46
-              WHITESPACE@44..45 " "
+            WHITESPACE@44..45 " "
+            NAME@45..46
               IDENT@45..46 "b"
         SEMI@46..47 ";"
       NEWLINE@47..48 "\n"

@@ -7,15 +7,15 @@ COMP_UNIT@0..227
   WHITESPACE@1..5 "    "
   VAR_DEF@5..26
     LET_KW@5..8 "let"
-    NAME@8..10
-      WHITESPACE@8..9 " "
+    WHITESPACE@8..9 " "
+    NAME@9..10
       IDENT@9..10 "A"
     COLON@10..11 ":"
-    TYPE@11..21
-      WHITESPACE@11..12 " "
+    WHITESPACE@11..12 " "
+    TYPE@12..21
       CONST_KW@12..17 "const"
-      PRIMIT_TYPE@17..21
-        WHITESPACE@17..18 " "
+      WHITESPACE@17..18 " "
+      PRIMIT_TYPE@18..21
         INT_KW@18..21 "i32"
     WHITESPACE@21..22 " "
     EQ@22..23 "="
@@ -28,15 +28,15 @@ COMP_UNIT@0..227
   WHITESPACE@27..31 "    "
   VAR_DEF@31..54
     LET_KW@31..34 "let"
-    NAME@34..36
-      WHITESPACE@34..35 " "
+    WHITESPACE@34..35 " "
+    NAME@35..36
       IDENT@35..36 "B"
     COLON@36..37 ":"
-    TYPE@37..47
-      WHITESPACE@37..38 " "
+    WHITESPACE@37..38 " "
+    TYPE@38..47
       CONST_KW@38..43 "const"
-      PRIMIT_TYPE@43..47
-        WHITESPACE@43..44 " "
+      WHITESPACE@43..44 " "
+      PRIMIT_TYPE@44..47
         FLOAT_KW@44..47 "f32"
     WHITESPACE@47..48 " "
     EQ@48..49 "="
@@ -49,15 +49,15 @@ COMP_UNIT@0..227
   WHITESPACE@55..59 "    "
   VAR_DEF@59..82
     LET_KW@59..62 "let"
-    NAME@62..64
-      WHITESPACE@62..63 " "
+    WHITESPACE@62..63 " "
+    NAME@63..64
       IDENT@63..64 "C"
     COLON@64..65 ":"
-    TYPE@65..75
-      WHITESPACE@65..66 " "
+    WHITESPACE@65..66 " "
+    TYPE@66..75
       CONST_KW@66..71 "const"
-      PRIMIT_TYPE@71..75
-        WHITESPACE@71..72 " "
+      WHITESPACE@71..72 " "
+      PRIMIT_TYPE@72..75
         FLOAT_KW@72..75 "f32"
     WHITESPACE@75..76 " "
     EQ@76..77 "="
@@ -70,26 +70,26 @@ COMP_UNIT@0..227
   WHITESPACE@83..87 "    "
   VAR_DEF@87..98
     LET_KW@87..90 "let"
-    NAME@90..92
-      WHITESPACE@90..91 " "
+    WHITESPACE@90..91 " "
+    NAME@91..92
       IDENT@91..92 "a"
     COLON@92..93 ":"
-    TYPE@93..97
-      PRIMIT_TYPE@93..97
-        WHITESPACE@93..94 " "
+    WHITESPACE@93..94 " "
+    TYPE@94..97
+      PRIMIT_TYPE@94..97
         INT_KW@94..97 "i32"
     SEMI@97..98 ";"
   NEWLINE@98..99 "\n"
   WHITESPACE@99..103 "    "
   VAR_DEF@103..120
     LET_KW@103..106 "let"
-    NAME@106..108
-      WHITESPACE@106..107 " "
+    WHITESPACE@106..107 " "
+    NAME@107..108
       IDENT@107..108 "b"
     COLON@108..109 ":"
-    TYPE@109..113
-      PRIMIT_TYPE@109..113
-        WHITESPACE@109..110 " "
+    WHITESPACE@109..110 " "
+    TYPE@110..113
+      PRIMIT_TYPE@110..113
         FLOAT_KW@110..113 "f32"
     WHITESPACE@113..114 " "
     EQ@114..115 "="
@@ -102,46 +102,46 @@ COMP_UNIT@0..227
   WHITESPACE@121..125 "    "
   VAR_DEF@125..148
     LET_KW@125..128 "let"
-    NAME@128..130
-      WHITESPACE@128..129 " "
+    WHITESPACE@128..129 " "
+    NAME@129..130
       IDENT@129..130 "s"
     COLON@130..131 ":"
-    TYPE@131..147
-      PRIMIT_TYPE@131..147
-        WHITESPACE@131..132 " "
+    WHITESPACE@131..132 " "
+    TYPE@132..147
+      PRIMIT_TYPE@132..147
         STRUCT_KW@132..138 "struct"
-        NAME@138..147
-          WHITESPACE@138..139 " "
+        WHITESPACE@138..139 " "
+        NAME@139..147
           IDENT@139..147 "MyStruct"
     SEMI@147..148 ";"
   NEWLINE@148..149 "\n"
   WHITESPACE@149..153 "    "
   VAR_DEF@153..169
     LET_KW@153..156 "let"
-    NAME@156..158
-      WHITESPACE@156..157 " "
+    WHITESPACE@156..157 " "
+    NAME@157..158
       IDENT@157..158 "p"
     COLON@158..159 ":"
-    TYPE@159..168
-      POINTER@159..164
-        WHITESPACE@159..160 " "
+    WHITESPACE@159..160 " "
+    TYPE@160..168
+      POINTER@160..164
         STAR@160..161 "*"
         MUT_KW@161..164 "mut"
-      TYPE@164..168
-        PRIMIT_TYPE@164..168
-          WHITESPACE@164..165 " "
+      WHITESPACE@164..165 " "
+      TYPE@165..168
+        PRIMIT_TYPE@165..168
           INT_KW@165..168 "i32"
     SEMI@168..169 ";"
   NEWLINE@169..170 "\n"
   WHITESPACE@170..174 "    "
   VAR_DEF@174..193
     LET_KW@174..177 "let"
-    NAME@177..181
-      WHITESPACE@177..178 " "
+    WHITESPACE@177..178 " "
+    NAME@178..181
       IDENT@178..181 "arr"
     COLON@181..182 ":"
-    TYPE@182..192
-      WHITESPACE@182..183 " "
+    WHITESPACE@182..183 " "
+    TYPE@183..192
       L_BRACK@183..184 "["
       TYPE@184..187
         PRIMIT_TYPE@184..187
@@ -156,12 +156,12 @@ COMP_UNIT@0..227
   WHITESPACE@194..198 "    "
   VAR_DEF@198..222
     LET_KW@198..201 "let"
-    NAME@201..206
-      WHITESPACE@201..202 " "
+    WHITESPACE@201..202 " "
+    NAME@202..206
       IDENT@202..206 "arr2"
     COLON@206..207 ":"
-    TYPE@207..221
-      WHITESPACE@207..208 " "
+    WHITESPACE@207..208 " "
+    TYPE@208..221
       L_BRACK@208..209 "["
       TYPE@209..217
         L_BRACK@209..210 "["

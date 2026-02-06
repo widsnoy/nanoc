@@ -5,13 +5,28 @@ impl Parser<'_> {
     /// 解析函数定义
     pub(super) fn parse_func_def(&mut self) -> bool {
         self.start_node(SyntaxKind::FUNC_DEF);
+
+        self.parse_func_sign();
+
+        let success = if self.at(SyntaxKind::SEMI) {
+            self.bump();
+            true
+        } else {
+            self.parse_block()
+        };
+        self.finish_node();
+        success
+    }
+
+    fn parse_func_sign(&mut self) -> bool {
+        self.start_node(SyntaxKind::FUNC_SIGN);
         self.bump(); // FN_KW
 
         if !self.parse_name() {
             self.finish_node();
             return false;
         }
-        if !self.expect_or_else_recovery(SyntaxKind::L_PAREN, SyntaxKind::is_decl_recovery) {
+        if !self.expect(SyntaxKind::L_PAREN) {
             self.finish_node();
             return false;
         }
@@ -19,7 +34,7 @@ impl Parser<'_> {
             self.finish_node();
             return false;
         }
-        if !self.expect_or_else_recovery(SyntaxKind::R_PAREN, SyntaxKind::is_decl_recovery) {
+        if !self.expect(SyntaxKind::R_PAREN) {
             self.finish_node();
             return false;
         }
@@ -30,9 +45,8 @@ impl Parser<'_> {
                 return false;
             }
         }
-        let success = self.parse_block();
         self.finish_node();
-        success
+        true
     }
 
     /// 解析函数形参列表
@@ -42,16 +56,20 @@ impl Parser<'_> {
         let mut is_first = true;
 
         while !matches!(self.peek(), SyntaxKind::R_PAREN | SyntaxKind::EOF) {
-            if !is_first
-                && !self.expect_or_else_recovery(SyntaxKind::COMMA, SyntaxKind::is_decl_recovery)
-            {
+            let start_pos = self.lexer.current_pos();
+
+            if !is_first && !self.expect(SyntaxKind::COMMA) {
                 continue;
             }
             if !self.parse_func_f_param() {
                 self.finish_node();
                 return false;
             }
-            is_first = false
+            is_first = false;
+
+            if start_pos == self.lexer.current_pos() {
+                break;
+            }
         }
 
         self.finish_node();
@@ -65,7 +83,7 @@ impl Parser<'_> {
             self.finish_node();
             return false;
         }
-        if !self.expect_or_else_recovery(SyntaxKind::COLON, SyntaxKind::is_decl_recovery) {
+        if !self.expect(SyntaxKind::COLON) {
             self.finish_node();
             return false;
         }
@@ -81,9 +99,9 @@ impl Parser<'_> {
         let mut is_first = true;
 
         while !matches!(self.peek(), SyntaxKind::R_PAREN | SyntaxKind::EOF) {
-            if !is_first
-                && !self.expect_or_else_recovery(SyntaxKind::COMMA, SyntaxKind::is_decl_recovery)
-            {
+            let start_pos = self.lexer.current_pos();
+
+            if !is_first && !self.expect(SyntaxKind::COMMA) {
                 continue;
             }
             if !self.parse_exp() {
@@ -91,6 +109,10 @@ impl Parser<'_> {
                 return false;
             }
             is_first = false;
+
+            if start_pos == self.lexer.current_pos() {
+                break;
+            }
         }
 
         self.finish_node();

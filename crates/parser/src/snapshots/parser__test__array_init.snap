@@ -7,12 +7,12 @@ COMP_UNIT@0..86
   WHITESPACE@1..5 "    "
   VAR_DEF@5..33
     LET_KW@5..8 "let"
-    NAME@8..10
-      WHITESPACE@8..9 " "
+    WHITESPACE@8..9 " "
+    NAME@9..10
       IDENT@9..10 "a"
     COLON@10..11 ":"
-    TYPE@11..20
-      WHITESPACE@11..12 " "
+    WHITESPACE@11..12 " "
+    TYPE@12..20
       L_BRACK@12..13 "["
       TYPE@13..16
         PRIMIT_TYPE@13..16
@@ -46,12 +46,12 @@ COMP_UNIT@0..86
   WHITESPACE@34..38 "    "
   VAR_DEF@38..81
     LET_KW@38..41 "let"
-    NAME@41..43
-      WHITESPACE@41..42 " "
+    WHITESPACE@41..42 " "
+    NAME@42..43
       IDENT@42..43 "b"
     COLON@43..44 ":"
-    TYPE@44..58
-      WHITESPACE@44..45 " "
+    WHITESPACE@44..45 " "
+    TYPE@45..58
       L_BRACK@45..46 "["
       TYPE@46..54
         L_BRACK@46..47 "["

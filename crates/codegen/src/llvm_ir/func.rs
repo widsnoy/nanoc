@@ -9,7 +9,8 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     /// 编译函数定义
     pub(super) fn compile_func_def(&mut self, func: FuncDef) -> Result<()> {
         let name = func
-            .name()
+            .sign()
+            .and_then(|n| n.name())
             .and_then(|n| n.var_name())
             .ok_or(CodegenError::Missing("function name"))?;
 
@@ -51,6 +52,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let function = self.module.add_function(&name, fn_type, None);
         self.symbols.functions.insert(name.clone(), function);
 
+        let Some(block) = func.block() else {
+            return Ok(());
+        };
+
         let entry = self.context.append_basic_block(function, "entry");
         self.builder.position_at_end(entry);
 
@@ -72,9 +77,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             self.symbols.insert_var(pname, alloca, param_ty);
         }
 
-        if let Some(block) = func.block() {
-            self.compile_block(block)?;
-        }
+        self.compile_block(block)?;
 
         let has_term = self
             .builder

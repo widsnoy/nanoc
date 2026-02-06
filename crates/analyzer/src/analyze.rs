@@ -225,51 +225,25 @@ impl Visitor for Module {
         );
     }
 
-    fn enter_func_def(&mut self, node: FuncDef) {
-        // 获取函数名称
-        let Some(name_node) = node.name() else {
-            return;
-        };
-        let Some(name) = name_node.var_name() else {
-            return;
-        };
-        let Some(range) = name_node.var_range() else {
-            return;
-        };
-
-        // 检查函数是否重复定义
-        if self.function_map.contains_key(&name) {
-            self.new_error(SemanticError::FunctionDefined { name, range });
-            return;
-        }
-
-        // FIXME: 把 body 和 block 拆开；
-        // 提前创建占位，以支持递归函数
-        let func_id = self.new_function(name.clone(), vec![], NType::Void, range);
-        self.function_map.insert(name.clone(), func_id);
-
-        // 记录当前正在定义的函数名称
-        self.analyzing.current_func_name = Some(name);
-
+    fn enter_func_def(&mut self, _: FuncDef) {
         self.analyzing.current_scope = self.new_scope(Some(self.analyzing.current_scope));
-        self.analyzing.in_func_def = true;
-
-        // 记录返回类型的范围，用于在 leave_type 中识别
-        if let Some(ty_node) = node.ret_type() {
-            self.analyzing.func_ret_type_range = Some(ty_node.text_range());
-        }
-
-        // 默认返回类型为 Void（如果没有声明返回类型）
-        self.analyzing.current_function_ret_type = Some(NType::Void);
     }
 
-    fn leave_func_def(&mut self, node: FuncDef) {
-        let mut param_list = Vec::new();
-
+    fn leave_func_def(&mut self, _: FuncDef) {
         let Some(scope) = self.scopes.get(*self.analyzing.current_scope) else {
             return;
         };
         let Some(parent_scope) = scope.parent else {
+            return;
+        };
+        self.analyzing.current_scope = parent_scope;
+        self.analyzing.current_function_ret_type = None;
+    }
+
+    fn leave_func_sign(&mut self, node: FuncSign) {
+        let mut param_list = Vec::new();
+
+        let Some(scope) = self.scopes.get(*self.analyzing.current_scope) else {
             return;
         };
 
@@ -305,24 +279,17 @@ impl Visitor for Module {
         let Some(name_node) = node.name() else {
             return;
         };
-        let Some(ident) = name_node.ident() else {
+        let Some(name) = name_node.var_name() else {
             return;
         };
-        let name = ident.text().to_string();
+        let Some(range) = name_node.var_range() else {
+            return;
+        };
 
-        // 更新函数定义
-        if let Some(func_id) = self.find_function(&name)
-            && let Some(function) = self.get_function_mut_by_id(func_id)
-        {
-            function.params = param_list;
-            function.ret_type = ret_type;
-        }
+        let func_id = self.new_function(name.clone(), param_list, ret_type.clone(), range);
+        self.function_map.insert(name, func_id);
 
-        self.analyzing.current_scope = parent_scope;
-        self.analyzing.current_function_ret_type = None;
-        self.analyzing.in_func_def = false;
-        self.analyzing.func_ret_type_range = None;
-        self.analyzing.current_func_name = None;
+        self.analyzing.current_function_ret_type = Some(ret_type);
     }
 
     fn leave_func_f_param(&mut self, node: FuncFParam) {
@@ -477,7 +444,9 @@ impl Visitor for Module {
         let Some(func_name) = name_node.var_name() else {
             return;
         };
-        let func_range = name_node.text_range();
+        let Some(func_range) = name_node.var_range() else {
+            return;
+        };
 
         // FIXME: 内置函数列表（运行时库提供）
         let builtin_functions = [
@@ -534,29 +503,13 @@ impl Visitor for Module {
 
         let func = self.get_function_by_id(func_id).unwrap();
         let expected_arg_count = func.params.len();
-
-        // 检查是否是正在定义的函数（递归调用）
-        let is_current_func = self
-            .analyzing
-            .current_func_name
-            .as_ref()
-            .is_some_and(|n| n == &func_name);
-
-        // 获取返回类型：如果是递归调用，使用 current_function_ret_type
-        let ret_type = if is_current_func {
-            self.analyzing
-                .current_function_ret_type
-                .clone()
-                .unwrap_or(NType::Void)
-        } else {
-            func.ret_type.clone()
-        };
+        let ret_type = func.ret_type.clone();
 
         // 设置返回类型
         self.set_expr_type(node.text_range(), ret_type);
 
         // 检查参数数量（跳过正在定义的函数，因为参数列表还未完成）
-        if !is_current_func && arg_count != expected_arg_count {
+        if arg_count != expected_arg_count {
             self.new_error(SemanticError::ArgumentCountMismatch {
                 function_name: func_name,
                 expected: expected_arg_count,
@@ -1043,14 +996,5 @@ impl Visitor for Module {
         };
 
         self.set_expr_type(range, ntype.clone());
-
-        // 如果这是函数返回类型，更新 current_function_ret_type
-        if self.analyzing.in_func_def
-            && let Some(ret_range) = self.analyzing.func_ret_type_range
-            && ret_range == range
-        {
-            self.analyzing.current_function_ret_type = Some(ntype);
-            self.analyzing.func_ret_type_range = None;
-        }
     }
 }
