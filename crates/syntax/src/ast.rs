@@ -111,7 +111,8 @@ ast_node!(
 ast_enum!(GlobalDecl {
     VarDef,
     FuncDef,
-    StructDef
+    StructDef,
+    FuncAttach
 });
 
 // 声明
@@ -177,6 +178,13 @@ ast_node!(
     FuncFParam ~ FUNC_F_PARAM {
         name: node(Name),
         ty: node(Type),
+    }
+);
+
+ast_node!(
+    FuncAttach ~ FUNC_ATTACH {
+        name: node(Name),
+        block: node(Block),
     }
 );
 

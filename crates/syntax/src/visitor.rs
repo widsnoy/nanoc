@@ -69,6 +69,7 @@ def_visitor! {
     StructField, STRUCT_FIELD, enter_struct_field, leave_struct_field;
     FuncDef, FUNC_DEF, enter_func_def, leave_func_def;
     FuncSign, FUNC_SIGN, enter_func_sign, leave_func_sign;
+    FuncAttach, FUNC_ATTACH, enter_func_attach, leave_func_attach;
     FuncFParams, FUNC_F_PARAMS, enter_func_f_params, leave_func_f_params;
     FuncFParam, FUNC_F_PARAM, enter_func_f_param, leave_func_f_param;
     Block, BLOCK, enter_block, leave_block;

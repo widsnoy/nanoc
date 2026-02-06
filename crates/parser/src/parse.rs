@@ -109,12 +109,16 @@ impl<'a> Parser<'a> {
                 SyntaxKind::STRUCT_KW => {
                     self.parse_struct_def();
                 }
+                SyntaxKind::ATTACH_KW => {
+                    self.parse_func_attach();
+                }
                 SyntaxKind::EOF => break,
                 _ => {
                     self.skip_until(&[
                         SyntaxKind::LET_KW,
                         SyntaxKind::FN_KW,
                         SyntaxKind::STRUCT_KW,
+                        SyntaxKind::ATTACH_KW,
                         SyntaxKind::EOF,
                     ]);
                 }

@@ -1,6 +1,0 @@
-[package]
-name = "line_index"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]

@@ -118,4 +118,13 @@ impl Parser<'_> {
         self.finish_node();
         true
     }
+
+    /// 解析函数实现
+    pub(super) fn parse_func_attach(&mut self) -> bool {
+        self.start_node(SyntaxKind::FUNC_ATTACH);
+        self.bump(); // "attach"
+        let result = !self.parse_name() || !self.parse_block();
+        self.finish_node();
+        result
+    }
 }
