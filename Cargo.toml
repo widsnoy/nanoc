@@ -55,3 +55,7 @@ clap.workspace = true
 miette.workspace = true
 thiserror.workspace = true
 rowan.workspace = true
+
+[profile.release]
+lto = true
+opt-level = 2 
