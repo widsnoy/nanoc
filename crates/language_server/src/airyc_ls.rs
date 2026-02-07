@@ -60,6 +60,7 @@ impl LanguageServer for Backend {
                 ),
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 ..Default::default()
             },
         })
@@ -175,7 +176,18 @@ impl LanguageServer for Backend {
         Ok(None)
     }
 
-    async fn hover(&self, _params: HoverParams) -> Result<Option<Hover>> {
-        Ok(None)
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        let uri = params.text_document_position_params.text_document.uri;
+
+        let doc = match self.documents.get(&uri) {
+            Some(doc) => doc,
+            None => return Ok(None),
+        };
+
+        Ok(lsp_features::hover::hover(
+            params.text_document_position_params.position,
+            &doc.line_index,
+            &doc.module,
+        ))
     }
 }
