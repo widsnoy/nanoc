@@ -30,10 +30,19 @@ rowan = "0.16.1"
 insta = "1.44.3"
 inkwell = { version = "0.7.1", features = ["llvm21-1"] }
 thunderdome = "0.6.1"
-# smol_str = "0.3.4"
 anyhow = "1.0"
 clap = { version = "4.5.54", features = ["derive"] }
 miette = { version = "7.6.0", features = ["fancy"] }
+
+# language server
+tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread", "io-std"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dashmap = "6.1.0"
+tower-lsp-server = "0.23.0"
+parking_lot = "0.12.5"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 syntax = { path = "crates/syntax" }
 lexer = { path = "crates/lexer" }
