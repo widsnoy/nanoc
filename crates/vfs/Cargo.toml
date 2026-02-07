@@ -1,0 +1,8 @@
+[package]
+name = "vfs"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+thunderdome.workspace = true
+walkdir = "2"

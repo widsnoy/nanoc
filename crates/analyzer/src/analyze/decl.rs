@@ -32,7 +32,7 @@ impl DeclVisitor for Module {
         self.analyzing.current_scope = self.new_scope(Some(self.global_scope), node.text_range());
 
         // 提前创建占位，以支持自引用结构体
-        let struct_id = self.new_struct(name.clone(), vec![], range);
+        let struct_id = self.new_struct(name.clone(), vec![], range, self.module_id);
         self.struct_map.insert(name, struct_id);
     }
 

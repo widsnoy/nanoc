@@ -10,6 +10,7 @@ pub enum SyntaxKind {
 
     ERROR,
     EOF,
+    IMPORT_KW,   // "import"
     CONST_KW,    // "const"
     INT_KW,      // "int"
     FLOAT_KW,    // "float"
@@ -59,6 +60,9 @@ pub enum SyntaxKind {
 
     // 语法树节点
     COMP_UNIT,
+
+    HEADER,
+    PATH,
 
     FUNC_DEF,
     FUNC_SIGN,

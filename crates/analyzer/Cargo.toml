@@ -8,6 +8,7 @@ parser.workspace = true
 syntax.workspace = true
 tools.workspace = true
 utils.workspace = true
+vfs.workspace = true
 
 thunderdome.workspace = true
 insta.workspace = true

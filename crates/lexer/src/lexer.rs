@@ -21,6 +21,8 @@ pub enum Token {
     COMMENT_BLOCK,
 
     // 关键字
+    #[token("import")]
+    IMPORT_KW,
     #[token("const")]
     CONST_KW,
     #[token("i32")]
@@ -135,6 +137,7 @@ impl From<Token> for SyntaxKind {
             Token::NEWLINE => SyntaxKind::NEWLINE,
             Token::COMMENT_LINE => SyntaxKind::COMMENT_LINE,
             Token::COMMENT_BLOCK => SyntaxKind::COMMENT_BLOCK,
+            Token::IMPORT_KW => SyntaxKind::IMPORT_KW,
             Token::CONST_KW => SyntaxKind::CONST_KW,
             Token::INT_KW => SyntaxKind::INT_KW,
             Token::FLOAT_KW => SyntaxKind::FLOAT_KW,

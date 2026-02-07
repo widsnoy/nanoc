@@ -8,6 +8,13 @@ use crate::{array::ArrayInitError, r#type::NType};
 
 #[derive(Debug, Clone, Error, Diagnostic)]
 pub enum SemanticError {
+    #[error("invalid import path")]
+    #[diagnostic(code(semantic::invalid_path))]
+    InvalidPath {
+        #[label("here")]
+        range: TextRange,
+    },
+
     #[error("type mismatch: expected {expected}, found {found}")]
     #[diagnostic(code(semantic::type_mismatch))]
     TypeMismatch {
@@ -211,13 +218,21 @@ pub enum SemanticError {
         #[label("here")]
         range: TextRange,
     },
+
+    #[error("circular dependency detected in module imports")]
+    #[diagnostic(code(semantic::circular_dependency))]
+    CircularDependency {
+        #[label("this module is part of a circular dependency")]
+        range: TextRange,
+    },
 }
 
 impl SemanticError {
     /// 获取错误的位置范围
     pub fn range(&self) -> &TextRange {
         match self {
-            Self::TypeMismatch { range, .. }
+            Self::InvalidPath { range }
+            | Self::TypeMismatch { range, .. }
             | Self::ConstantExprExpected { range }
             | Self::VariableDefined { range, .. }
             | Self::FunctionDefined { range, .. }
@@ -241,7 +256,8 @@ impl SemanticError {
             | Self::ApplyOpOnType { range, .. }
             | Self::AddressOfRight { range }
             | Self::FunctionImplemented { range, .. }
-            | Self::FunctionUnImplemented { range, .. } => range,
+            | Self::FunctionUnImplemented { range, .. }
+            | Self::CircularDependency { range } => range,
         }
     }
 }
