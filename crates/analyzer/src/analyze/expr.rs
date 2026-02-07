@@ -86,6 +86,7 @@ impl ExprVisitor for Module {
                 range: func_range,
             });
         }
+
         // 检查参数数量
         if arg_count != expected_arg_count {
             self.new_error(SemanticError::ArgumentCountMismatch {

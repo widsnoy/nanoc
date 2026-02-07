@@ -6,8 +6,8 @@ use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
 use rowan::GreenNode;
-use syntax::SyntaxNode;
 use syntax::ast::{AstNode, CompUnit};
+use syntax::SyntaxNode;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
@@ -49,10 +49,18 @@ pub fn compile_to_ir_string(
     module_name: &str,
     green_node: GreenNode,
     analyzer: &Module,
+    project: Option<&analyzer::project::Project>,
     opt_level: OptLevel,
 ) -> Result<String> {
     let context = LlvmContext::create();
-    let module = generate_and_optimize(&context, module_name, green_node, analyzer, opt_level)?;
+    let module = generate_and_optimize(
+        &context,
+        module_name,
+        green_node,
+        analyzer,
+        project,
+        opt_level,
+    )?;
     Ok(module.print_to_string().to_string())
 }
 
@@ -74,11 +82,19 @@ pub fn compile_to_ir_file(
     module_name: &str,
     green_node: GreenNode,
     analyzer: &Module,
+    project: Option<&analyzer::project::Project>,
     opt_level: OptLevel,
     output_path: &Path,
 ) -> Result<()> {
     let context = LlvmContext::create();
-    let module = generate_and_optimize(&context, module_name, green_node, analyzer, opt_level)?;
+    let module = generate_and_optimize(
+        &context,
+        module_name,
+        green_node,
+        analyzer,
+        project,
+        opt_level,
+    )?;
     module
         .print_to_file(output_path)
         .map_err(|e| CodegenError::LlvmWrite(e.to_string()))?;
@@ -102,10 +118,18 @@ pub fn compile_to_object_bytes(
     module_name: &str,
     green_node: GreenNode,
     analyzer: &Module,
+    project: Option<&analyzer::project::Project>,
     opt_level: OptLevel,
 ) -> Result<Vec<u8>> {
     let context = LlvmContext::create();
-    let module = generate_and_optimize(&context, module_name, green_node, analyzer, opt_level)?;
+    let module = generate_and_optimize(
+        &context,
+        module_name,
+        green_node,
+        analyzer,
+        project,
+        opt_level,
+    )?;
 
     // 初始化目标机器
     let machine = create_target_machine(opt_level)?;
@@ -130,6 +154,7 @@ fn generate_and_optimize<'ctx>(
     module_name: &str,
     green_node: GreenNode,
     analyzer: &Module,
+    project: Option<&analyzer::project::Project>,
     opt_level: OptLevel,
 ) -> Result<inkwell::module::Module<'ctx>> {
     let module = context.create_module(module_name);
@@ -140,8 +165,16 @@ fn generate_and_optimize<'ctx>(
         builder: &builder,
         module: &module,
         analyzer,
+        project,
         symbols: Default::default(),
     };
+
+    // 为所有外部函数（have_impl = false）生成声明
+    for (_idx, func) in analyzer.functions.iter() {
+        if !func.have_impl {
+            program.declare_function(func)?;
+        }
+    }
 
     let root = SyntaxNode::new_root(green_node);
     let comp_unit = CompUnit::cast(root).ok_or(CodegenError::InvalidRoot)?;

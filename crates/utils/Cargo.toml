@@ -6,6 +6,9 @@ edition.workspace = true
 [dependencies]
 syntax.workspace = true
 tools.workspace = true
+parser.workspace = true
+lexer.workspace = true
+vfs.workspace = true
 
 rowan.workspace = true
 text-size.workspace = true
