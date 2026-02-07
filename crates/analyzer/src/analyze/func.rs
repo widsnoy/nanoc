@@ -70,8 +70,14 @@ impl FuncVisitor for Module {
             .and_then(|x| x.block())
             .is_some();
 
-        let func_id =
-            self.new_function(name.clone(), param_list, ret_type.clone(), have_impl, range);
+        let func_id = self.new_function(
+            name.clone(),
+            param_list,
+            ret_type.clone(),
+            have_impl,
+            range,
+            self.module_id,
+        );
         self.function_map.insert(name, func_id);
 
         self.analyzing.current_function_ret_type = Some(ret_type);

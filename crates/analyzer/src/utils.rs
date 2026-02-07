@@ -118,7 +118,9 @@ impl Module {
             NType::Int | NType::Float | NType::Pointer { .. } => {
                 let Some(expr) = init_val_node.expr() else {
                     // 期望表达式，但得到了初始化列表
-                    return Err(SemanticError::ConstantExprExpected { range });
+                    return Err(SemanticError::ConstantExprExpected {
+                        range: utils::trim_node_text_range(&init_val_node),
+                    });
                 };
                 let expr_range = expr.text_range();
                 Ok(self.value_table.get(&expr_range).cloned())

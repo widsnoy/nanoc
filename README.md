@@ -5,7 +5,10 @@ A toy programming language
 ## Grammar
 
 ```text
-CompUnit    := {GlobalDecl}
+CompUnit    := {Header}{GlobalDecl}
+
+Header      := 'import' Path
+
 GlobalDecl  := VarDef | FuncDef | StructDef | FuncAttach
 
 Type        := ['const'] PrimitType | Pointer Type | '[' Type ';' Expr ']'
@@ -20,7 +23,6 @@ FuncSign    := 'fn' Name '(' [FuncFParams] ')' ['->' Type]
 FuncFParams := FuncFParam {',' FuncFParam}
 FuncFParam  := Name: Type
 FuncRParams := Expr {',' Expr}
-
 FuncAttach  := 'attach' Name Block
 
 StructDef   := 'struct' Name '{' [StructField {',' StructField}] '}'
@@ -72,6 +74,7 @@ FieldAccess := Name {'[' Expr ']'}
 
 Literal     := IntConst | FloatConst
 Name        := Ident
+Path        := Ident
 ```
 
 ## Semantic

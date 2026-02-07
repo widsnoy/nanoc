@@ -13,6 +13,8 @@ use crate::{array::ArrayTree, error::SemanticError, r#type::NType, value::Value}
 
 #[derive(Debug)]
 pub struct Module {
+    pub module_id: ModuleID,
+
     pub variables: Arena<Variable>,
     pub reference: Arena<Reference>,
     pub functions: Arena<Function>,
@@ -73,6 +75,7 @@ impl Module {
     pub fn new(green_tree: GreenNode) -> Self {
         Self {
             green_tree,
+            module_id: ModuleID::none(),
             variables: Default::default(),
             reference: Default::default(),
             functions: Default::default(),
@@ -137,6 +140,7 @@ impl Module {
         ret_type: NType,
         have_impl: bool,
         range: TextRange,
+        module_id: ModuleID,
     ) -> FunctionID {
         let function = Function {
             name,
@@ -144,6 +148,7 @@ impl Module {
             ret_type,
             have_impl,
             range,
+            module_id,
         };
         let id = self.functions.insert(function);
         FunctionID(id)
@@ -205,11 +210,13 @@ impl Module {
         name: String,
         fields: Vec<VariableID>,
         range: TextRange,
+        module_id: ModuleID,
     ) -> StructID {
         let struct_def = Struct {
             name,
             fields,
             range,
+            module_id,
         };
         let id = self.structs.insert(struct_def);
         StructID(id)
@@ -287,6 +294,7 @@ define_id_type!(FunctionID);
 define_id_type!(ScopeID);
 define_id_type!(StructID);
 define_id_type!(ReferenceID);
+define_id_type!(ModuleID);
 
 impl Default for ScopeID {
     fn default() -> Self {
@@ -319,12 +327,13 @@ pub enum ReferenceTag {
     VarRead(VariableID),
     FuncCall(FunctionID),
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Function {
     pub name: String,
     pub params: Vec<VariableID>,
     pub ret_type: NType,
     pub have_impl: bool,
+    pub module_id: ModuleID,
     pub range: TextRange,
 }
 
@@ -332,6 +341,7 @@ pub struct Function {
 pub struct Struct {
     pub name: String,
     pub fields: Vec<VariableID>,
+    pub module_id: ModuleID,
     pub range: TextRange,
 }
 

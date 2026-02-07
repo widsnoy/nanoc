@@ -104,7 +104,20 @@ macro_rules! ast_enum {
 // 编译单元
 ast_node!(
     CompUnit ~ COMP_UNIT {
+        headers: nodes(Header),
         global_decls: nodes(GlobalDecl),
+    }
+);
+
+ast_node!(
+    Header ~ HEADER {
+        path: node(Path),
+    }
+);
+
+ast_node!(
+    Path ~ PATH {
+        ident: token(IDENT),
     }
 );
 
@@ -137,7 +150,7 @@ impl InitVal {
     }
 }
 
-// 3. Struct 定义
+// Struct 定义
 ast_node!(
     StructDef ~ STRUCT_DEF {
         name: node(Name),
@@ -152,7 +165,7 @@ ast_node!(
     }
 );
 
-// 4. 函数
+// 函数
 ast_node!(
     FuncDef ~ FUNC_DEF {
         sign: node(FuncSign),
@@ -188,7 +201,7 @@ ast_node!(
     }
 );
 
-// 5. 块和语句
+// 块和语句
 ast_node!(
     Block ~ BLOCK {
         items: nodes(BlockItem),
@@ -245,7 +258,7 @@ ast_node!(
     }
 );
 
-// 6. 表达式
+// 表达式
 ast_enum!(Expr {
     BinaryExpr,
     UnaryExpr,

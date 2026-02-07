@@ -14,7 +14,7 @@ members = [
     "crates/test",
     "crates/language_server", 
     "crates/utils", 
-    "crates/tools", 
+    "crates/tools", "crates/vfs", 
 ]
 resolver = "2"
 
@@ -51,6 +51,7 @@ codegen = { path = "crates/codegen" }
 analyzer = { path = "crates/analyzer" }
 tools = {path = "crates/tools"}
 utils = { path = "crates/utils" }
+vfs = { path = "crates/vfs" }
 
 [dependencies]
 parser.workspace = true

@@ -39,6 +39,8 @@ let A: [[i32; N]; N];
 let B: [[i32; N]; N];
 let C: [[i32; N]; N];
 
+let b:i32 = A[1][1];
+
 fn main() -> i32 {
     let n: i32 = getint();
     let i: i32;
