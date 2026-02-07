@@ -66,6 +66,7 @@ pub struct AnalyzeContext {
 pub struct ModuleIndex {
     pub variable_reference: HashMap<VariableID, Vec<ReferenceID>>,
     pub function_reference: HashMap<FunctionID, Vec<ReferenceID>>,
+    pub scope_tree: HashMap<ScopeID, Vec<ScopeID>>,
 }
 
 impl Module {
@@ -114,13 +115,19 @@ impl Module {
         self.type_table.get(&range)
     }
 
-    pub fn new_scope(&mut self, parent: Option<ScopeID>) -> ScopeID {
+    pub fn new_scope(&mut self, parent: Option<ScopeID>, range: TextRange) -> ScopeID {
         let scope = Scope {
             parent,
             variables: HashMap::new(),
+            range,
         };
-        let id = self.scopes.insert(scope);
-        ScopeID(id)
+        let id = ScopeID(self.scopes.insert(scope));
+
+        if let Some(pid) = parent {
+            self.index.scope_tree.entry(pid).or_default().push(id);
+        }
+
+        id
     }
 
     pub fn new_function(
@@ -367,6 +374,7 @@ impl Struct {
 pub struct Scope {
     pub parent: Option<ScopeID>,
     pub variables: HashMap<String, VariableID>,
+    pub range: TextRange,
 }
 
 impl Scope {

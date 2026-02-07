@@ -9,8 +9,9 @@ use crate::module::Module;
 use crate::r#type::NType;
 
 impl FuncVisitor for Module {
-    fn enter_func_def(&mut self, _: FuncDef) {
-        self.analyzing.current_scope = self.new_scope(Some(self.analyzing.current_scope));
+    fn enter_func_def(&mut self, node: FuncDef) {
+        self.analyzing.current_scope =
+            self.new_scope(Some(self.analyzing.current_scope), node.text_range());
     }
 
     fn leave_func_def(&mut self, _: FuncDef) {

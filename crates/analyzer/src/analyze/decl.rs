@@ -10,8 +10,8 @@ use crate::r#type::NType;
 use crate::value::Value;
 
 impl DeclVisitor for Module {
-    fn enter_comp_unit(&mut self, _node: CompUnit) {
-        self.analyzing.current_scope = self.new_scope(None);
+    fn enter_comp_unit(&mut self, node: CompUnit) {
+        self.analyzing.current_scope = self.new_scope(None, node.text_range());
         self.global_scope = self.analyzing.current_scope;
     }
 
@@ -29,7 +29,7 @@ impl DeclVisitor for Module {
             return;
         }
 
-        self.analyzing.current_scope = self.new_scope(Some(self.global_scope));
+        self.analyzing.current_scope = self.new_scope(Some(self.global_scope), node.text_range());
 
         // 提前创建占位，以支持自引用结构体
         let struct_id = self.new_struct(name.clone(), vec![], range);

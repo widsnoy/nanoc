@@ -2,7 +2,7 @@ use analyzer::module::Module;
 use tools::LineIndex;
 use tower_lsp_server::ls_types::{GotoDefinitionResponse, Location, Position, Uri};
 
-use crate::utils::get_at_position::{get_function_id_at_postition, get_struct_id_at_postition};
+use crate::utils::get_at_position::{get_function_id_at_position, get_struct_id_at_position};
 use crate::utils::{
     get_at_position::{get_reference_id_at_position, get_variable_id_at_position},
     position_trans::text_range_to_ls_range,
@@ -44,7 +44,7 @@ pub(crate) fn goto_definition(
         )));
     }
 
-    if let Some(func_id) = get_function_id_at_postition(module, line_index, &pos)
+    if let Some(func_id) = get_function_id_at_position(module, line_index, &pos)
         && let Some(f) = module.get_function_by_id(func_id)
     {
         return Some(GotoDefinitionResponse::Scalar(Location::new(
@@ -53,7 +53,7 @@ pub(crate) fn goto_definition(
         )));
     }
 
-    if let Some(struct_id) = get_struct_id_at_postition(module, line_index, &pos)
+    if let Some(struct_id) = get_struct_id_at_position(module, line_index, &pos)
         && let Some(s) = module.get_struct_by_id(struct_id)
     {
         return Some(GotoDefinitionResponse::Scalar(Location::new(

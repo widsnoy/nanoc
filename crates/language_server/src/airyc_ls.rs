@@ -61,6 +61,15 @@ impl LanguageServer for Backend {
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
+                // completion_provider: Some(CompletionOptions {
+                //     trigger_characters: Some(vec![".".to_string(), "->".to_string()]),
+                //     all_commit_characters: None,
+                //     resolve_provider: Some(false),
+                //     work_done_progress_options: WorkDoneProgressOptions {
+                //         work_done_progress: None,
+                //     },
+                //     completion_item: None,
+                // }),
                 ..Default::default()
             },
         })
@@ -174,6 +183,20 @@ impl LanguageServer for Backend {
 
     async fn completion(&self, _params: CompletionParams) -> Result<Option<CompletionResponse>> {
         Ok(None)
+        // let uri = params.text_document_position.text_document.uri;
+        //
+        // let doc = match self.documents.get(&uri) {
+        //     Some(doc) => doc,
+        //     None => return Ok(None),
+        // };
+        //
+        // Ok(lsp_features::completion::completion(
+        //     params.text_document_position.position,
+        //     params.context,
+        //     &doc.line_index,
+        //     &doc.module,
+        //     &doc.text,
+        // ))
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
