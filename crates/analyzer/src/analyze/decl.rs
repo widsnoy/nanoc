@@ -81,7 +81,7 @@ impl DeclVisitor for Module {
             let mut ty = &field_ty.clone();
             let self_refer = loop {
                 match ty {
-                    NType::Struct(idx) if *idx == struct_id => break true,
+                    NType::Struct { id: idx, .. } if *idx == struct_id => break true,
                     NType::Array(inner, _) => ty = inner,
                     _ => break false,
                 }

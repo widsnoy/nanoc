@@ -462,7 +462,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let field = self.analyzer.variables.get(*field_id).unwrap();
         let field_ty = field.ty.clone();
 
-        let struct_ntype = NType::Struct(struct_id);
+        let struct_ntype = NType::Struct {
+            id: struct_id,
+            name: struct_def.name.clone(),
+        };
         let struct_llvm_ty = self.convert_ntype_to_type(&struct_ntype)?;
 
         let field_ptr = self

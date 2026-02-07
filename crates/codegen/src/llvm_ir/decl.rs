@@ -243,7 +243,15 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 init_list: list_range,
             }) => {
                 // 尝试获取编译时常量值，否则逐个 store
-                let struct_ty = NType::Struct(*id);
+                let struct_name = self
+                    .analyzer
+                    .get_struct_by_id(*id)
+                    .map(|s| s.name.clone())
+                    .unwrap_or_else(|| format!("struct#{:?}", id.0));
+                let struct_ty = NType::Struct {
+                    id: *id,
+                    name: struct_name,
+                };
                 let llvm_ty = self.convert_ntype_to_type(&struct_ty)?;
                 let gep = unsafe {
                     self.builder

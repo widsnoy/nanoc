@@ -145,7 +145,10 @@ impl Module {
             }
 
             // Struct 类型：递归解析
-            NType::Struct(nested_struct_id) => {
+            NType::Struct {
+                id: nested_struct_id,
+                ..
+            } => {
                 let result = self.process_struct_init_value(*nested_struct_id, init_val_node);
                 if let Ok(Some(v)) = &result {
                     self.value_table.insert(range, v.clone()); // 将常量加入表中

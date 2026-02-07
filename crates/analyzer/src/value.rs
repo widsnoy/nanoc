@@ -1,4 +1,8 @@
-use crate::{array::ArrayTree, module::StructID, r#type::NType};
+use crate::{
+    array::ArrayTree,
+    module::{Module, StructID},
+    r#type::NType,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -17,13 +21,31 @@ pub enum EvalError {
 }
 
 impl Value {
-    pub fn get_type(&self) -> NType {
+    pub fn get_type(&self, module: &Module) -> NType {
         match self {
             Value::Int(_) => NType::Int,
             Value::Float(_) => NType::Float,
             Value::Array(_) => NType::Array(Box::new(NType::Void), 0),
-            Value::Struct(struct_id, _) => NType::Struct(*struct_id),
-            Value::StructZero(struct_id) => NType::Struct(*struct_id),
+            Value::Struct(struct_id, _) => {
+                let name = module
+                    .get_struct_by_id(*struct_id)
+                    .map(|s| s.name.clone())
+                    .unwrap_or_else(|| format!("struct#{:?}", struct_id.0));
+                NType::Struct {
+                    id: *struct_id,
+                    name,
+                }
+            }
+            Value::StructZero(struct_id) => {
+                let name = module
+                    .get_struct_by_id(*struct_id)
+                    .map(|s| s.name.clone())
+                    .unwrap_or_else(|| format!("struct#{:?}", struct_id.0));
+                NType::Struct {
+                    id: *struct_id,
+                    name,
+                }
+            }
             Value::Pointee(_, _) => NType::Pointer {
                 pointee: Box::new(NType::Void),
                 is_const: false,

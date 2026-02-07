@@ -8,7 +8,7 @@ pub enum NType {
     Void,
     Array(Box<NType>, i32),
     Pointer { pointee: Box<NType>, is_const: bool },
-    Struct(StructID),
+    Struct { id: StructID, name: String },
     Const(Box<NType>),
 }
 
@@ -26,7 +26,7 @@ impl fmt::Display for NType {
                     write!(f, "*mut {}", pointee)
                 }
             }
-            NType::Struct(id) => write!(f, "struct#{:?}", id.0),
+            NType::Struct { name, .. } => write!(f, "struct {}", name),
             NType::Const(inner) => write!(f, "const {}", inner),
         }
     }
@@ -87,7 +87,7 @@ impl NType {
     /// 提取 struct ID（处理 Struct 和 Const(Struct) 两种情况）
     pub fn as_struct_id(&self) -> Option<StructID> {
         match self {
-            Self::Struct(id) => Some(*id),
+            Self::Struct { id, .. } => Some(*id),
             Self::Const(inner) => inner.as_struct_id(),
             _ => None,
         }
@@ -110,7 +110,7 @@ impl NType {
             NType::Void => Value::Int(0),
             NType::Array(ntype, _) => ntype.const_zero(),
             NType::Pointer { .. } => Value::Int(0), // null pointer
-            NType::Struct(id) => Value::StructZero(*id),
+            NType::Struct { id, .. } => Value::StructZero(*id),
             NType::Const(ntype) => ntype.const_zero(),
         }
     }
@@ -125,7 +125,7 @@ impl NType {
             (NType::Float, NType::Int) => true,
             (NType::Pointer { .. }, NType::Pointer { .. }) => true,
             (NType::Pointer { .. }, NType::Int) => true,
-            (NType::Struct(id1), NType::Struct(id2)) => id1 == id2,
+            (NType::Struct { id: id1, .. }, NType::Struct { id: id2, .. }) => id1 == id2,
             (NType::Const(inner), NType::Const(r_inner)) => inner.assign_to_me_is_ok(r_inner),
             (NType::Const(inner), _) => inner.assign_to_me_is_ok(other),
             (_, NType::Const(inner)) => self.assign_to_me_is_ok(inner),
