@@ -110,7 +110,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 Ok(inner.array_type(*count as u32).into())
             }
             NType::Pointer { .. } => Ok(self.context.ptr_type(AddressSpace::default()).into()),
-            NType::Struct(struct_id) => {
+            NType::Struct {
+                id: struct_id,
+                name,
+            } => {
                 // 获取 struct 定义
                 let struct_def = self
                     .analyzer
@@ -127,9 +130,22 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     })
                     .collect::<Result<Vec<_>>>()?;
 
-                // 创建 LLVM struct 类型（匿名）
-                let struct_type = self.context.struct_type(&field_types, false);
-                Ok(struct_type.into())
+                // 如果有名称，创建命名 struct；否则创建匿名 struct
+                if !name.is_empty() {
+                    // 尝试获取已存在的命名 struct
+                    if let Some(existing) = self.context.get_struct_type(name) {
+                        return Ok(existing.into());
+                    }
+
+                    // 创建新的命名 struct
+                    let opaque = self.context.opaque_struct_type(name);
+                    opaque.set_body(&field_types, false);
+                    Ok(opaque.into())
+                } else {
+                    // 回退到匿名 struct（向后兼容）
+                    let struct_type = self.context.struct_type(&field_types, false);
+                    Ok(struct_type.into())
+                }
             }
             NType::Const(ntype) => self.convert_ntype_to_type(ntype),
         }
@@ -366,7 +382,15 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             Value::Struct(struct_id, fields) => {
                 // 生成 struct 常量
                 // 获取 struct 的 LLVM 类型
-                let struct_ntype = NType::Struct(*struct_id);
+                let struct_name = self
+                    .analyzer
+                    .get_struct_by_id(*struct_id)
+                    .map(|s| s.name.clone())
+                    .unwrap_or_default();
+                let struct_ntype = NType::Struct {
+                    id: *struct_id,
+                    name: struct_name,
+                };
                 let struct_ty = ty
                     .map(|t| t.into_struct_type())
                     .or_else(|| {
@@ -396,7 +420,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .ok_or(CodegenError::NotImplemented("undefined struct"))?;
 
                 // 获取 struct 的 LLVM 类型
-                let struct_ntype = NType::Struct(*struct_id);
+                let struct_ntype = NType::Struct {
+                    id: *struct_id,
+                    name: struct_def.name.clone(),
+                };
                 let struct_llvm_ty = self
                     .convert_ntype_to_type(&struct_ntype)?
                     .into_struct_type();

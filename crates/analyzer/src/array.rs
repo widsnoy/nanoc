@@ -126,7 +126,7 @@ impl ArrayTree {
                 }
                 Err(ArrayInitError::AssignArrayToNumber)
             }
-            NType::Struct(struct_id) => {
+            NType::Struct { id: struct_id, .. } => {
                 let Some(u) = cursor else {
                     return Err(ArrayInitError::MisMatchIndexAndType);
                 };
