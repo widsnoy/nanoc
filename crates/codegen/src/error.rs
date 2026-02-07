@@ -24,4 +24,16 @@ pub enum CodegenError {
 
     #[error("not implemented: {0}")]
     NotImplemented(&'static str),
+
+    #[error("LLVM verification failed: {0}")]
+    LlvmVerification(String),
+
+    #[error("failed to write LLVM output: {0}")]
+    LlvmWrite(String),
+
+    #[error("target machine error: {0}")]
+    TargetMachine(String),
+
+    #[error("root node is not CompUnit")]
+    InvalidRoot,
 }

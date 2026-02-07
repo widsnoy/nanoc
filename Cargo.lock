@@ -33,7 +33,6 @@ dependencies = [
  "analyzer",
  "clap",
  "codegen",
- "inkwell",
  "lexer",
  "miette",
  "parser",
