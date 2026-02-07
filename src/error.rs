@@ -29,26 +29,11 @@ pub enum CompilerError {
     #[error("codegen failed: {0}")]
     Codegen(#[from] CodegenError),
 
-    #[error("LLVM verification failed: {0}")]
-    LlvmVerification(String),
-
-    #[error("failed to write LLVM IR: {0}")]
-    LlvmWrite(String),
-
-    #[error("failed to create target machine")]
-    TargetMachine,
-
-    #[error("failed to create target from triple: {0}")]
-    TargetFromTriple(String),
-
     #[error("link failed: {0}")]
     Link(String),
 
     #[error("linker returned non-zero status")]
     LinkerFailed,
-
-    #[error("root node is not CompUnit")]
-    InvalidRoot,
 
     #[error("invalid path: {0}")]
     InvalidPath(#[from] std::path::StripPrefixError),

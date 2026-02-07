@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
-use inkwell::OptimizationLevel;
+use codegen::compiler::OptLevel;
 
 /// airyc 编译器命令行参数
 #[derive(Parser, Debug)]
@@ -25,7 +25,7 @@ pub struct Args {
 
     /// optimization level
     #[arg(short = 'O', default_value = "o0")]
-    pub opt_level: OptLevel,
+    pub opt_level: CliOptLevel,
 }
 
 /// 编译输出目标
@@ -41,22 +41,22 @@ pub enum EmitTarget {
     Check,
 }
 
-/// 优化级别
+/// CLI 优化级别（用于 clap 解析）
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
-pub enum OptLevel {
+pub enum CliOptLevel {
     O0,
     O1,
     O2,
     O3,
 }
 
-impl From<OptLevel> for OptimizationLevel {
-    fn from(level: OptLevel) -> Self {
+impl From<CliOptLevel> for OptLevel {
+    fn from(level: CliOptLevel) -> Self {
         match level {
-            OptLevel::O0 => OptimizationLevel::None,
-            OptLevel::O1 => OptimizationLevel::Less,
-            OptLevel::O2 => OptimizationLevel::Default,
-            OptLevel::O3 => OptimizationLevel::Aggressive,
+            CliOptLevel::O0 => OptLevel::O0,
+            CliOptLevel::O1 => OptLevel::O1,
+            CliOptLevel::O2 => OptLevel::O2,
+            CliOptLevel::O3 => OptLevel::O3,
         }
     }
 }
