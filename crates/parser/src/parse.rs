@@ -100,6 +100,9 @@ impl<'a> Parser<'a> {
 
         loop {
             match self.peek() {
+                SyntaxKind::IMPORT_KW => {
+                    self.parse_header();
+                }
                 SyntaxKind::LET_KW => {
                     self.parse_var_def();
                 }
@@ -115,6 +118,7 @@ impl<'a> Parser<'a> {
                 SyntaxKind::EOF => break,
                 _ => {
                     self.skip_until(&[
+                        SyntaxKind::IMPORT_KW,
                         SyntaxKind::LET_KW,
                         SyntaxKind::FN_KW,
                         SyntaxKind::STRUCT_KW,
@@ -126,6 +130,21 @@ impl<'a> Parser<'a> {
             self.bump_trivia();
         }
 
+        self.finish_node();
+    }
+
+    /// 解析 Header: import Path
+    fn parse_header(&mut self) {
+        self.start_node(SyntaxKind::HEADER);
+        self.expect(SyntaxKind::IMPORT_KW);
+        self.parse_path();
+        self.finish_node();
+    }
+
+    /// 解析 Path (简单的标识符)
+    fn parse_path(&mut self) {
+        self.start_node(SyntaxKind::PATH);
+        self.expect(SyntaxKind::IDENT);
         self.finish_node();
     }
 }

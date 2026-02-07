@@ -20,8 +20,19 @@ impl DeclVisitor for Module {
         else {
             return;
         };
-        // 检查是否重复定义
-        if self.get_struct_id_by_name(&name).is_some() {
+        // 检查是否重复定义或重复声明已导入的 struct
+        if let Some(existing_struct_id) = self.get_struct_id_by_name(&name) {
+            if let Some(existing_struct) = self.structs.get(*existing_struct_id) {
+                // 如果已存在的 struct 是从其他模块导入的，不能重新定义
+                if existing_struct.module_id != self.module_id {
+                    self.new_error(SemanticError::StructDefined {
+                        name: name.clone(),
+                        range,
+                    });
+                    return;
+                }
+            }
+            // 如果是本模块的 struct，也不能重复定义
             self.new_error(SemanticError::StructDefined {
                 name: name.clone(),
                 range,
