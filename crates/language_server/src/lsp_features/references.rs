@@ -3,7 +3,7 @@ use tools::LineIndex;
 use tower_lsp_server::ls_types::{Location, Position, Uri};
 
 use crate::utils::{
-    get_at_position::{get_function_id_at_postition, get_variable_id_at_position},
+    get_at_position::{get_function_id_at_position, get_variable_id_at_position},
     position_trans::text_range_to_ls_range,
 };
 
@@ -29,7 +29,7 @@ pub(crate) fn get_references(
         );
     }
 
-    if let Some(func_id) = get_function_id_at_postition(module, line_index, &pos) {
+    if let Some(func_id) = get_function_id_at_position(module, line_index, &pos) {
         let refer_list = module.index.function_reference.get(&func_id)?;
         return Some(
             refer_list

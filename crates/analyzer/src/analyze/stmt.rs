@@ -8,8 +8,9 @@ use crate::module::Module;
 use crate::r#type::NType;
 
 impl StmtVisitor for Module {
-    fn enter_block(&mut self, _node: Block) {
-        self.analyzing.current_scope = self.new_scope(Some(self.analyzing.current_scope));
+    fn enter_block(&mut self, node: Block) {
+        self.analyzing.current_scope =
+            self.new_scope(Some(self.analyzing.current_scope), node.text_range());
     }
 
     fn leave_block(&mut self, _node: Block) {

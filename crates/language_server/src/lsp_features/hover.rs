@@ -3,7 +3,7 @@ use tools::LineIndex;
 use tower_lsp_server::ls_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 
 use crate::utils::get_at_position::{
-    get_function_id_at_postition, get_reference_id_at_position, get_struct_id_at_postition,
+    get_function_id_at_position, get_reference_id_at_position, get_struct_id_at_position,
     get_variable_id_at_position,
 };
 use crate::utils::position_trans::text_range_to_ls_range;
@@ -31,14 +31,14 @@ pub(crate) fn hover(pos: Position, line_index: &LineIndex, module: &Module) -> O
     }
 
     // 检查是否为函数定义
-    if let Some(func_id) = get_function_id_at_postition(module, line_index, &pos)
+    if let Some(func_id) = get_function_id_at_position(module, line_index, &pos)
         && let Some(function) = module.get_function_by_id(func_id)
     {
         return build_hover_for_function(module, func_id, line_index, function.range);
     }
 
     // 检查是否为结构体定义
-    if let Some(struct_id) = get_struct_id_at_postition(module, line_index, &pos)
+    if let Some(struct_id) = get_struct_id_at_position(module, line_index, &pos)
         && let Some(struct_def) = module.get_struct_by_id(struct_id)
     {
         return build_hover_for_struct(module, struct_id, line_index, struct_def.range);

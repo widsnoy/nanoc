@@ -1,4 +1,4 @@
-use analyzer::module::{FunctionID, Module, ReferenceID, StructID, VariableID};
+use analyzer::module::{FunctionID, Module, ReferenceID, ScopeID, StructID, VariableID};
 use rowan::TextSize;
 use syntax::{
     AstNode, SyntaxNode,
@@ -45,7 +45,7 @@ pub fn get_variable_id_at_position<'a>(
         .map(|x| x.1)
 }
 
-pub fn get_function_id_at_postition(
+pub fn get_function_id_at_position(
     module: &Module,
     line_index: &LineIndex,
     pos: &Position,
@@ -64,7 +64,7 @@ pub fn get_function_id_at_postition(
     }
 }
 
-pub fn get_struct_id_at_postition(
+pub fn get_struct_id_at_position(
     module: &Module,
     line_index: &LineIndex,
     pos: &Position,
@@ -81,4 +81,26 @@ pub fn get_struct_id_at_postition(
     } else {
         None
     }
+}
+
+/// get the deepest scope that cover this position
+pub fn _get_scope_id_at_position(
+    module: &Module,
+    line_index: &LineIndex,
+    pos: &Position,
+) -> ScopeID {
+    let offset = ls_position_to_offset(line_index, pos);
+    let mut scope_id = module.global_scope;
+
+    while let Some(children) = module.index.scope_tree.get(&scope_id) {
+        for id in children {
+            let s = module.scopes.get(**id).unwrap();
+            if s.range.contains(TextSize::from(offset)) {
+                scope_id = *id;
+                break;
+            }
+        }
+    }
+
+    scope_id
 }
