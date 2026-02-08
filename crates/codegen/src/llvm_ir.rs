@@ -27,7 +27,6 @@ pub struct Program<'a, 'ctx> {
     pub builder: &'a Builder<'ctx>,
     pub module: &'a inkwell::module::Module<'ctx>,
     pub analyzer: &'a analyzer::module::Module,
-    pub project: Option<&'a analyzer::project::Project>,
     pub symbols: SymbolTable<'a, 'ctx>,
 }
 

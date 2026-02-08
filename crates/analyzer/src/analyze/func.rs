@@ -70,28 +70,6 @@ impl FuncVisitor for Module {
             .and_then(|x| x.block())
             .is_some();
 
-        // 检查是否重复声明已导入的函数
-        if let Some(existing_func_id) = self.function_map.get(&name)
-            && let Some(existing_func) = self.functions.get(**existing_func_id)
-        {
-            // 如果已存在的函数是从其他模块导入的（module_id 不同）
-            if existing_func.module_id != self.module_id {
-                self.new_error(SemanticError::FunctionDefined {
-                    name: name.clone(),
-                    range,
-                });
-                return;
-            }
-            // 如果是本模块的函数，检查是否重复定义
-            if existing_func.have_impl && have_impl {
-                self.new_error(SemanticError::FunctionImplemented {
-                    name: name.clone(),
-                    range,
-                });
-                return;
-            }
-        }
-
         let func_id = self.new_function(
             name.clone(),
             param_list,
@@ -150,22 +128,9 @@ impl FuncVisitor for Module {
             return;
         };
 
-        // borrow check ........
-        let (func_module_id, func_have_impl) = {
-            let func = self.get_function_by_id(func_id).unwrap();
-            (func.module_id, func.have_impl)
-        };
+        let func = self.get_function_mut_by_id(func_id).unwrap();
 
-        // 检查是否试图给外部函数添加实现
-        if func_module_id != self.module_id {
-            self.new_error(SemanticError::FunctionDefined {
-                name: func_name,
-                range: func_var,
-            });
-            return;
-        }
-
-        if func_have_impl {
+        if func.have_impl {
             self.new_error(SemanticError::FunctionImplemented {
                 name: func_name,
                 range: func_var,
@@ -173,8 +138,6 @@ impl FuncVisitor for Module {
             return;
         }
 
-        // 更新函数实现状态
-        let func = self.get_function_mut_by_id(func_id).unwrap();
         func.have_impl = true;
     }
 }

@@ -30,7 +30,33 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .get_function_by_id(func_id)
             .ok_or_else(|| CodegenError::UndefinedFunc(name.clone()))?;
 
-        self.declare_function(func_info)?;
+        let ret_ty = &func_info.ret_type;
+        let is_void = matches!(ret_ty, NType::Void);
+
+        // 从 func_info.params 获取参数信息
+        let params: Vec<(String, &'a NType)> = func_info
+            .params
+            .iter()
+            .map(|var_id| {
+                let var = self.analyzer.variables.get(**var_id).unwrap();
+                (var.name.clone(), &var.ty)
+            })
+            .collect();
+
+        let basic_params = params
+            .iter()
+            .map(|(_, p)| self.convert_ntype_to_type(p).map(|t| t.into()))
+            .collect::<Result<Vec<_>>>()?;
+
+        let ret_llvm_ty = self.convert_ntype_to_type(ret_ty)?;
+        let fn_type = if is_void {
+            self.context.void_type().fn_type(&basic_params, false)
+        } else {
+            ret_llvm_ty.fn_type(&basic_params, false)
+        };
+
+        let function = self.module.add_function(&name, fn_type, None);
+        self.symbols.functions.insert(name.clone(), function);
 
         Ok(())
     }
@@ -119,52 +145,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         self.symbols.pop_scope();
         self.symbols.current_function = prev_func;
-        Ok(())
-    }
-
-    /// 为函数生成 LLVM 声明（不包含函数体）
-    pub fn declare_function(&mut self, func: &analyzer::module::Function) -> Result<()> {
-        let name = &func.name;
-
-        // 如果已经声明过，跳过
-        if self.symbols.functions.contains_key(name) {
-            return Ok(());
-        }
-
-        let source_module = if func.module_id != self.analyzer.module_id {
-            // 函数来自其他模块，需要从 project 中查找源模块
-            self.project
-                .and_then(|proj| proj.modules.get(*func.module_id))
-                .unwrap_or(self.analyzer)
-        } else {
-            self.analyzer
-        };
-
-        let param_types: Vec<_> = func
-            .params
-            .iter()
-            .filter_map(|param_id| {
-                source_module
-                    .variables
-                    .get(**param_id)
-                    .and_then(|var| self.convert_ntype_to_type(&var.ty).ok())
-                    .map(|t| t.into())
-            })
-            .collect();
-
-        let is_void = matches!(func.ret_type, NType::Void);
-
-        let fn_type = if is_void {
-            self.context.void_type().fn_type(&param_types, false)
-        } else {
-            let ret_type = self.convert_ntype_to_type(&func.ret_type)?;
-            ret_type.fn_type(&param_types, false)
-        };
-
-        let function = self.module.add_function(name, fn_type, None);
-
-        self.symbols.functions.insert(name.clone(), function);
-
         Ok(())
     }
 }

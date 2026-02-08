@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::path::Path;
 
 use analyzer::error::SemanticError;
 use codegen::error::CodegenError;
@@ -6,7 +6,6 @@ use lexer::LexerError;
 use miette::NamedSource;
 use parser::parse::ParserError;
 use thiserror::Error;
-use vfs::{FileID, Vfs};
 
 /// 编译器统一错误类型
 pub type Result<T> = std::result::Result<T, CompilerError>;
@@ -19,13 +18,13 @@ pub enum CompilerError {
     Io(#[from] std::io::Error),
 
     #[error("lexer errors occurred")]
-    Lexer(HashMap<FileID, Vec<LexerError>>),
+    Lexer(Vec<LexerError>),
 
     #[error("parser errors occurred")]
-    Parser(HashMap<FileID, Vec<ParserError>>),
+    Parser(Vec<ParserError>),
 
     #[error("semantic errors occurred")]
-    Semantic(HashMap<FileID, Vec<SemanticError>>),
+    Semantic(Vec<SemanticError>),
 
     #[error("codegen failed: {0}")]
     Codegen(#[from] CodegenError),
@@ -38,59 +37,41 @@ pub enum CompilerError {
 
     #[error("invalid path: {0}")]
     InvalidPath(#[from] std::path::StripPrefixError),
-
-    #[error("dependency discovery failed: {0}")]
-    Discovery(String),
 }
 
 impl CompilerError {
-    pub fn report(&self, vfs: &Vfs) {
+    /// 报告错误，使用 miette 格式化输出
+    ///
+    /// 对于包含多个子错误的错误类型（Lexer, Parser, Semantic），
+    /// 会逐个输出每个子错误的详细信息
+    pub fn report(&self, source_path: &Path, source_code: String) {
+        let source = NamedSource::new(source_path.to_string_lossy(), source_code);
+
         match self {
-            CompilerError::Lexer(errors_by_file) => {
-                for (file_id, errors) in errors_by_file {
-                    let file = vfs.get_file_by_file_id(file_id).unwrap();
-                    let source =
-                        NamedSource::new(file.path.display().to_string(), file.text.clone());
-
-                    for error in errors {
-                        let report =
-                            miette::Report::new(error.clone()).with_source_code(source.clone());
-                        eprintln!("{:?}", report);
-                    }
+            CompilerError::Lexer(errors) => {
+                for error in errors {
+                    let report =
+                        miette::Report::new(error.clone()).with_source_code(source.clone());
+                    println!("{:?}", report);
                 }
             }
-            CompilerError::Parser(errors_by_file) => {
-                for (file_id, errors) in errors_by_file {
-                    let file = vfs.get_file_by_file_id(file_id).unwrap();
-                    let source =
-                        NamedSource::new(file.path.display().to_string(), file.text.clone());
-
-                    for error in errors {
-                        let report =
-                            miette::Report::new(error.clone()).with_source_code(source.clone());
-                        eprintln!("{:?}", report);
-                    }
+            CompilerError::Parser(errors) => {
+                for error in errors {
+                    let report =
+                        miette::Report::new(error.clone()).with_source_code(source.clone());
+                    println!("{:?}", report);
                 }
             }
-            CompilerError::Semantic(errors_by_file) => {
-                for (file_id, errors) in errors_by_file {
-                    let file = vfs.get_file_by_file_id(file_id).unwrap();
-                    let source =
-                        NamedSource::new(file.path.display().to_string(), file.text.clone());
-
-                    for error in errors {
-                        let report =
-                            miette::Report::new(error.clone()).with_source_code(source.clone());
-                        eprintln!("{:?}", report);
-                    }
+            CompilerError::Semantic(errors) => {
+                for error in errors {
+                    let report =
+                        miette::Report::new(error.clone()).with_source_code(source.clone());
+                    println!("{:?}", report);
                 }
-            }
-            CompilerError::Discovery(msg) => {
-                eprintln!("Error: {}", msg);
             }
             _ => {
                 // 其他错误直接输出
-                eprintln!("Error: {}", self);
+                println!("Error: {}", self);
             }
         }
     }
