@@ -5,7 +5,7 @@ use syntax::AirycLanguage;
 
 fn try_it(source: &str) -> SyntaxNode<AirycLanguage> {
     let parser = Parser::new(source);
-    let (tree, errors, _) = parser.parse();
+    let (tree, errors) = parser.parse();
 
     if !errors.is_empty() {
         eprintln!("Source: {}", source);
@@ -254,7 +254,7 @@ fn test_struct_trailing_comma_no_deadloop() {
     // 测试尾随逗号不会导致死循环，并且现在是合法的
     let source = "struct x {a:i32, } fn main() {}";
     let parser = Parser::new(source);
-    let (tree, errors, _) = parser.parse();
+    let (tree, errors) = parser.parse();
     // 不应该有解析错误，因为尾随逗号现在是合法的
     // 只要能完成解析就说明没有死循环
     assert!(
@@ -279,13 +279,11 @@ import "../utils"::add
 "#;
 
     let parser = Parser::new(text);
-    let (green_tree, parse_errors, lex_errors) = parser.parse();
+    let (green_tree, errors) = parser.parse();
 
-    println!("Lex errors: {:?}", lex_errors);
-    println!("Parse errors: {:?}", parse_errors);
+    println!("Parse errors: {:?}", errors);
 
-    assert!(lex_errors.is_empty(), "Lex errors: {:?}", lex_errors);
-    assert!(parse_errors.is_empty(), "Parse errors: {:?}", parse_errors);
+    assert!(errors.is_empty(), "Parse errors: {:?}", errors);
 
     let root = syntax::SyntaxNode::new_root(green_tree);
     if let Some(comp_unit) = CompUnit::cast(root) {

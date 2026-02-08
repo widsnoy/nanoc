@@ -230,6 +230,7 @@ dependencies = [
  "rowan",
  "syntax",
  "thiserror",
+ "thunderdome",
  "tools",
  "utils",
 ]

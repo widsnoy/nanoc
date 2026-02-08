@@ -1,6 +1,7 @@
 #![allow(unused_assignments)]
 
 use miette::Diagnostic;
+use parser::parse::ParserError;
 use thiserror::Error;
 use tools::TextRange;
 
@@ -8,12 +9,9 @@ use crate::{array::ArrayInitError, r#type::NType};
 
 #[derive(Debug, Clone, Error, Diagnostic)]
 pub enum SemanticError {
-    #[error("invalid import path")]
-    #[diagnostic(code(semantic::invalid_path))]
-    InvalidPath {
-        #[label("here")]
-        range: TextRange,
-    },
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    ParserError(ParserError),
 
     #[error("type mismatch: expected {expected}, found {found}")]
     #[diagnostic(code(semantic::type_mismatch))]
@@ -256,8 +254,8 @@ impl SemanticError {
     /// 获取错误的位置范围
     pub fn range(&self) -> &TextRange {
         match self {
-            Self::InvalidPath { range }
-            | Self::TypeMismatch { range, .. }
+            Self::ParserError(e) => e.range(),
+            Self::TypeMismatch { range, .. }
             | Self::ConstantExprExpected { range }
             | Self::VariableDefined { range, .. }
             | Self::FunctionDefined { range, .. }

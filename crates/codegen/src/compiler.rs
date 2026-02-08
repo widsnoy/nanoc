@@ -7,8 +7,8 @@ use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
 use rowan::GreenNode;
-use syntax::ast::{AstNode, CompUnit};
 use syntax::SyntaxNode;
+use syntax::ast::{AstNode, CompUnit};
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;

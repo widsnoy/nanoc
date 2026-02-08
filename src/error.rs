@@ -1,30 +1,28 @@
-use std::path::Path;
+use std::collections::HashMap;
 
 use analyzer::error::SemanticError;
 use codegen::error::CodegenError;
-use lexer::LexerError;
 use miette::NamedSource;
-use parser::parse::ParserError;
 use thiserror::Error;
+use vfs::{FileID, Vfs};
 
-/// 编译器统一错误类型
 pub type Result<T> = std::result::Result<T, CompilerError>;
+
+/// 语义错误集合（按文件分组）
+#[derive(Debug)]
+pub struct SemanticErrors {
+    pub errors_by_file: HashMap<FileID, Vec<SemanticError>>,
+    pub vfs: Vfs,
+}
 
 /// 编译器错误
 #[derive(Debug, Error)]
-#[allow(dead_code)]
 pub enum CompilerError {
     #[error("failed to read input file: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("lexer errors occurred")]
-    Lexer(Vec<LexerError>),
-
-    #[error("parser errors occurred")]
-    Parser(Vec<ParserError>),
-
     #[error("semantic errors occurred")]
-    Semantic(Vec<SemanticError>),
+    Semantic(Box<SemanticErrors>),
 
     #[error("codegen failed: {0}")]
     Codegen(#[from] CodegenError),
@@ -40,39 +38,23 @@ pub enum CompilerError {
 }
 
 impl CompilerError {
-    /// 报告错误，使用 miette 格式化输出
-    ///
-    /// 对于包含多个子错误的错误类型（Lexer, Parser, Semantic），
-    /// 会逐个输出每个子错误的详细信息
-    pub fn report(&self, source_path: &Path, source_code: String) {
-        let source = NamedSource::new(source_path.to_string_lossy(), source_code);
-
+    /// 报告编译错误
+    pub fn report(self) {
         match self {
-            CompilerError::Lexer(errors) => {
-                for error in errors {
-                    let report =
-                        miette::Report::new(error.clone()).with_source_code(source.clone());
-                    println!("{:?}", report);
+            Self::Semantic(semantic_errors) => {
+                for (file_id, errors) in semantic_errors.errors_by_file {
+                    if let Some(file) = semantic_errors.vfs.get_file_by_file_id(&file_id) {
+                        let source =
+                            NamedSource::new(file.path.to_string_lossy(), file.text.clone());
+                        for error in errors {
+                            let report =
+                                miette::Report::new(error).with_source_code(source.clone());
+                            println!("{:?}", report);
+                        }
+                    }
                 }
             }
-            CompilerError::Parser(errors) => {
-                for error in errors {
-                    let report =
-                        miette::Report::new(error.clone()).with_source_code(source.clone());
-                    println!("{:?}", report);
-                }
-            }
-            CompilerError::Semantic(errors) => {
-                for error in errors {
-                    let report =
-                        miette::Report::new(error.clone()).with_source_code(source.clone());
-                    println!("{:?}", report);
-                }
-            }
-            _ => {
-                // 其他错误直接输出
-                println!("Error: {}", self);
-            }
+            _ => println!("Error: {}", self),
         }
     }
 }

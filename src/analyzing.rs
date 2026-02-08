@@ -1,60 +1,48 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use analyzer::project::Project;
 use vfs::Vfs;
 
-use crate::error::{CompilerError, Result};
+use crate::error::{CompilerError, Result, SemanticErrors};
 
-/// 语义分析阶段
-///
-/// 对源文件进行语义分析，支持单文件和多文件（跨模块引用）
-///
-/// # 参数
-/// - `input_paths`: 输入文件路径列表
-///
-/// # 返回
-/// - `Ok(Project)`: 成功时返回包含所有模块的 Project
-/// - `Err(CompilerError)`: 如果有语义错误，返回包含所有错误的 CompilerError
+/// 分析项目中的所有文件
 pub fn analyze_project(input_paths: &[PathBuf]) -> Result<Project> {
     if input_paths.is_empty() {
-        return Err(CompilerError::Semantic(vec![]));
+        return Err(CompilerError::Semantic(Box::new(SemanticErrors {
+            errors_by_file: HashMap::new(),
+            vfs: Vfs::default(),
+        })));
     }
 
-    // 创建空的 VFS，然后只添加用户指定的文件（使用绝对路径）
+    // 构建 VFS
     let mut vfs = Vfs::default();
-
     for input_path in input_paths {
-        // 读取文件内容
-        let text = std::fs::read_to_string(input_path).map_err(|e| {
-            eprintln!("Error reading file {:?}: {}", input_path, e);
-            CompilerError::Semantic(vec![analyzer::error::SemanticError::InvalidPath {
-                range: tools::TextRange::default(),
-            }])
-        })?;
-
-        // 转换为绝对路径
+        let text = std::fs::read_to_string(input_path).map_err(CompilerError::Io)?;
         let absolute_path = input_path
             .canonicalize()
             .unwrap_or_else(|_| input_path.clone());
-
-        // 添加到 VFS（使用绝对路径）
         vfs.new_file(absolute_path, text);
     }
 
-    // 创建 Project 并初始化（会自动进行三阶段分析）
+    // 初始化并分析项目
     let mut project = Project::default();
     project.initialize(vfs);
 
-    // 收集所有模块的错误
-    let mut all_errors = Vec::new();
-    for (_, module) in project.modules.iter() {
+    // 按文件收集错误
+    let mut errors_by_file = HashMap::new();
+    for (file_id, &module_id) in project.file_index.iter() {
+        let module = project.modules.get(module_id.0).unwrap();
         if !module.semantic_errors.is_empty() {
-            all_errors.extend(module.semantic_errors.clone());
+            errors_by_file.insert(*file_id, module.semantic_errors.clone());
         }
     }
 
-    if !all_errors.is_empty() {
-        return Err(CompilerError::Semantic(all_errors));
+    if !errors_by_file.is_empty() {
+        return Err(CompilerError::Semantic(Box::new(SemanticErrors {
+            errors_by_file,
+            vfs: project.vfs,
+        })));
     }
 
     Ok(project)

@@ -8,7 +8,7 @@ mod statement;
 mod r#struct;
 mod variable;
 
-use lexer::{Lexer, LexerError};
+use lexer::Lexer;
 use rowan::{Checkpoint, GreenNode, GreenNodeBuilder};
 use syntax::SyntaxKind;
 use tools::TextRange;
@@ -31,13 +31,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(mut self) -> (GreenNode, Vec<ParserError>, Vec<LexerError>) {
+    pub fn parse(mut self) -> (GreenNode, Vec<ParserError>) {
         self.parse_root();
-        (
-            self.builder.finish(),
-            self.parse_errors,
-            self.lexer.lexer_errors,
-        )
+
+        // 合并 parser 错误和 lexer 错误
+        let mut all_errors = self.parse_errors;
+        all_errors.extend(self.lexer.lexer_errors.into_iter().map(ParserError::from));
+
+        (self.builder.finish(), all_errors)
     }
 
     pub(crate) fn checkpoint(&self) -> Checkpoint {

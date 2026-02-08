@@ -50,6 +50,24 @@ pub struct LoopContext<'ctx> {
 impl<'a, 'ctx> Program<'a, 'ctx> {
     pub fn compile_comp_unit(&mut self, node: CompUnit) -> Result<()> {
         self.declare_sysy_runtime();
+
+        debug_assert!(self.analyzer.project.is_some());
+
+        let project = self.analyzer.project.unwrap();
+
+        // 声明外部函数
+        for func_id in self.analyzer.function_map.values() {
+            if func_id.module != self.analyzer.module_id {
+                let Some(module) = project.modules.get(*func_id.module) else {
+                    continue;
+                };
+                let Some(func_info) = module.get_function_by_id(*func_id) else {
+                    continue;
+                };
+                self.declare_function(module, func_info)?;
+            }
+        }
+
         for global in node.global_decls() {
             match global {
                 GlobalDecl::VarDef(decl) => self.compile_var_def(decl)?,

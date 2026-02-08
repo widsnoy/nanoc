@@ -1,5 +1,6 @@
 #![allow(unused_assignments)]
 
+use lexer::LexerError;
 use miette::Diagnostic;
 use syntax::SyntaxKind;
 use thiserror::Error;
@@ -23,6 +24,10 @@ pub enum ParserError {
         #[label("here")]
         range: TextRange,
     },
+
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    LexerError(#[from] LexerError),
 }
 
 impl ParserError {
@@ -30,6 +35,7 @@ impl ParserError {
     pub fn range(&self) -> &TextRange {
         match self {
             Self::Expected { range, .. } => range,
+            Self::LexerError(e) => e.range(),
         }
     }
 }

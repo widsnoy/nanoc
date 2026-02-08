@@ -1,3 +1,4 @@
+use analyzer::module::{Function, Module};
 use analyzer::r#type::NType;
 use inkwell::types::BasicType;
 use syntax::ast::*;
@@ -29,7 +30,16 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .analyzer
             .get_function_by_id(func_id)
             .ok_or_else(|| CodegenError::UndefinedFunc(name.clone()))?;
+        self.declare_function(self.analyzer, func_info)?;
+        Ok(())
+    }
 
+    pub(super) fn declare_function(
+        &mut self,
+        module: &'a Module,
+        func_info: &Function,
+    ) -> Result<()> {
+        let name = &func_info.name;
         let ret_ty = &func_info.ret_type;
         let is_void = matches!(ret_ty, NType::Void);
 
@@ -38,7 +48,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .params
             .iter()
             .map(|var_id| {
-                let var = self.analyzer.variables.get(**var_id).unwrap();
+                let var = module.variables.get(**var_id).unwrap();
                 (var.name.clone(), &var.ty)
             })
             .collect();
@@ -55,9 +65,8 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             ret_llvm_ty.fn_type(&basic_params, false)
         };
 
-        let function = self.module.add_function(&name, fn_type, None);
-        self.symbols.functions.insert(name.clone(), function);
-
+        let function = self.module.add_function(name, fn_type, None);
+        self.symbols.functions.insert(name.to_string(), function);
         Ok(())
     }
 

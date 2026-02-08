@@ -13,7 +13,6 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct Project {
     pub modules: Arena<Module<'static>>,
-    /// 如果是文件，代表分析单文件
     pub vfs: Vfs,
     pub file_index: HashMap<FileID, ModuleID>,
 }
@@ -25,13 +24,18 @@ impl Project {
         for (index, file) in self.vfs.files.iter() {
             // 语法分析
             let parser = Parser::new(&file.text);
-            let (green_tree, _, _) = parser.parse(); // FIXME: 先忽略错误
-
+            let (green_tree, errors) = parser.parse();
             // 初始化 Module
             let id = self.modules.insert(Module::new(green_tree.clone()));
             let module_id = ModuleID(id);
             let module = self.modules.get_mut(id).unwrap();
             module.module_id = module_id;
+            errors.into_iter().for_each(|e| {
+                module
+                    .semantic_errors
+                    .push(crate::error::SemanticError::ParserError(e))
+            });
+
             self.file_index.insert(FileID(index), module_id);
 
             // 符号分析：分配 ID
@@ -62,10 +66,23 @@ impl Project {
         // 安全性：Project 在整个分析期间保持不变，指针在 analyze() 结束后被清除
         let project_ptr = self as *const Project;
 
+        // TODO: 如果改成并行的话，其实可以拷贝一份数据
         for (_, module) in self.modules.iter_mut() {
             // 设置 project 指针用于跨模块访问
-            module.analyzing.project = Some(unsafe { &*project_ptr });
+            module.project = Some(unsafe { &*project_ptr });
             module.analyze();
+        }
+    }
+
+    /// 为代码生成准备：重新设置所有模块的 project 指针
+    ///
+    /// 在 analyze() 结束后，所有模块的 project 字段被设置为 None。
+    /// 但代码生成阶段需要访问 project 来处理跨模块引用。
+    /// 此方法在代码生成前调用，重新设置 project 指针。
+    pub fn prepare_for_codegen(&mut self) {
+        let project_ptr = self as *const Project;
+        for (_, module) in self.modules.iter_mut() {
+            module.project = Some(unsafe { &*project_ptr });
         }
     }
 

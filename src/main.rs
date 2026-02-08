@@ -12,7 +12,9 @@ use syntax::SyntaxNode;
 
 use cli::{Args, EmitTarget};
 
-fn main() {
+use crate::error::CompilerError;
+
+fn main() -> Result<(), CompilerError> {
     let args = Args::parse();
 
     // 检查是否有输入文件
@@ -21,41 +23,41 @@ fn main() {
         std::process::exit(1);
     }
 
-    compile(args);
+    compile(args)
 }
 
-fn compile(args: Args) {
+fn compile(args: Args) -> Result<(), CompilerError> {
     // 如果只需要 AST，使用简单的解析流程
     if args.emit == EmitTarget::Ast {
-        let input_path = &args.input_path[0];
-        let input = match fs::read_to_string(input_path) {
-            Ok(input) => input,
-            Err(e) => {
-                eprintln!("Error: failed to read input file: {}", e);
-                std::process::exit(1);
-            }
-        };
+        if args.input_path.len() > 1 {
+            eprintln!("Error: more than one file");
+            std::process::exit(1);
+        }
 
-        let (green_node, _parser_errors, _lexer_errors) = match parsing::parse(&input) {
+        let input_path = &args.input_path[0];
+        let input = fs::read_to_string(input_path)?;
+
+        let green_node = match parsing::parse(input_path, &input) {
             Ok(result) => result,
             Err(e) => {
-                e.report(input_path, input);
+                e.report();
                 std::process::exit(1);
             }
         };
 
         println!("{:#?}", SyntaxNode::new_root(green_node));
-        return;
+        return Ok(());
     }
 
-    // 语义分析（使用 Project 架构）
-    let project = match analyzing::analyze_project(&args.input_path) {
+    // 语义分析
+    let mut project = match analyzing::analyze_project(&args.input_path) {
         Ok(project) => project,
         Err(e) => {
-            // 报告第一个文件的错误
-            let first_file = &args.input_path[0];
-            let input = fs::read_to_string(first_file).unwrap_or_default();
-            e.report(first_file, input);
+            if let CompilerError::Io(_) = e {
+                return Err(e);
+            }
+
+            e.report();
             std::process::exit(1);
         }
     };
@@ -66,10 +68,13 @@ fn compile(args: Args) {
         } else {
             println!("✓ File checked successfully");
         }
-        return;
+        return Ok(());
     }
 
     let opt_level = args.opt_level.into();
+
+    // 为代码生成准备：重新设置 project 指针
+    project.prepare_for_codegen();
 
     // 代码生成
     match args.emit {
@@ -90,28 +95,19 @@ fn compile(args: Args) {
                     .unwrap_or("unknown");
 
                 let output_path = args.output_dir.join(format!("{}.ll", module_name));
-                if let Err(e) = codegen::compiler::compile_to_ir_file(
+                codegen::compiler::compile_to_ir_file(
                     module_name,
                     module.green_tree.clone(),
                     module,
                     opt_level,
                     &output_path,
-                ) {
-                    eprintln!("Error generating IR for {}: {}", module_name, e);
-                    std::process::exit(1);
-                }
+                )?;
             }
         }
         EmitTarget::Exe => {
             // 生成所有模块的目标文件
             let object_files =
-                match codegen::compiler::compile_project_to_object_bytes(&project, opt_level) {
-                    Ok(files) => files,
-                    Err(e) => {
-                        eprintln!("Error: {}", e);
-                        std::process::exit(1);
-                    }
-                };
+                codegen::compiler::compile_project_to_object_bytes(&project, opt_level)?;
 
             // 确定输出文件名（使用第一个文件的名称）
             let output_name = args.input_path[0]
@@ -131,5 +127,6 @@ fn compile(args: Args) {
             }
         }
         EmitTarget::Ast | EmitTarget::Check => {}
-    }
+    };
+    Ok(())
 }

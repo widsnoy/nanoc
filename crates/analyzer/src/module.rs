@@ -53,19 +53,20 @@ pub struct Module<'a> {
     pub semantic_errors: Vec<SemanticError>,
 
     /// 分析上下文，使用后清除
-    pub(crate) analyzing: AnalyzeContext<'a>,
+    pub(crate) analyzing: AnalyzeContext,
 
     /// 各种索引
     pub index: ModuleIndex,
+
+    /// 用于跨文件分析
+    pub project: Option<&'a Project>,
 }
 
 #[derive(Debug, Default)]
-pub struct AnalyzeContext<'a> {
-    pub current_scope: ScopeID,
-    pub current_var_type: Option<NType>,
-    pub current_function_ret_type: Option<NType>,
-    pub loop_depth: usize,
-    pub project: Option<&'a Project>,
+pub(crate) struct AnalyzeContext {
+    pub(crate) current_scope: ScopeID,
+    pub(crate) current_function_ret_type: Option<NType>,
+    pub(crate) loop_depth: usize,
 }
 
 #[derive(Debug, Default)]
@@ -97,6 +98,7 @@ impl<'a> Module<'a> {
             semantic_errors: Default::default(),
             analyzing: Default::default(),
             index: Default::default(),
+            project: None,
         }
     }
     /// 分析
@@ -104,6 +106,7 @@ impl<'a> Module<'a> {
         let root = SyntaxNode::new_root(self.green_tree.clone());
         self.walk(&root);
         self.analyzing = AnalyzeContext::default();
+        self.project = None;
     }
 
     /// 检查是否为编译时常量
@@ -184,8 +187,7 @@ impl<'a> Module<'a> {
             self.structs.get(id.index)
         } else {
             // 跨模块结构体
-            self.analyzing
-                .project
+            self.project
                 .and_then(|project| project.modules.get(id.module.0))
                 .and_then(|module| module.structs.get(id.index))
         }
@@ -218,8 +220,7 @@ impl<'a> Module<'a> {
             self.functions.get(id.index)
         } else {
             // 跨模块函数
-            self.analyzing
-                .project
+            self.project
                 .and_then(|project| project.modules.get(id.module.0))
                 .and_then(|module| module.functions.get(id.index))
         }
@@ -253,8 +254,7 @@ impl<'a> Module<'a> {
             self.fields.get(id.index)
         } else {
             // 跨模块字段
-            self.analyzing
-                .project
+            self.project
                 .and_then(|project| project.modules.get(id.module.0))
                 .and_then(|module| module.fields.get(id.index))
         }

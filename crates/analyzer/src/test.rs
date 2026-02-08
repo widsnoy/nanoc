@@ -11,7 +11,7 @@ use crate::project::Project;
 
 fn analyze(source: &str) -> Module<'static> {
     let parser = Parser::new(source);
-    let (tree, errors, _) = parser.parse();
+    let (tree, errors) = parser.parse();
 
     if !errors.is_empty() {
         panic!("Parser errors: {:?}", errors);

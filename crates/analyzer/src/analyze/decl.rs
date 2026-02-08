@@ -5,7 +5,7 @@ use syntax::visitor::DeclVisitor;
 
 use crate::array::ArrayTree;
 use crate::error::SemanticError;
-use crate::module::Module;
+use crate::module::{FieldID, Module};
 use crate::r#type::NType;
 use crate::value::Value;
 
@@ -13,10 +13,6 @@ impl DeclVisitor for Module<'_> {
     fn enter_comp_unit(&mut self, node: CompUnit) {
         self.analyzing.current_scope = self.new_scope(None, node.text_range());
         self.global_scope = self.analyzing.current_scope;
-    }
-
-    fn enter_struct_def(&mut self, node: StructDef) {
-        self.analyzing.current_scope = self.new_scope(Some(self.global_scope), node.text_range());
     }
 
     fn leave_struct_def(&mut self, node: StructDef) {
@@ -29,15 +25,16 @@ impl DeclVisitor for Module<'_> {
             return;
         };
 
-        let field_ids = if let Some(struct_def) = self.get_struct_by_id(struct_id) {
-            struct_def.fields.clone() // FIXME: clone
+        let field_ids: *const [FieldID] = if let Some(struct_def) = self.get_struct_by_id(struct_id)
+        {
+            &struct_def.fields[..]
         } else {
             return;
         };
 
         let mut field_names = std::collections::HashSet::new();
-        for &field_id in &field_ids {
-            if let Some(field) = self.get_field_by_id(field_id)
+        for field_id in unsafe { &*field_ids } {
+            if let Some(field) = self.get_field_by_id(*field_id)
                 && !field_names.insert(field.name.clone())
             {
                 self.new_error(SemanticError::VariableDefined {
@@ -47,8 +44,8 @@ impl DeclVisitor for Module<'_> {
             }
         }
 
-        for &field_id in &field_ids {
-            if let Some(field) = self.get_field_by_id(field_id) {
+        for field_id in unsafe { &*field_ids } {
+            if let Some(field) = self.get_field_by_id(*field_id) {
                 let mut ty = &field.ty;
                 let self_refer = loop {
                     match ty {
@@ -67,15 +64,6 @@ impl DeclVisitor for Module<'_> {
                 }
             }
         }
-
-        // 恢复父作用域
-        let Some(scope) = self.scopes.get(*self.analyzing.current_scope) else {
-            return;
-        };
-        let Some(parent_scope) = scope.parent else {
-            return;
-        };
-        self.analyzing.current_scope = parent_scope;
     }
 
     fn leave_var_def(&mut self, def: VarDef) {
