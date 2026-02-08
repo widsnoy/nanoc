@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
-use analyzer::{module::Module, project::Project};
+use analyzer::project::Project;
 use vfs::Vfs;
 
 use crate::error::{CompilerError, Result};
 
-/// 语义分析阶段（多文件支持）
+/// 语义分析阶段
 ///
-/// 对多个源文件进行语义分析，支持跨模块引用
+/// 对源文件进行语义分析，支持单文件和多文件（跨模块引用）
 ///
 /// # 参数
 /// - `input_paths`: 输入文件路径列表
@@ -20,24 +20,30 @@ pub fn analyze_project(input_paths: &[PathBuf]) -> Result<Project> {
         return Err(CompilerError::Semantic(vec![]));
     }
 
-    // 确定工作目录（使用第一个文件的父目录）
-    let workspace = input_paths[0]
-        .parent()
-        .filter(|p| !p.as_os_str().is_empty()) // 过滤掉空路径
-        .map(|p| p.to_path_buf())
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    // 创建空的 VFS，然后只添加用户指定的文件（使用绝对路径）
+    let mut vfs = Vfs::default();
 
-    // 创建 VFS 并添加所有文件
-    let vfs = Vfs::new(&workspace).map_err(|e| {
-        eprintln!("DEBUG: VFS creation failed: {}", e);
-        CompilerError::Semantic(vec![analyzer::error::SemanticError::InvalidPath {
-            range: tools::TextRange::default(),
-        }])
-    })?;
+    for input_path in input_paths {
+        // 读取文件内容
+        let text = std::fs::read_to_string(input_path).map_err(|e| {
+            eprintln!("Error reading file {:?}: {}", input_path, e);
+            CompilerError::Semantic(vec![analyzer::error::SemanticError::InvalidPath {
+                range: tools::TextRange::default(),
+            }])
+        })?;
+
+        // 转换为绝对路径
+        let absolute_path = input_path
+            .canonicalize()
+            .unwrap_or_else(|_| input_path.clone());
+
+        // 添加到 VFS（使用绝对路径）
+        vfs.new_file(absolute_path, text);
+    }
 
     // 创建 Project 并初始化（会自动进行三阶段分析）
     let mut project = Project::default();
-    project.initialize(workspace, vfs);
+    project.initialize(vfs);
 
     // 收集所有模块的错误
     let mut all_errors = Vec::new();
@@ -52,26 +58,4 @@ pub fn analyze_project(input_paths: &[PathBuf]) -> Result<Project> {
     }
 
     Ok(project)
-}
-
-/// 单文件分析（向后兼容）
-pub fn analyze_single(input_path: &PathBuf) -> Result<Module<'static>> {
-    // 单文件分析（不支持跨模块）
-    let text = std::fs::read_to_string(input_path).map_err(|_| {
-        CompilerError::Semantic(vec![analyzer::error::SemanticError::InvalidPath {
-            range: tools::TextRange::default(),
-        }])
-    })?;
-
-    let parser = parser::parse::Parser::new(&text);
-    let (green_node, _, _) = parser.parse();
-
-    let mut analyzer = Module::new(green_node);
-    analyzer.analyze();
-
-    if !analyzer.semantic_errors.is_empty() {
-        return Err(CompilerError::Semantic(analyzer.semantic_errors));
-    }
-
-    Ok(analyzer)
 }

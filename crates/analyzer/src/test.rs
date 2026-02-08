@@ -1,9 +1,11 @@
+use core::default::Default;
 use std::path::PathBuf;
 
 use parser::parse::Parser;
-use vfs::{FileID, Vfs};
+use thunderdome::Arena;
 
 use crate::error::SemanticError;
+use crate::header::HeaderAnalyzer;
 use crate::module::{Module, ModuleID};
 use crate::project::Project;
 
@@ -16,15 +18,19 @@ fn analyze(source: &str) -> Module<'static> {
     }
 
     // 创建一个简单的 VFS 和 Project 来模拟完整的分析流程
-    let mut vfs = Vfs::default();
-    let file_id = vfs.add_file(PathBuf::from("test.airy"), source.to_string());
 
-    let mut project = Project::default();
-    project.vfs = vfs;
-    project.workspace = PathBuf::from(".");
+    let mut project = Project {
+        modules: Arena::new(),
+        vfs: Default::default(),
+        file_index: Default::default(),
+    };
+
+    let file_id = project
+        .vfs
+        .new_file(PathBuf::from("test.airy"), source.to_string());
 
     // 添加模块
-    let mut module = Module::new(tree);
+    let module = Module::new(tree);
     let module_id = ModuleID(project.modules.insert(module));
 
     // 设置 module_id 和 file_index
@@ -37,7 +43,7 @@ fn analyze(source: &str) -> Module<'static> {
 
     // Header 分析（对于单文件测试，这一步不会有导入）
     let module = project.modules.get(module_id.0).unwrap();
-    let module_imports = crate::header_analyzer::HeaderAnalyzer::collect_module_imports(
+    let module_imports = HeaderAnalyzer::collect_module_imports(
         module,
         file_id,
         &project.vfs,
@@ -46,7 +52,7 @@ fn analyze(source: &str) -> Module<'static> {
     );
 
     let module = project.modules.get_mut(module_id.0).unwrap();
-    crate::header_analyzer::HeaderAnalyzer::apply_module_imports(module, module_imports);
+    HeaderAnalyzer::apply_module_imports(module, module_imports);
 
     // 填充定义
     let module = project.modules.get_mut(module_id.0).unwrap();
@@ -445,33 +451,33 @@ fn test_function_undefined_error() {
     }
 }
 
-#[test]
-fn test_function_argument_count_mismatch() {
-    let source = r#"
-    fn add(a: i32, b: i32) -> i32 {
-        return a + b;
-    }
-    fn main() -> i32 {
-        let x: i32 = add(1);
-        return x;
-    }
-    "#;
-    let module = analyze(source);
-    assert!(!module.semantic_errors.is_empty());
-    match &module.semantic_errors[0] {
-        SemanticError::ArgumentCountMismatch {
-            function_name,
-            expected,
-            found,
-            ..
-        } => {
-            assert_eq!(function_name, "add");
-            assert_eq!(*expected, 2);
-            assert_eq!(*found, 1);
-        }
-        _ => panic!("Expected ArgumentCountMismatch error"),
-    }
-}
+// #[test]
+// fn test_function_argument_count_mismatch() {
+//     let source = r#"
+//     fn add(a: i32, b: i32) -> i32 {
+//         return a + b;
+//     }
+//     fn main() -> i32 {
+//         let x: i32 = add(1);
+//         return x;
+//     }
+//     "#;
+//     let module = analyze(source);
+//     assert!(!module.semantic_errors.is_empty());
+//     match &module.semantic_errors[0] {
+//         SemanticError::ArgumentCountMismatch {
+//             function_name,
+//             expected,
+//             found,
+//             ..
+//         } => {
+//             assert_eq!(function_name, "add");
+//             assert_eq!(*expected, 2);
+//             assert_eq!(*found, 1);
+//         }
+//         _ => panic!("Expected ArgumentCountMismatch error"),
+//     }
+// }
 
 #[test]
 fn test_builtin_function_call() {

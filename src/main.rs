@@ -8,6 +8,8 @@ mod error;
 mod linking;
 mod parsing;
 
+use syntax::SyntaxNode;
+
 use cli::{Args, EmitTarget};
 
 fn main() {
@@ -19,17 +21,33 @@ fn main() {
         std::process::exit(1);
     }
 
-    // 多文件编译
-    if args.input_path.len() > 1 {
-        compile_multiple_files(args);
-    } else {
-        // 单文件编译（向后兼容）
-        compile_single_file(args);
-    }
+    compile(args);
 }
 
-/// 多文件编译
-fn compile_multiple_files(args: Args) {
+fn compile(args: Args) {
+    // 如果只需要 AST，使用简单的解析流程
+    if args.emit == EmitTarget::Ast {
+        let input_path = &args.input_path[0];
+        let input = match fs::read_to_string(input_path) {
+            Ok(input) => input,
+            Err(e) => {
+                eprintln!("Error: failed to read input file: {}", e);
+                std::process::exit(1);
+            }
+        };
+
+        let (green_node, _parser_errors, _lexer_errors) = match parsing::parse(&input) {
+            Ok(result) => result,
+            Err(e) => {
+                e.report(input_path, input);
+                std::process::exit(1);
+            }
+        };
+
+        println!("{:#?}", SyntaxNode::new_root(green_node));
+        return;
+    }
+
     // 语义分析（使用 Project 架构）
     let project = match analyzing::analyze_project(&args.input_path) {
         Ok(project) => project,
@@ -43,7 +61,11 @@ fn compile_multiple_files(args: Args) {
     };
 
     if args.emit == EmitTarget::Check {
-        println!("✓ All files checked successfully");
+        if args.input_path.len() > 1 {
+            println!("✓ All files checked successfully");
+        } else {
+            println!("✓ File checked successfully");
+        }
         return;
     }
 
@@ -102,100 +124,6 @@ fn compile_multiple_files(args: Args) {
                 &object_files,
                 &args.output_dir,
                 output_name,
-                &args.runtime,
-            ) {
-                eprintln!("Error: {}", e);
-                std::process::exit(1);
-            }
-        }
-        EmitTarget::Ast | EmitTarget::Check => {}
-    }
-}
-
-/// 单文件编译（向后兼容）
-fn compile_single_file(args: Args) {
-    use syntax::SyntaxNode;
-
-    let input_path = &args.input_path[0];
-    let input = match fs::read_to_string(input_path) {
-        Ok(input) => input,
-        Err(e) => {
-            eprintln!("Error: failed to read input file: {}", e);
-            std::process::exit(1);
-        }
-    };
-
-    // 2. 语法分析
-    let (green_node, _parser_errors, _lexer_errors) = match parsing::parse(&input) {
-        Ok(result) => result,
-        Err(e) => {
-            e.report(input_path, input);
-            std::process::exit(1);
-        }
-    };
-
-    // 3. 如果只需要 AST，直接输出并退出
-    if args.emit == EmitTarget::Ast {
-        println!("{:#?}", SyntaxNode::new_root(green_node));
-        return;
-    }
-
-    // 4. 语义分析
-    let analyzer = match analyzing::analyze_single(input_path) {
-        Ok(analyzer) => analyzer,
-        Err(e) => {
-            e.report(input_path, input);
-            std::process::exit(1);
-        }
-    };
-
-    if args.emit == EmitTarget::Check {
-        return;
-    }
-
-    // 5. 获取模块名称
-    let module_name = input_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("unknown");
-
-    let opt_level = args.opt_level.into();
-
-    // 6. 代码生成和输出
-    match args.emit {
-        EmitTarget::Ir => {
-            let output_path = args.output_dir.join(format!("{}.ll", module_name));
-            if let Err(e) = codegen::compiler::compile_to_ir_file(
-                module_name,
-                analyzer.green_tree.clone(),
-                &analyzer,
-                opt_level,
-                &output_path,
-            ) {
-                eprintln!("Error: {}", e);
-                std::process::exit(1);
-            }
-        }
-        EmitTarget::Exe => {
-            // 生成目标文件字节
-            let object_bytes = match codegen::compiler::compile_to_object_bytes(
-                module_name,
-                analyzer.green_tree.clone(),
-                &analyzer,
-                opt_level,
-            ) {
-                Ok(bytes) => bytes,
-                Err(e) => {
-                    eprintln!("Error: {}", e);
-                    std::process::exit(1);
-                }
-            };
-
-            // 链接生成可执行文件
-            if let Err(e) = linking::link_executable(
-                &object_bytes,
-                &args.output_dir,
-                module_name,
                 &args.runtime,
             ) {
                 eprintln!("Error: {}", e);

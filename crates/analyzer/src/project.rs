@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
 
 use parser::parse::Parser;
 use thunderdome::Arena;
@@ -14,14 +14,12 @@ use crate::{
 pub struct Project {
     pub modules: Arena<Module<'static>>,
     /// 如果是文件，代表分析单文件
-    pub workspace: PathBuf,
     pub vfs: Vfs,
     pub file_index: HashMap<FileID, ModuleID>,
 }
 
 impl Project {
-    pub fn initialize(&mut self, workspace: PathBuf, vfs: Vfs) {
-        self.workspace = workspace;
+    pub fn initialize(&mut self, vfs: Vfs) {
         self.vfs = vfs;
 
         for (index, file) in self.vfs.files.iter() {
@@ -72,7 +70,7 @@ impl Project {
     }
 
     /// 为模块收集符号并分配 ID
-    fn collect_symbols_for_module(module: &mut Module) {
+    pub fn collect_symbols_for_module(module: &mut Module) {
         use crate::module::{Function, Struct};
         use syntax::{
             AstNode as _, SyntaxNode,
@@ -133,7 +131,7 @@ impl Project {
     /// 填充模块的 struct 和 function 定义
     /// Struct: 填充字段
     /// Function: 只填充返回类型
-    fn fill_definitions(module: &mut Module, module_id: ModuleID) {
+    pub fn fill_definitions(module: &mut Module, module_id: ModuleID) {
         use crate::module::{Field, FieldID};
         use syntax::{
             AstNode as _, SyntaxNode,
