@@ -48,6 +48,7 @@ impl HeaderAnalyzer {
         if let Some(comp_unit) = CompUnit::cast(root) {
             for header in comp_unit.headers() {
                 if let Some(path_node) = header.path() {
+                    let path_node_range_trimmed = utils::trim_node_text_range(&path_node);
                     // 解析路径
                     match Self::resolve_import_path(&path_node, current_file_id, vfs, file_index) {
                         Ok((target_module_id, symbol_name)) => {
@@ -55,11 +56,11 @@ impl HeaderAnalyzer {
                             match Self::collect_import_info(
                                 target_module_id,
                                 symbol_name.as_deref(),
-                                path_node.text_range(),
+                                path_node_range_trimmed,
                                 modules,
                             ) {
                                 Ok(import_info) => {
-                                    imports.push((import_info, path_node.text_range()));
+                                    imports.push((import_info, path_node_range_trimmed));
                                 }
                                 Err(e) => errors.push(e),
                             }
@@ -97,13 +98,14 @@ impl HeaderAnalyzer {
         vfs: &Vfs,
         file_index: &HashMap<FileID, ModuleID>,
     ) -> Result<(ModuleID, Option<String>), SemanticError> {
+        let path_node_range_trimmed = utils::trim_node_text_range(path_node);
         // 获取字符串字面量（路径）
         let path_token =
             path_node
                 .string_literal()
                 .ok_or_else(|| SemanticError::ImportPathNotFound {
                     path: "<invalid>".to_string(),
-                    range: path_node.text_range(),
+                    range: path_node_range_trimmed,
                 })?;
 
         // 获取文本并去掉引号
@@ -117,7 +119,7 @@ impl HeaderAnalyzer {
         let current_file = vfs.get_file_by_file_id(&current_file_id).ok_or_else(|| {
             SemanticError::ImportPathNotFound {
                 path: path_text.to_string(),
-                range: path_node.text_range(),
+                range: path_node_range_trimmed,
             }
         })?;
 
@@ -139,7 +141,7 @@ impl HeaderAnalyzer {
         let target_file_id = vfs.get_file_id_by_path(&target_path).ok_or_else(|| {
             SemanticError::ImportPathNotFound {
                 path: format!("{} (resolved to {:?})", path_text, target_path),
-                range: path_node.text_range(),
+                range: path_node_range_trimmed,
             }
         })?;
 
@@ -147,7 +149,7 @@ impl HeaderAnalyzer {
         let target_module_id = file_index.get(target_file_id).copied().ok_or_else(|| {
             SemanticError::ImportPathNotFound {
                 path: path_text.to_string(),
-                range: path_node.text_range(),
+                range: path_node_range_trimmed,
             }
         })?;
 
