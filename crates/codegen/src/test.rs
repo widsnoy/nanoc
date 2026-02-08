@@ -1,7 +1,7 @@
 use inkwell::context::Context;
 use syntax::{
-    ast::{AstNode, CompUnit},
     SyntaxNode,
+    ast::{AstNode, CompUnit},
 };
 
 use crate::llvm_ir;
@@ -33,7 +33,6 @@ fn try_it(code: &str) -> String {
         builder: &builder,
         module: &module,
         analyzer: &analyzer,
-        project: None,
         symbols: Default::default(),
     };
 

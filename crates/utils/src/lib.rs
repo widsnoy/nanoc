@@ -1,13 +1,8 @@
 //! 辅助函数
 
-pub mod discovery;
-
 use syntax::{AirycLanguage, AstNode, SyntaxNode};
 
 use tools::TextRange;
-
-// 重新导出
-pub use discovery::{discover_dependencies, DiscoveryResult};
 
 pub fn find_node_by_range<N>(root: &SyntaxNode, range: TextRange) -> Option<N>
 where

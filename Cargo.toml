@@ -59,8 +59,6 @@ codegen.workspace = true
 analyzer.workspace = true
 lexer.workspace = true
 syntax.workspace = true
-utils.workspace = true
-vfs.workspace = true
 
 clap.workspace = true
 miette.workspace = true
