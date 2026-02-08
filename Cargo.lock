@@ -39,6 +39,8 @@ dependencies = [
  "rowan",
  "syntax",
  "thiserror",
+ "tools",
+ "vfs",
 ]
 
 [[package]]

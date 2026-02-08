@@ -8,7 +8,7 @@ use crate::error::SemanticError;
 use crate::module::Module;
 use crate::r#type::NType;
 
-impl FuncVisitor for Module {
+impl FuncVisitor for Module<'_> {
     fn enter_func_def(&mut self, node: FuncDef) {
         self.analyzing.current_scope =
             self.new_scope(Some(self.analyzing.current_scope), node.text_range());
@@ -32,6 +32,7 @@ impl FuncVisitor for Module {
             return;
         };
 
+        // 收集参数 VariableID
         if let Some(params) = node.params() {
             for param in params.params() {
                 let Some(name_node) = param.name() else {
@@ -49,17 +50,21 @@ impl FuncVisitor for Module {
         }
 
         let ret_type = if let Some(ty_node) = node.ret_type() {
-            if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
-                ty.clone()
-            } else {
-                return;
+            match crate::utils::parse_type_node(self, &ty_node, Some(&self.value_table)) {
+                Ok(Some(ty)) => ty,
+                Ok(None) => {
+                    return;
+                }
+                Err(e) => {
+                    self.new_error(e);
+                    return;
+                }
             }
         } else {
             NType::Void
         };
 
-        let Some((name, range)) = node.name().and_then(|n| utils::extract_name_and_range(&n))
-        else {
+        let Some(name) = node.name().and_then(|n| n.var_name()) else {
             return;
         };
 
@@ -70,34 +75,38 @@ impl FuncVisitor for Module {
             .and_then(|x| x.block())
             .is_some();
 
-        let func_id = self.new_function(
-            name.clone(),
-            param_list,
-            ret_type.clone(),
-            have_impl,
-            range,
-            self.module_id,
-        );
-        self.function_map.insert(name, func_id);
-
+        if let Some(&func_id) = self.function_map.get(&name) {
+            // 更新现有的 Function，填充参数
+            if let Some(func_data) = self.get_function_mut_by_id(func_id) {
+                func_data.params = param_list;
+                func_data.ret_type = ret_type.clone();
+                func_data.have_impl = have_impl;
+            }
+        } else {
+            debug_assert!(false);
+        }
         self.analyzing.current_function_ret_type = Some(ret_type);
     }
 
     fn leave_func_f_param(&mut self, node: FuncFParam) {
-        let Some(ty_node) = node.ty() else {
-            return;
-        };
-
-        let param_type = if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
-            ty.clone()
-        } else {
-            return;
-        };
-
         let Some((name, range)) = node.name().and_then(|n| utils::extract_name_and_range(&n))
         else {
             return;
         };
+        let Some(ty_node) = node.ty() else {
+            return;
+        };
+        let param_type =
+            match crate::utils::parse_type_node(self, &ty_node, Some(&self.value_table)) {
+                Ok(Some(t)) => t,
+                Ok(None) => {
+                    return;
+                }
+                Err(e) => {
+                    self.semantic_errors.push(e);
+                    return;
+                }
+            };
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
         if scope.have_variable_def(&name) {

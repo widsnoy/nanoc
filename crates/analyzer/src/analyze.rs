@@ -4,10 +4,9 @@ mod decl;
 mod expr;
 mod func;
 mod stmt;
-mod r#type;
 
 use syntax::Visitor;
 
 use crate::module::Module;
 
-impl Visitor for Module {}
+impl Visitor for Module<'_> {}

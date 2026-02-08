@@ -1,13 +1,14 @@
 use std::path::Path;
 
 use analyzer::module::Module;
+use analyzer::project::Project;
 use inkwell::context::Context as LlvmContext;
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
 use rowan::GreenNode;
-use syntax::SyntaxNode;
 use syntax::ast::{AstNode, CompUnit};
+use syntax::SyntaxNode;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
@@ -159,6 +160,48 @@ fn generate_and_optimize<'ctx>(
         .map_err(|e| CodegenError::LlvmVerification(e.to_string_lossy().to_string()))?;
 
     Ok(module)
+}
+
+/// 编译多个模块到目标文件字节数据
+///
+/// 将 Project 中的所有模块分别编译为目标文件
+///
+/// # 参数
+/// - `project`: 包含所有模块的项目
+/// - `opt_level`: 优化级别
+///
+/// # 返回
+/// - `Ok(Vec<(String, Vec<u8>)>)`: 成功时返回 (模块名, 目标文件字节) 的列表
+/// - `Err(CodegenError)`: 代码生成失败时返回错误
+pub fn compile_project_to_object_bytes(
+    project: &Project,
+    opt_level: OptLevel,
+) -> Result<Vec<(String, Vec<u8>)>> {
+    let mut object_files = Vec::new();
+
+    // 为每个模块生成目标文件
+    for (module_id, module) in project.modules.iter() {
+        // 获取模块名称（从 VFS 中查找对应的文件名）
+        let module_name = project
+            .file_index
+            .iter()
+            .find(|(_, mid)| mid.0 == module_id)
+            .and_then(|(file_id, _)| project.vfs.files.get(file_id.0))
+            .and_then(|file| {
+                std::path::Path::new(&file.path)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+            })
+            .unwrap_or("unknown");
+
+        // 编译模块到目标文件
+        let object_bytes =
+            compile_to_object_bytes(module_name, module.green_tree.clone(), module, opt_level)?;
+
+        object_files.push((module_name.to_string(), object_bytes));
+    }
+
+    Ok(object_files)
 }
 
 /// 内部函数：创建目标机器

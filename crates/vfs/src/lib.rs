@@ -23,7 +23,7 @@ impl VirtulFile {
 }
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub struct FileID(Index);
+pub struct FileID(pub Index);
 
 impl FileID {
     pub fn none() -> Self {

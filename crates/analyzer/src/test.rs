@@ -1,9 +1,13 @@
+use std::path::PathBuf;
+
 use parser::parse::Parser;
+use vfs::{FileID, Vfs};
 
 use crate::error::SemanticError;
-use crate::module::Module;
+use crate::module::{Module, ModuleID};
+use crate::project::Project;
 
-fn analyze(source: &str) -> Module {
+fn analyze(source: &str) -> Module<'static> {
     let parser = Parser::new(source);
     let (tree, errors, _) = parser.parse();
 
@@ -11,9 +15,49 @@ fn analyze(source: &str) -> Module {
         panic!("Parser errors: {:?}", errors);
     }
 
+    // 创建一个简单的 VFS 和 Project 来模拟完整的分析流程
+    let mut vfs = Vfs::default();
+    let file_id = vfs.add_file(PathBuf::from("test.airy"), source.to_string());
+
+    let mut project = Project::default();
+    project.vfs = vfs;
+    project.workspace = PathBuf::from(".");
+
+    // 添加模块
     let mut module = Module::new(tree);
+    let module_id = ModuleID(project.modules.insert(module));
+
+    // 设置 module_id 和 file_index
+    let module = project.modules.get_mut(module_id.0).unwrap();
+    module.module_id = module_id;
+    project.file_index.insert(file_id, module_id);
+
+    // 收集符号
+    Project::collect_symbols_for_module(module);
+
+    // Header 分析（对于单文件测试，这一步不会有导入）
+    let module = project.modules.get(module_id.0).unwrap();
+    let module_imports = crate::header_analyzer::HeaderAnalyzer::collect_module_imports(
+        module,
+        file_id,
+        &project.vfs,
+        &project.file_index,
+        &project.modules,
+    );
+
+    let module = project.modules.get_mut(module_id.0).unwrap();
+    crate::header_analyzer::HeaderAnalyzer::apply_module_imports(module, module_imports);
+
+    // 填充定义
+    let module = project.modules.get_mut(module_id.0).unwrap();
+    Project::fill_definitions(module, module_id);
+
+    // 语义分析
+    let module = project.modules.get_mut(module_id.0).unwrap();
     module.analyze();
-    module
+
+    // 提取模块并返回
+    project.modules.remove(module_id.0).unwrap()
 }
 
 #[test]

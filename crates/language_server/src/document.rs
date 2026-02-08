@@ -6,11 +6,11 @@ use crate::error::LspError;
 
 /// 文档状态管理
 #[derive(Debug)]
-pub struct Document {
+pub struct Document<'a> {
     #[allow(unused)] // FIXME
     pub text: String,
     pub line_index: LineIndex,
-    pub module: Module,
+    pub module: Module<'a>,
     pub errors: Vec<LspError>,
 }
 

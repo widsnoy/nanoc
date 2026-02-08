@@ -59,6 +59,8 @@ pub enum Token {
     EQ,
     #[token(";")]
     SEMI,
+    #[token("::")]
+    COLONCOLON,
     #[token(":")]
     COLON,
     #[token(",")]
@@ -121,6 +123,8 @@ pub enum Token {
     // 字面量
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*")]
     IDENT,
+    #[regex(r#""([^"\\]|\\.)*""#)]
+    STRING_LITERAL,
     #[regex(r"0[xX][0-9a-fA-F]+", priority = 3)]
     #[regex(r"0[0-7]*", priority = 3)]
     #[regex(r"[1-9][0-9]*", priority = 3)]
@@ -155,6 +159,7 @@ impl From<Token> for SyntaxKind {
             Token::LET_KW => SyntaxKind::LET_KW,
             Token::EQ => SyntaxKind::EQ,
             Token::SEMI => SyntaxKind::SEMI,
+            Token::COLONCOLON => SyntaxKind::COLONCOLON,
             Token::COMMA => SyntaxKind::COMMA,
             Token::COLON => SyntaxKind::COLON,
             Token::L_BRACE => SyntaxKind::L_BRACE,
@@ -181,6 +186,7 @@ impl From<Token> for SyntaxKind {
             Token::BANG => SyntaxKind::BANG,
             Token::AMP => SyntaxKind::AMP,
             Token::IDENT => SyntaxKind::IDENT,
+            Token::STRING_LITERAL => SyntaxKind::STRING_LITERAL,
             Token::INT_LITERAL => SyntaxKind::INT_LITERAL,
             Token::FLOAT_LITERAL => SyntaxKind::FLOAT_LITERAL,
         }

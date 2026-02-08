@@ -25,12 +25,12 @@ impl Value {
         match self {
             Value::Int(_) => NType::Int,
             Value::Float(_) => NType::Float,
-            Value::Array(_) => NType::Array(Box::new(NType::Void), 0),
+            Value::Array(_) => NType::Array(Box::new(NType::Void), None),
             Value::Struct(struct_id, _) => {
                 let name = module
                     .get_struct_by_id(*struct_id)
                     .map(|s| s.name.clone())
-                    .unwrap_or_else(|| format!("struct#{:?}", struct_id.0));
+                    .unwrap_or_else(|| format!("struct#{:?}", struct_id.index));
                 NType::Struct {
                     id: *struct_id,
                     name,
@@ -40,7 +40,7 @@ impl Value {
                 let name = module
                     .get_struct_by_id(*struct_id)
                     .map(|s| s.name.clone())
-                    .unwrap_or_else(|| format!("struct#{:?}", struct_id.0));
+                    .unwrap_or_else(|| format!("struct#{:?}", struct_id.index));
                 NType::Struct {
                     id: *struct_id,
                     name,

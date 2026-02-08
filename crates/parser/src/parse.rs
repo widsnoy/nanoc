@@ -2,6 +2,7 @@ mod block;
 mod common;
 mod expression;
 mod function;
+mod header;
 mod recovery;
 mod statement;
 mod r#struct;
@@ -100,6 +101,9 @@ impl<'a> Parser<'a> {
 
         loop {
             match self.peek() {
+                SyntaxKind::IMPORT_KW => {
+                    self.parse_header();
+                }
                 SyntaxKind::LET_KW => {
                     self.parse_var_def();
                 }
@@ -115,6 +119,7 @@ impl<'a> Parser<'a> {
                 SyntaxKind::EOF => break,
                 _ => {
                     self.skip_until(&[
+                        SyntaxKind::IMPORT_KW,
                         SyntaxKind::LET_KW,
                         SyntaxKind::FN_KW,
                         SyntaxKind::STRUCT_KW,

@@ -269,3 +269,47 @@ fn test_struct_trailing_comma_no_deadloop() {
     assert!(debug_str.contains("STRUCT_DEF"));
     assert!(debug_str.contains("FUNC_DEF"));
 }
+#[test]
+fn test_import_parsing() {
+    use crate::parse::Parser;
+    use syntax::{AstNode, ast::CompUnit};
+
+    let text = r#"import "../lib"
+import "../utils"::add
+"#;
+
+    let parser = Parser::new(text);
+    let (green_tree, parse_errors, lex_errors) = parser.parse();
+
+    println!("Lex errors: {:?}", lex_errors);
+    println!("Parse errors: {:?}", parse_errors);
+
+    assert!(lex_errors.is_empty(), "Lex errors: {:?}", lex_errors);
+    assert!(parse_errors.is_empty(), "Parse errors: {:?}", parse_errors);
+
+    let root = syntax::SyntaxNode::new_root(green_tree);
+    if let Some(comp_unit) = CompUnit::cast(root) {
+        let headers: Vec<_> = comp_unit.headers().collect();
+        assert_eq!(headers.len(), 2, "Should have 2 headers");
+
+        // 第一个 header: import "../lib"
+        if let Some(path) = headers[0].path() {
+            if let Some(string_lit) = path.string_literal() {
+                assert_eq!(string_lit.text(), r#""../lib""#);
+            }
+            assert!(path.symbol().is_none());
+        }
+
+        // 第二个 header: import "../utils"::add
+        if let Some(path) = headers[1].path() {
+            if let Some(string_lit) = path.string_literal() {
+                assert_eq!(string_lit.text(), r#""../utils""#);
+            }
+            if let Some(symbol) = path.symbol() {
+                assert_eq!(symbol.text(), "add");
+            }
+        }
+    } else {
+        panic!("Failed to parse CompUnit");
+    }
+}

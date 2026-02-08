@@ -144,8 +144,10 @@ impl ArrayTree {
                 }))
             }
             NType::Array(inner, count) => {
-                let mut children_vec = Vec::with_capacity(*count as usize);
-                for _ in 0..*count {
+                // 如果 count 为 None，说明还没有常量折叠，暂时返回错误
+                let count_val = count.ok_or(ArrayInitError::MisMatchIndexAndType)?;
+                let mut children_vec = Vec::with_capacity(count_val as usize);
+                for _ in 0..count_val {
                     let Some(u) = cursor else {
                         break;
                     };

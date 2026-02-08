@@ -1,16 +1,123 @@
-use syntax::SyntaxKind;
-use syntax::ast::{AstNode as _, Expr, IndexVal, InitVal, OpNode, PostfixExpr, UnaryExpr};
-use tools::TextRange;
+use std::collections::HashMap;
 
-use crate::error::SemanticError;
+use syntax::SyntaxKind;
+use syntax::ast::{AstNode as _, Expr, IndexVal, InitVal, OpNode, PostfixExpr, Type, UnaryExpr};
+use tools::TextRange;
+use utils::trim_node_text_range;
+
 use crate::{
     array::ArrayTree,
-    module::{Module, StructID, VariableID},
+    error::SemanticError,
+    module::{Module, StructID},
     r#type::NType,
     value::Value,
 };
 
-impl Module {
+/// 解析类型节点
+///
+/// 常量折叠：
+/// - 如果 value_table 为 None：数组大小设为 None（允许运行时变量声明数组）
+/// - 如果 value_table 为 Some：尝试从表中查找常量值
+///   - 找到 Int 值：设置数组大小
+///   - 找不到或类型不匹配：返回错误
+///
+pub fn parse_type_node(
+    module: &Module,
+    ty_node: &Type,
+    value_table: Option<&HashMap<TextRange, Value>>,
+) -> Result<Option<NType>, SemanticError> {
+    if ty_node.l_brack_token().is_some() {
+        // 数组类型: [Type; Expr]
+        let Some(inner_node) = ty_node.inner_type() else {
+            return Ok(None);
+        };
+
+        let Some(inner) = parse_type_node(module, &inner_node, value_table)? else {
+            return Ok(None);
+        };
+
+        // 解析数组大小
+        let size = if let Some(expr_node) = ty_node.size_expr() {
+            if let Some(vt) = value_table {
+                let expr_range = expr_node.text_range();
+                match vt.get(&expr_range) {
+                    Some(Value::Int(n)) => Some(*n),
+                    Some(other_value) => {
+                        return Err(SemanticError::TypeMismatch {
+                            expected: NType::Const(Box::new(NType::Int)),
+                            found: other_value.get_type(module),
+                            range: trim_node_text_range(&expr_node),
+                        });
+                    }
+                    None => {
+                        return Err(SemanticError::ConstantExprExpected {
+                            range: trim_node_text_range(&expr_node),
+                        });
+                    }
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok(Some(NType::Array(Box::new(inner), size)))
+    } else if let Some(pointer) = ty_node.pointer() {
+        // 指针类型: Pointer BaseType
+        let Some(inner_node) = ty_node.inner_type() else {
+            return Ok(None);
+        };
+
+        let Some(inner) = parse_type_node(module, &inner_node, value_table)? else {
+            return Ok(None);
+        };
+
+        Ok(Some(NType::Pointer {
+            pointee: Box::new(inner),
+            is_const: pointer.is_const(),
+        }))
+    } else {
+        // 原始类型: PrimitType
+        let Some(pt_node) = ty_node.primit_type() else {
+            return Ok(None);
+        };
+
+        let ntype = if pt_node.int_token().is_some() {
+            NType::Int
+        } else if pt_node.float_token().is_some() {
+            NType::Float
+        } else if pt_node.void_token().is_some() {
+            NType::Void
+        } else if pt_node.struct_token().is_some() {
+            let Some(name) = pt_node.name().and_then(|n| n.var_name()) else {
+                return Ok(None);
+            };
+
+            let Some(sid) = module.get_struct_id_by_name(&name) else {
+                return Err(SemanticError::StructUndefined {
+                    name,
+                    range: trim_node_text_range(ty_node),
+                });
+            };
+
+            NType::Struct {
+                id: sid,
+                name: name.clone(),
+            }
+        } else {
+            return Ok(None);
+        };
+
+        if ty_node.const_token().is_some() {
+            Ok(Some(NType::Const(Box::new(ntype))))
+        } else {
+            Ok(Some(ntype))
+        }
+    }
+}
+
+impl Module<'_> {
     /// 计算索引后的类型：去掉 index_count 层数组/指针
     /// 如果结果是数组类型，自动 decay 成指向元素的指针
     pub(crate) fn compute_indexed_type(
@@ -75,12 +182,12 @@ impl Module {
 
         // 按顺序解析每个字段的初始化值
         let mut field_values = Vec::with_capacity(struct_def.fields.len());
-        let field_ids: *const [VariableID] = &struct_def.fields[..];
+        let field_ids: *const [crate::module::FieldID] = &struct_def.fields[..];
 
         // 先收集所有字段类型（避免借用冲突）
         let field_types: Vec<NType> = unsafe { &*field_ids }
             .iter()
-            .map(|field_id| self.variables.get(**field_id).unwrap().ty.clone())
+            .map(|field_id| self.get_field_by_id(*field_id).unwrap().ty.clone())
             .collect();
 
         let mut all_const = true;

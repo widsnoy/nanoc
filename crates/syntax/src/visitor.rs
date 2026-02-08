@@ -7,13 +7,11 @@ mod decl;
 mod expr;
 mod func;
 mod stmt;
-mod r#type;
 
 pub use decl::DeclVisitor;
 pub use expr::ExprVisitor;
 pub use func::FuncVisitor;
 pub use stmt::StmtVisitor;
-pub use r#type::TypeVisitor;
 
 /// 语法树访问者 trait
 ///
@@ -22,10 +20,7 @@ pub use r#type::TypeVisitor;
 /// - `FuncVisitor`: 函数相关节点
 /// - `StmtVisitor`: 语句相关节点
 /// - `ExprVisitor`: 表达式相关节点
-/// - `TypeVisitor`: 类型相关节点
-pub trait Visitor:
-    DeclVisitor + FuncVisitor + StmtVisitor + ExprVisitor + TypeVisitor + Sized
-{
+pub trait Visitor: DeclVisitor + FuncVisitor + StmtVisitor + ExprVisitor + Sized {
     /// 遍历语法树
     fn walk(&mut self, root: &SyntaxNode) {
         let mut error_depth = 0usize;
@@ -112,9 +107,6 @@ macro_rules! dispatch_node {
                 FieldAccess::cast($node).map(|n| $self.enter_field_access(n))
             }
             SyntaxKind::LITERAL => Literal::cast($node).map(|n| $self.enter_literal(n)),
-            SyntaxKind::TYPE => Type::cast($node).map(|n| $self.enter_type(n)),
-            SyntaxKind::NAME => Name::cast($node).map(|n| $self.enter_name(n)),
-            SyntaxKind::POINTER => Pointer::cast($node).map(|n| $self.enter_pointer(n)),
             _ => None,
         };
     }};
@@ -162,9 +154,6 @@ macro_rules! dispatch_node {
                 FieldAccess::cast($node).map(|n| $self.leave_field_access(n))
             }
             SyntaxKind::LITERAL => Literal::cast($node).map(|n| $self.leave_literal(n)),
-            SyntaxKind::TYPE => Type::cast($node).map(|n| $self.leave_type(n)),
-            SyntaxKind::NAME => Name::cast($node).map(|n| $self.leave_name(n)),
-            SyntaxKind::POINTER => Pointer::cast($node).map(|n| $self.leave_pointer(n)),
             _ => None,
         };
     }};

@@ -7,7 +7,7 @@ A toy programming language
 ```text
 CompUnit    := {Header}{GlobalDecl}
 
-Header      := 'import' Path
+Header      := 'import' Path     // eg. import "../lib" or import "../lib::Symbol"
 
 GlobalDecl  := VarDef | FuncDef | StructDef | FuncAttach
 
@@ -74,7 +74,6 @@ FieldAccess := Name {'[' Expr ']'}
 
 Literal     := IntConst | FloatConst
 Name        := Ident
-Path        := Ident
 ```
 
 ## Semantic

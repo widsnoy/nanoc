@@ -117,7 +117,8 @@ ast_node!(
 
 ast_node!(
     Path ~ PATH {
-        ident: token(IDENT),
+        string_literal: token(STRING_LITERAL),
+        symbol: token(IDENT),
     }
 );
 

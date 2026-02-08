@@ -7,9 +7,9 @@ use codegen::compiler::OptLevel;
 #[derive(Parser, Debug)]
 #[command(name = "airyc cli", version = "0.0.1", about = "airyc compiler")]
 pub struct Args {
-    /// source file (.ariy) path
-    #[arg(short, long)]
-    pub input_path: PathBuf,
+    /// source file(s) (.airy) path - can specify multiple files
+    #[arg(short, long, num_args = 1..)]
+    pub input_path: Vec<PathBuf>,
 
     /// output dir, (default .)
     #[arg(short, long, default_value = ".")]

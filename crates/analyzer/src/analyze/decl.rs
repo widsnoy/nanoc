@@ -9,31 +9,14 @@ use crate::module::Module;
 use crate::r#type::NType;
 use crate::value::Value;
 
-impl DeclVisitor for Module {
+impl DeclVisitor for Module<'_> {
     fn enter_comp_unit(&mut self, node: CompUnit) {
         self.analyzing.current_scope = self.new_scope(None, node.text_range());
         self.global_scope = self.analyzing.current_scope;
     }
 
     fn enter_struct_def(&mut self, node: StructDef) {
-        let Some((name, range)) = node.name().and_then(|n| utils::extract_name_and_range(&n))
-        else {
-            return;
-        };
-        // 检查是否重复定义
-        if self.get_struct_id_by_name(&name).is_some() {
-            self.new_error(SemanticError::StructDefined {
-                name: name.clone(),
-                range,
-            });
-            return;
-        }
-
         self.analyzing.current_scope = self.new_scope(Some(self.global_scope), node.text_range());
-
-        // 提前创建占位，以支持自引用结构体
-        let struct_id = self.new_struct(name.clone(), vec![], range, self.module_id);
-        self.struct_map.insert(name, struct_id);
     }
 
     fn leave_struct_def(&mut self, node: StructDef) {
@@ -46,81 +29,52 @@ impl DeclVisitor for Module {
             return;
         };
 
-        // 收集字段信息（先不创建变量）
-        let mut field_infos = Vec::new();
+        let field_ids = if let Some(struct_def) = self.get_struct_by_id(struct_id) {
+            struct_def.fields.clone() // FIXME: clone
+        } else {
+            return;
+        };
+
         let mut field_names = std::collections::HashSet::new();
-
-        for field_node in node.fields() {
-            let Some((field_name, field_range)) = field_node
-                .name()
-                .and_then(|n| utils::extract_name_and_range(&n))
-            else {
-                continue;
-            };
-            let Some(ty_node) = field_node.ty() else {
-                continue;
-            };
-
-            // 检查字段名是否重复
-            if !field_names.insert(field_name.clone()) {
+        for &field_id in &field_ids {
+            if let Some(field) = self.get_field_by_id(field_id)
+                && !field_names.insert(field.name.clone())
+            {
                 self.new_error(SemanticError::VariableDefined {
-                    name: field_name.clone(),
-                    range: field_range,
+                    name: field.name.clone(),
+                    range: field.range,
                 });
-                continue;
             }
-
-            // 获取字段类型
-            let field_ty = if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
-                ty.clone()
-            } else {
-                continue;
-            };
-
-            // 检查是否自引用
-            let mut ty = &field_ty.clone();
-            let self_refer = loop {
-                match ty {
-                    NType::Struct { id: idx, .. } if *idx == struct_id => break true,
-                    NType::Array(inner, _) => ty = inner,
-                    _ => break false,
-                }
-            };
-
-            if self_refer {
-                self.new_error(SemanticError::StructSelfRef {
-                    name: field_name,
-                    range: field_range,
-                });
-                return;
-            }
-
-            field_infos.push((field_name, field_ty, field_range));
         }
 
-        // 创建字段变量
-        let Some(scope) = self.scopes.get_mut(*self.analyzing.current_scope) else {
+        for &field_id in &field_ids {
+            if let Some(field) = self.get_field_by_id(field_id) {
+                let mut ty = &field.ty;
+                let self_refer = loop {
+                    match ty {
+                        NType::Struct { id: idx, .. } if *idx == struct_id => break true,
+                        NType::Array(inner, _) => ty = inner,
+                        _ => break false,
+                    }
+                };
+
+                if self_refer {
+                    self.new_error(SemanticError::StructSelfRef {
+                        name: field.name.clone(),
+                        range: field.range,
+                    });
+                    return;
+                }
+            }
+        }
+
+        // 恢复父作用域
+        let Some(scope) = self.scopes.get(*self.analyzing.current_scope) else {
             return;
         };
         let Some(parent_scope) = scope.parent else {
             return;
         };
-        let mut field_ids = Vec::new();
-        for (field_name, field_ty, field_range) in field_infos {
-            let field_id = scope.new_variable(
-                &mut self.variables,
-                &mut self.variable_map,
-                field_name,
-                field_ty,
-                field_range,
-            );
-            field_ids.push(field_id);
-        }
-
-        // 更新 struct 定义的字段
-        let struct_def = self.get_struct_mut_by_id(struct_id).unwrap();
-        struct_def.fields = field_ids;
-
         self.analyzing.current_scope = parent_scope;
     }
 
@@ -134,10 +88,16 @@ impl DeclVisitor for Module {
             return;
         };
 
-        let var_type = if let Some(ty) = self.get_expr_type(ty_node.text_range()) {
-            ty.clone()
-        } else {
-            return;
+        let var_type = match crate::utils::parse_type_node(self, &ty_node, Some(&self.value_table))
+        {
+            Ok(Some(ty)) => ty,
+            Ok(None) => {
+                return;
+            }
+            Err(e) => {
+                self.new_error(e);
+                return;
+            }
         };
 
         let current_scope = self.analyzing.current_scope;

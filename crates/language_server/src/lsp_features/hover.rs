@@ -143,8 +143,8 @@ fn format_struct_definition(struct_def: &analyzer::module::Struct, module: &Modu
         .fields
         .iter()
         .filter_map(|field_id| {
-            let var = module.get_varaible_by_id(*field_id)?;
-            Some(format!("    {}: {}", var.name, var.ty))
+            let field = module.fields.get(field_id.index)?;
+            Some(format!("    {}: {}", field.name, field.ty))
         })
         .collect::<Vec<_>>()
         .join(",\n");
