@@ -23,7 +23,7 @@ impl VirtulFile {
     }
 }
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct FileID(pub Index);
 
 impl FileID {

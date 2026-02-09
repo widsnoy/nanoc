@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use dashmap::DashMap;
 use parser::parse::Parser;
@@ -10,7 +10,7 @@ use vfs::{FileID, Vfs};
 
 use crate::{
     header::HeaderAnalyzer,
-    module::{Field, FieldID, Module, ThinModule},
+    module::{CiterInfo, Field, FieldID, Module, ModuleIndex, ThinModule},
     r#type::NType,
 };
 
@@ -89,6 +89,40 @@ impl Project {
         for entry in self.modules.iter() {
             self.metadata
                 .insert(*entry.key(), ThinModule::new(entry.value()));
+        }
+
+        /// 构建索引
+        let mut temp: HashMap<FileID, ModuleIndex> = Default::default();
+        for entry in self.modules.iter() {
+            let module = entry.value();
+            for (_, refer) in module.reference {
+                match refer.tag {
+                    crate::module::ReferenceTag::VarRead(variable_id) => {
+                        let file_id = module.file_id;
+                        let index = temp.entry(file_id).or_default();
+                        index
+                            .variable_reference
+                            .insert(variable_id, CiterInfo::new(file_id, refer.range))
+                    }
+                    crate::module::ReferenceTag::FieldRead(field_id) => {
+                        let file_id = field_id.module;
+                        let index = temp.entry(file_id).or_default();
+                        index
+                            .field_reference
+                            .insert(field_id, CiterInfo::new(file_id, refer.range));
+                    }
+                    crate::module::ReferenceTag::FuncCall(function_id) => {
+                        let file_id = function_id.module;
+                        let index = temp.entry(function_id).or_default();
+                        index
+                            .function_reference
+                            .insert(function_id, CiterInfo::new(file_id, refer.range));
+                    }
+                }
+            }
+        }
+        for entry in self.modules.iter_mut() {
+            entry.index = temp.remove(entry.key());
         }
     }
 

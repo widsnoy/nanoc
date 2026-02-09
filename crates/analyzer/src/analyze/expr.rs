@@ -397,9 +397,9 @@ impl ExprVisitor for Module {
                 result_ty
             };
 
-            self.set_expr_type(member_range, result_ty);
-            // 不再记录字段访问为引用，因为 FieldID 不是 VariableID
-            // self.new_reference(member_range, ReferenceTag::VarRead(field_id));
+            self.set_expr_type(range, result_ty);
+
+            self.new_reference(member_range, ReferenceTag::FieldRead(field_id));
 
             // 常量处理：如果基础表达式是常量 struct，提取字段值
             if let Some(Value::Struct(_struct_id, field_values)) =

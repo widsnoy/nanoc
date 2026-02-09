@@ -89,9 +89,22 @@ pub(crate) struct AnalyzeContext {
 
 #[derive(Debug, Default)]
 pub struct ModuleIndex {
-    pub variable_reference: HashMap<VariableID, Vec<ReferenceID>>,
-    pub function_reference: HashMap<FunctionID, Vec<ReferenceID>>,
+    pub variable_reference: HashMap<VariableID, Vec<CiterInfo>>,
+    pub function_reference: HashMap<FunctionID, Vec<CiterInfo>>,
+    pub field_reference: HashMap<FieldID, Vec<CiterInfo>>,
     pub scope_tree: HashMap<ScopeID, Vec<ScopeID>>,
+}
+
+#[derive(Debug, Default)]
+pub struct CiterInfo {
+    pub file_id: FileID,
+    pub range: TextRange,
+}
+
+impl CiterInfo {
+    pub fn new(file_id: FileID, range: TextRange) -> Self {
+        Self { file_id, range }
+    }
 }
 
 impl Module {
@@ -292,8 +305,6 @@ impl Module {
     }
 
     /// 获取变量定义
-    /// 注意：变量通常是局部的，不支持跨模块访问
-    /// 但函数参数可能需要跨模块访问（当函数在另一个模块时）
     pub fn get_variable_by_id(&self, id: VariableID) -> Option<&Variable> {
         self.variables.get(*id)
     }
@@ -305,21 +316,6 @@ impl Module {
         let ref_id = ReferenceID(ref_idx);
 
         self.reference_map.insert(range, ref_id);
-
-        match tag {
-            ReferenceTag::VarRead(variable_id) => self
-                .index
-                .variable_reference
-                .entry(variable_id)
-                .or_default()
-                .push(ref_id),
-            ReferenceTag::FuncCall(function_id) => self
-                .index
-                .function_reference
-                .entry(function_id)
-                .or_default()
-                .push(ref_id),
-        };
     }
 
     /// 查找变量定义，返回定义处的 VariableID
@@ -431,6 +427,7 @@ pub struct Reference {
 pub enum ReferenceTag {
     // TODO: VarWrite,
     VarRead(VariableID),
+    FieldRead(FieldID),
     FuncCall(FunctionID),
 }
 #[derive(Debug, Clone)]
