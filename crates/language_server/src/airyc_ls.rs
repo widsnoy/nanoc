@@ -8,7 +8,6 @@ use tower_lsp_server::ls_types::*;
 use tower_lsp_server::{Client, LanguageServer};
 use vfs::{FileID, Vfs};
 
-use crate::error::LspError;
 use crate::lsp_features;
 
 /// Airyc Language Server
@@ -20,6 +19,8 @@ pub(crate) struct Backend {
     project: RwLock<Project>,
     /// URI 到 FileID 的映射
     uri_to_file_id: DashMap<Uri, FileID>,
+    /// FileID 到 URI 的反向映射
+    file_id_to_uri: DashMap<FileID, Uri>,
 }
 
 impl Backend {
@@ -28,12 +29,18 @@ impl Backend {
             client,
             project: RwLock::new(Project::default()),
             uri_to_file_id: DashMap::new(),
+            file_id_to_uri: DashMap::new(),
         }
     }
 
     /// 将 URI 转换为 FileID
     fn get_file_id(&self, uri: &Uri) -> Option<FileID> {
         self.uri_to_file_id.get(uri).map(|r| *r)
+    }
+
+    /// 将 FileID 转换为 URI
+    fn get_uri_by_file_id(&self, file_id: FileID) -> Option<Uri> {
+        self.file_id_to_uri.get(&file_id).map(|r| r.clone())
     }
 
     /// 使用闭包访问 LineIndex 和 Module
@@ -43,40 +50,78 @@ impl Backend {
     {
         let file_id = self.get_file_id(uri)?;
         let project = self.project.read();
-        
+
         let module = project.modules.get(&file_id)?;
         let line_index = project.line_indexes.get(&file_id)?;
-        
-        Some(f(&module, &line_index))
+
+        Some(f(module, line_index))
     }
 
     /// 重新构建整个项目
     fn rebuild_project(&self) {
         let mut project = self.project.write();
-        
+
         // 获取当前的 Vfs
         let vfs = std::mem::take(&mut project.vfs);
-        
+
         // 重新初始化 Project
         *project = Project::default();
         project.full_initialize(vfs);
     }
 
+    /// 发布所有文件的诊断信息
+    async fn publish_all_diagnostics(&self) {
+        // 收集所有需要发布的诊断信息
+        let diagnostics_to_publish = {
+            let project = self.project.read();
+
+            let mut result = Vec::new();
+
+            // 遍历 uri_to_file_id 映射
+            for entry in self.uri_to_file_id.iter() {
+                let uri = entry.key().clone();
+                let file_id = *entry.value();
+
+                if let Some(module) = project.modules.get(&file_id)
+                    && let Some(line_index) = project.line_indexes.get(&file_id)
+                {
+                    let diagnostics = lsp_features::diagnostics::compute_diagnostics(
+                        &module.semantic_errors,
+                        line_index,
+                    );
+
+                    result.push((uri, diagnostics));
+                }
+            }
+
+            result
+        }; // project 锁在这里释放
+
+        // 发布所有诊断信息
+        for (uri, diagnostics) in diagnostics_to_publish {
+            self.client
+                .publish_diagnostics(uri, diagnostics, None)
+                .await;
+        }
+    }
+
     /// 扫描工作区目录下的所有 .airy 文件
     fn scan_workspace(&self, root_path: PathBuf) -> Vfs {
         let vfs = Vfs::default();
-        
+
         if let Ok(entries) = std::fs::read_dir(&root_path) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("airy") {
-                    if let Ok(text) = std::fs::read_to_string(&path) {
-                        vfs.new_file(path, text);
-                    }
+                if path.is_file()
+                    && path.extension().and_then(|s| s.to_str()) == Some("airy")
+                    && let Ok(text) = std::fs::read_to_string(&path)
+                {
+                    tracing::info!("path: {:?}", &path);
+                    vfs.new_file(path, text);
                 }
             }
         }
-        
+
         vfs
     }
 }
@@ -84,30 +129,31 @@ impl Backend {
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         // 初始化扫描 WorkSpace 下所有 .airy 文件
-        #[allow(deprecated)]
-        if let Some(root_uri) = params.root_uri {
-            if let Some(root_path) = root_uri.to_file_path() {
-                let vfs = self.scan_workspace(root_path.into_owned());
-                
-                // 构建 URI 到 FileID 的映射
-                vfs.for_each_file(|file_id, file| {
-                    // 将 PathBuf 转换为 file:// URI
-                    let path_str = file.path.to_string_lossy();
-                    let uri_str = if cfg!(windows) {
-                        format!("file:///{}", path_str.replace('\\', "/"))
-                    } else {
-                        format!("file://{}", path_str)
-                    };
-                    
-                    if let Ok(uri) = uri_str.parse::<Uri>() {
-                        self.uri_to_file_id.insert(uri, file_id);
-                    }
-                });
-                
-                // 初始化项目
-                let mut project = self.project.write();
-                project.full_initialize(vfs);
-            }
+        if let Some(root_uri) = params.workspace_folders
+            && let Some(uri) = root_uri.first()
+            && let Some(root) = uri.uri.to_file_path()
+        {
+            let vfs = self.scan_workspace(root.to_path_buf());
+
+            // 构建 URI 到 FileID 的映射
+            vfs.for_each_file(|file_id, file| {
+                // 将 PathBuf 转换为 file:// URI
+                let path_str = file.path.to_string_lossy();
+                let uri_str = if cfg!(windows) {
+                    format!("file:///{}", path_str.replace('\\', "/"))
+                } else {
+                    format!("file://{}", path_str)
+                };
+
+                if let Ok(uri) = uri_str.parse::<Uri>() {
+                    self.uri_to_file_id.insert(uri.clone(), file_id);
+                    self.file_id_to_uri.insert(file_id, uri);
+                }
+            });
+
+            // 初始化项目
+            let mut project = self.project.write();
+            project.full_initialize(vfs);
         }
 
         Ok(InitializeResult {
@@ -158,7 +204,10 @@ impl LanguageServer for Backend {
         })
     }
 
-    async fn initialized(&self, _: InitializedParams) {}
+    async fn initialized(&self, _: InitializedParams) {
+        // 发布所有文件的诊断信息
+        self.publish_all_diagnostics().await;
+    }
 
     async fn shutdown(&self) -> Result<()> {
         Ok(())
@@ -184,6 +233,7 @@ impl LanguageServer for Backend {
                 // 新文件，添加到 VFS
                 let file_id = project.vfs.new_file(path, text);
                 self.uri_to_file_id.insert(uri.clone(), file_id);
+                self.file_id_to_uri.insert(file_id, uri.clone());
             }
         };
 
@@ -191,21 +241,16 @@ impl LanguageServer for Backend {
         self.rebuild_project();
 
         // 发布诊断信息
-        if let Some((diagnostics, uri_clone)) = self.with_module_and_line_index(&uri, |module, line_index| {
-            // 将 SemanticError 转换为 LspError
-            let errors: Vec<LspError> = module
-                .semantic_errors
-                .iter()
-                .map(|e| LspError::Semantic(e.clone()))
-                .collect();
-            
-            let diagnostics = lsp_features::diagnostics::compute_diagnostics(
-                &errors,
-                line_index,
-            );
-            
-            (diagnostics, uri.clone())
-        }) {
+        if let Some((diagnostics, uri_clone)) =
+            self.with_module_and_line_index(&uri, |module, line_index| {
+                let diagnostics = lsp_features::diagnostics::compute_diagnostics(
+                    &module.semantic_errors,
+                    line_index,
+                );
+
+                (diagnostics, uri.clone())
+            })
+        {
             self.client
                 .publish_diagnostics(uri_clone, diagnostics, None)
                 .await;
@@ -222,7 +267,7 @@ impl LanguageServer for Backend {
                 let project = self.project.read();
                 project.vfs.update_file(&file_id, change.text.clone());
                 drop(project);
-                
+
                 // 重新分析整个项目
                 self.rebuild_project();
             }
@@ -231,31 +276,13 @@ impl LanguageServer for Backend {
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let uri = params.text_document.uri;
-        
+
         if self.get_file_id(&uri).is_some() {
             // 重新分析整个项目
             self.rebuild_project();
-            
-            // 发布诊断信息
-            if let Some((diagnostics, uri_clone)) = self.with_module_and_line_index(&uri, |module, line_index| {
-                // 将 SemanticError 转换为 LspError
-                let errors: Vec<LspError> = module
-                    .semantic_errors
-                    .iter()
-                    .map(|e| LspError::Semantic(e.clone()))
-                    .collect();
-                
-                let diagnostics = lsp_features::diagnostics::compute_diagnostics(
-                    &errors,
-                    line_index,
-                );
-                
-                (diagnostics, uri.clone())
-            }) {
-                self.client
-                    .publish_diagnostics(uri_clone, diagnostics, None)
-                    .await;
-            }
+
+            // 发布所有文件的诊断信息（因为跨文件依赖可能影响其他文件）
+            self.publish_all_diagnostics().await;
         }
     }
 
@@ -289,28 +316,58 @@ impl LanguageServer for Backend {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        Ok(self.with_module_and_line_index(&uri, |module, line_index| {
-            lsp_features::goto_definition::goto_definition(
-                uri.clone(),
-                position,
-                line_index,
-                module,
-            )
-        }).flatten())
+        let file_id = match self.get_file_id(&uri) {
+            Some(id) => id,
+            None => return Ok(None),
+        };
+
+        let project = self.project.read();
+        let module = match project.modules.get(&file_id) {
+            Some(m) => m,
+            None => return Ok(None),
+        };
+        let line_index = match project.line_indexes.get(&file_id) {
+            Some(li) => li,
+            None => return Ok(None),
+        };
+
+        Ok(lsp_features::goto_definition::goto_definition(
+            uri,
+            position,
+            line_index,
+            module,
+            &project,
+            |file_id| self.get_uri_by_file_id(file_id),
+        ))
     }
 
     async fn references(&self, params: ReferenceParams) -> Result<Option<Vec<Location>>> {
         let uri = params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
 
-        Ok(self.with_module_and_line_index(&uri, |module, line_index| {
-            lsp_features::references::get_references(
-                uri.clone(),
-                position,
-                line_index,
-                module,
-            )
-        }).flatten())
+        let file_id = match self.get_file_id(&uri) {
+            Some(id) => id,
+            None => return Ok(None),
+        };
+
+        let project = self.project.read();
+        let module = match project.modules.get(&file_id) {
+            Some(m) => m,
+            None => return Ok(None),
+        };
+        let line_index = match project.line_indexes.get(&file_id) {
+            Some(li) => li,
+            None => return Ok(None),
+        };
+
+        Ok(lsp_features::references::get_references(
+            uri,
+            position,
+            line_index,
+            module,
+            &project,
+            |file_id| self.get_uri_by_file_id(file_id),
+        ))
     }
 
     async fn completion(&self, _params: CompletionParams) -> Result<Option<CompletionResponse>> {
@@ -335,12 +392,10 @@ impl LanguageServer for Backend {
         let uri = params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        Ok(self.with_module_and_line_index(&uri, |module, line_index| {
-            lsp_features::hover::hover(
-                position,
-                line_index,
-                module,
-            )
-        }).flatten())
+        Ok(self
+            .with_module_and_line_index(&uri, |module, line_index| {
+                lsp_features::hover::hover(position, line_index, module)
+            })
+            .flatten())
     }
 }

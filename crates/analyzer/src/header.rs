@@ -1,6 +1,7 @@
 //! 头文件分析器：解析 import 语句，导入符号
 
-use dashmap::DashMap;
+use std::collections::HashMap;
+
 use syntax::{AstNode as _, SyntaxNode, ast::CompUnit};
 use tools::TextRange;
 use vfs::{FileID, Vfs};
@@ -36,7 +37,7 @@ impl HeaderAnalyzer {
         module: &Module,
         current_file_id: FileID,
         vfs: &Vfs,
-        modules: &DashMap<FileID, Module>,
+        modules: &HashMap<FileID, Module>,
     ) -> ModuleImports {
         let mut imports = Vec::new();
         let mut errors = Vec::new();
@@ -137,7 +138,7 @@ impl HeaderAnalyzer {
         target_file_id: FileID,
         symbol_name: Option<&str>,
         range: TextRange,
-        modules: &DashMap<FileID, Module>,
+        modules: &HashMap<FileID, Module>,
     ) -> Result<ImportInfo, SemanticError> {
         let target_module =
             modules
@@ -148,9 +149,9 @@ impl HeaderAnalyzer {
                 })?;
 
         if let Some(symbol) = symbol_name {
-            Self::collect_specific_symbol(&target_module, symbol, range)
+            Self::collect_specific_symbol(target_module, symbol, range)
         } else {
-            Self::collect_all_symbols(&target_module)
+            Self::collect_all_symbols(target_module)
         }
     }
 

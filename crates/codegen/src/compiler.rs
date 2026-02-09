@@ -179,10 +179,7 @@ pub fn compile_project_to_object_bytes(
 ) -> Result<Vec<(String, Vec<u8>)>> {
     let mut object_files = Vec::new();
 
-    for entry in project.modules.iter() {
-        let file_id = entry.key();
-        let module = entry.value();
-
+    for (file_id, module) in &project.modules {
         let module_name = project
             .vfs
             .get_file_by_file_id(file_id)

@@ -1,6 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
 
-use dashmap::DashMap;
 use parser::parse::Parser;
 use syntax::{
     AstNode as _, SyntaxNode,
@@ -17,18 +16,18 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Project {
-    pub modules: DashMap<FileID, Module>,
-    pub line_indexes: DashMap<FileID, LineIndex>,
-    pub metadata: Arc<DashMap<FileID, ThinModule>>,
+    pub modules: HashMap<FileID, Module>,
+    pub line_indexes: HashMap<FileID, LineIndex>,
+    pub metadata: Arc<HashMap<FileID, ThinModule>>,
     pub vfs: Vfs,
 }
 
 impl Default for Project {
     fn default() -> Self {
         Self {
-            modules: DashMap::new(),
-            line_indexes: DashMap::new(),
-            metadata: Arc::new(DashMap::new()),
+            modules: HashMap::new(),
+            line_indexes: HashMap::new(),
+            metadata: Arc::new(HashMap::new()),
             vfs: Vfs::default(),
         }
     }
@@ -38,7 +37,6 @@ impl Project {
     /// 全量初始化
     pub fn full_initialize(&mut self, vfs: Vfs) {
         self.vfs = vfs;
-
         // 初始化所有 module，语法分析
         self.vfs.for_each_file(|file_id, file| {
             let parser = Parser::new(&file.text);
@@ -68,86 +66,82 @@ impl Project {
         });
 
         // 分析头文件
-        for mut entry in self.modules.iter_mut() {
-            let file_id = *entry.key();
-            let module = entry.value_mut();
+        let mut all_imports = Vec::with_capacity(self.modules.len());
+        for (file_id, module) in &self.modules {
             let module_imports =
-                HeaderAnalyzer::collect_module_imports(module, file_id, &self.vfs, &self.modules);
-
-            HeaderAnalyzer::apply_module_imports(module, module_imports);
+                HeaderAnalyzer::collect_module_imports(module, *file_id, &self.vfs, &self.modules);
+            all_imports.push((*file_id, module_imports));
+        }
+        for (file_id, module_imports) in all_imports {
+            if let Some(module) = self.modules.get_mut(&file_id) {
+                HeaderAnalyzer::apply_module_imports(module, module_imports);
+            }
         }
 
         // 预处理元数据，跨文件使用
-        for mut entry in self.modules.iter_mut() {
-            Self::fill_definitions(entry.value_mut());
+        for module in self.modules.values_mut() {
+            Self::fill_definitions(module);
         }
 
-        for entry in self.modules.iter() {
-            self.metadata
-                .insert(*entry.key(), ThinModule::new(entry.value()));
+        let mut metadata: HashMap<FileID, ThinModule> = HashMap::new();
+        for (file_id, module) in &self.modules {
+            metadata.insert(*file_id, ThinModule::new(module));
         }
 
-        // 语法分析
-        let metadata_arc = Arc::clone(&self.metadata);
-        for mut entry in self.modules.iter_mut() {
-            let module = entry.value_mut();
-            module.metadata = Some(Arc::clone(&metadata_arc));
+        // 语义分析
+        let metadata_rc = Arc::new(metadata);
+        for module in self.modules.values_mut() {
+            module.metadata = Some(Arc::clone(&metadata_rc));
             module.analyze();
             module.metadata = None;
         }
 
         // 重新拷贝分析完成的元数据
-        // TODO：看看能不能优化
-        for entry in self.modules.iter() {
-            self.metadata
-                .insert(*entry.key(), ThinModule::new(entry.value()));
+        let mut metadata: HashMap<FileID, ThinModule> = HashMap::new();
+        for (file_id, module) in &self.modules {
+            metadata.insert(*file_id, ThinModule::new(module));
         }
+        self.metadata = Arc::new(metadata);
 
         // 构建索引
         let mut temp: HashMap<FileID, ModuleIndex> = Default::default();
-        for entry in self.modules.iter() {
-            let module = entry.value();
+        for module in self.modules.values() {
             for (_, refer) in &module.reference {
                 match refer.tag {
                     crate::module::ReferenceTag::VarRead(variable_id) => {
-                        let file_id = module.file_id;
-                        let index = temp.entry(file_id).or_default();
+                        let target_file_id = module.file_id;
+                        let index = temp.entry(target_file_id).or_default();
                         index
                             .variable_reference
                             .entry(variable_id)
                             .or_default()
-                            .push(CiterInfo::new(file_id, refer.range));
+                            .push(CiterInfo::new(module.file_id, refer.range));
                     }
                     crate::module::ReferenceTag::FieldRead(field_id) => {
-                        let file_id = field_id.module;
-                        let index = temp.entry(file_id).or_default();
+                        let target_file_id = field_id.module;
+                        let index = temp.entry(target_file_id).or_default();
                         index
                             .field_reference
                             .entry(field_id)
                             .or_default()
-                            .push(CiterInfo::new(file_id, refer.range));
+                            .push(CiterInfo::new(module.file_id, refer.range));
                     }
                     crate::module::ReferenceTag::FuncCall(function_id) => {
-                        let file_id = function_id.module;
-                        let index = temp.entry(file_id).or_default();
+                        let target_file_id = function_id.module;
+                        let index = temp.entry(target_file_id).or_default();
                         index
                             .function_reference
                             .entry(function_id)
                             .or_default()
-                            .push(CiterInfo::new(file_id, refer.range));
+                            .push(CiterInfo::new(module.file_id, refer.range));
                     }
                 }
             }
         }
-        for mut entry in self.modules.iter_mut() {
-            entry.value_mut().index = temp.remove(entry.key()).unwrap_or_default();
-        }
-    }
 
-    /// 为代码生成准备：重新设置所有模块的 MetaData
-    pub fn prepare_for_codegen(&mut self) {
-        for mut entry in self.modules.iter_mut() {
-            entry.value_mut().metadata = Some(Arc::clone(&self.metadata));
+        for (file_id, module) in &mut self.modules {
+            module.index = temp.remove(file_id).unwrap_or_default();
+            module.metadata = Some(Arc::clone(&self.metadata));
         }
     }
 

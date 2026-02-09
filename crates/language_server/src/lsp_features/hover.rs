@@ -78,7 +78,7 @@ fn build_hover_for_function(
     range: tools::TextRange,
 ) -> Option<Hover> {
     let function = module.get_function_by_id(func_id)?;
-    let signature = format_function_signature(&function, module);
+    let signature = format_function_signature(&function);
 
     Some(Hover {
         contents: HoverContents::Markup(MarkupContent {
@@ -141,14 +141,11 @@ fn format_variable_signature(
 }
 
 /// 格式化函数签名
-fn format_function_signature(function: &analyzer::module::Function, module: &Module) -> String {
+fn format_function_signature(function: &analyzer::module::Function) -> String {
     let params = function
-        .params
+        .meta_types
         .iter()
-        .filter_map(|param_id| {
-            let var = module.get_varaible_by_id(*param_id)?;
-            Some(format!("{}: {}", var.name, var.ty))
-        })
+        .map(|(name, ty)| format!("{}: {}", name, ty))
         .collect::<Vec<_>>()
         .join(", ");
 

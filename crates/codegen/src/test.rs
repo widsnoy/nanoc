@@ -38,15 +38,13 @@ fn try_it(code: &str) -> String {
     project.modules.insert(file_id, module);
 
     {
-        let module = project.modules.iter().next().unwrap();
+        let module = project.modules.values().next().unwrap();
         assert!(
             module.semantic_errors.is_empty(),
             "Analyzer errors: {:?}",
             module.semantic_errors
         );
     }
-
-    project.prepare_for_codegen();
 
     let root = SyntaxNode::new_root(green_node);
     let comp_unit = CompUnit::cast(root).unwrap();
@@ -55,12 +53,12 @@ fn try_it(code: &str) -> String {
     let llvm_module = context.create_module("main");
     let builder = context.create_builder();
 
-    let module = project.modules.iter().next().unwrap();
+    let module = project.modules.values().next().unwrap();
     let mut program = llvm_ir::Program {
         context: &context,
         builder: &builder,
         module: &llvm_module,
-        analyzer: &module,
+        analyzer: module,
         symbols: Default::default(),
     };
 

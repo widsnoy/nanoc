@@ -15,6 +15,7 @@ pub const LEGEND_TYPE: &[SemanticTokenType] = &[
     SemanticTokenType::NUMBER,   // 5 - 数字字面量
     SemanticTokenType::COMMENT,  // 6 - 注释
     SemanticTokenType::OPERATOR, // 7 - 运算符
+    SemanticTokenType::STRING,   // 8 - 字符串
 ];
 
 /// 语义 token 修饰符
@@ -123,7 +124,8 @@ fn classify_token(
 ) -> (Option<u32>, u32) {
     match kind {
         // 关键字
-        SyntaxKind::FN_KW
+        SyntaxKind::IMPORT_KW
+        | SyntaxKind::FN_KW
         | SyntaxKind::LET_KW
         | SyntaxKind::CONST_KW
         | SyntaxKind::MUT_KW
@@ -166,6 +168,8 @@ fn classify_token(
         | SyntaxKind::AMPAMP
         | SyntaxKind::PIPEPIPE
         | SyntaxKind::BANG => (Some(7), 0), // OPERATOR
+
+        SyntaxKind::PATH => (Some(8), 0), // String
 
         _ => (None, 0),
     }

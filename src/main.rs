@@ -50,7 +50,7 @@ fn main() {
     }
 
     // 语义分析
-    let mut project = match analyzing::analyze_project(&args.input_path) {
+    let project = match analyzing::analyze_project(&args.input_path) {
         Ok(project) => project,
         Err(e) => {
             e.report();
@@ -68,8 +68,6 @@ fn main() {
     }
 
     let opt_level = args.opt_level.into();
-
-    project.prepare_for_codegen();
 
     // 代码生成
     match args.emit {

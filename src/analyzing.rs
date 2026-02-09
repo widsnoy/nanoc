@@ -31,8 +31,7 @@ pub fn analyze_project(input_paths: &[PathBuf]) -> Result<Project> {
 
     // 按文件收集错误
     let mut errors_by_file = HashMap::new();
-    for item in project.modules.iter() {
-        let module = item.value();
+    for module in project.modules.values() {
         if !module.semantic_errors.is_empty() {
             errors_by_file.insert(module.file_id, module.semantic_errors.clone());
         }

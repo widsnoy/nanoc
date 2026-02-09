@@ -4,7 +4,6 @@ use std::{
     sync::Arc,
 };
 
-use dashmap::DashMap;
 use rowan::GreenNode;
 use syntax::SyntaxNode;
 use syntax::Visitor;
@@ -61,10 +60,10 @@ pub struct Module {
     pub index: ModuleIndex,
 
     /// 用于跨文件分析
-    pub metadata: Option<Arc<DashMap<FileID, ThinModule>>>,
+    pub metadata: Option<Arc<HashMap<FileID, ThinModule>>>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ThinModule {
     pub functions: Arena<Function>,
     pub structs: Arena<Struct>,
