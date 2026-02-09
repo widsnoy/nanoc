@@ -7,4 +7,4 @@ edition.workspace = true
 utils.workspace = true
 
 thunderdome.workspace = true
-walkdir = "2"
+parking_lot.workspace = true

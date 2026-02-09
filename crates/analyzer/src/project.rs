@@ -32,13 +32,12 @@ impl Default for Project {
 }
 
 impl Project {
-    pub fn initialize(&mut self, vfs: Vfs) {
+    /// 全量初始化
+    pub fn full_initialize(&mut self, vfs: Vfs) {
         self.vfs = vfs;
 
         // 初始化所有 module，语法分析
-        for (index, file) in self.vfs.files.iter() {
-            let file_id = FileID(index);
-
+        self.vfs.for_each_file(|file_id, file| {
             let parser = Parser::new(&file.text);
             let (green_tree, errors) = parser.parse();
 
@@ -53,7 +52,7 @@ impl Project {
             Self::allocate_module_symbols(&mut module);
 
             self.modules.insert(file_id, module);
-        }
+        });
 
         // 分析头文件
         for mut entry in self.modules.iter_mut() {

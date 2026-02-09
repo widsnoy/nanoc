@@ -26,8 +26,8 @@ impl FuncVisitor for Module {
     }
 
     fn leave_func_sign(&mut self, node: FuncSign) {
-        let mut param_types = vec![];
         let mut param_list = vec![];
+        let mut meta_type_list = vec![];
 
         let Some(scope) = self.scopes.get(*self.analyzing.current_scope) else {
             return;
@@ -49,8 +49,8 @@ impl FuncVisitor for Module {
                 let Some(var) = self.get_varaible_by_id(vid) else {
                     return;
                 };
-                param_types.push(var.ty.clone());
                 param_list.push(vid);
+                meta_type_list.push((name.to_string(), var.ty.clone()));
             }
         }
 
@@ -84,7 +84,7 @@ impl FuncVisitor for Module {
             // 更新现有的 Function，填充参数
             if let Some(func_data) = self.get_function_mut_by_id(func_id) {
                 func_data.params = param_list;
-                func_data.param_types = param_types;
+                func_data.meta_types = meta_type_list;
                 func_data.ret_type = ret_type.clone();
                 func_data.have_impl = have_impl;
             }

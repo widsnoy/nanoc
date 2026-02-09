@@ -40,9 +40,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let is_void = matches!(ret_ty, NType::Void);
 
         let basic_params = func_info
-            .param_types
+            .meta_types
             .iter()
-            .map(|ty| self.convert_ntype_to_type(ty).map(|t| t.into()))
+            .map(|(_, ty)| self.convert_ntype_to_type(ty).map(|t| t.into()))
             .collect::<Result<Vec<_>>>()?;
 
         let ret_llvm_ty = self.convert_ntype_to_type(ret_ty)?;

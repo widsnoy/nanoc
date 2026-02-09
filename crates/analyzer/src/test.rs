@@ -16,7 +16,7 @@ fn analyze(source: &str) -> Module {
         panic!("Parser errors: {:?}", errors);
     }
 
-    let mut project = Project::default();
+    let project = Project::default();
 
     let file_id = project
         .vfs

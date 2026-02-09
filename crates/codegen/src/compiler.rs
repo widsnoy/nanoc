@@ -7,8 +7,8 @@ use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
 use rowan::GreenNode;
-use syntax::ast::{AstNode, CompUnit};
 use syntax::SyntaxNode;
+use syntax::ast::{AstNode, CompUnit};
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
@@ -185,19 +185,19 @@ pub fn compile_project_to_object_bytes(
 
         let module_name = project
             .vfs
-            .files
-            .get(**file_id)
+            .get_file_by_file_id(file_id)
             .and_then(|file| {
                 std::path::Path::new(&file.path)
                     .file_stem()
                     .and_then(|s| s.to_str())
+                    .map(|s| s.to_string())
             })
-            .unwrap_or("unknown");
+            .unwrap_or_else(|| "unknown".to_string());
 
         let object_bytes =
-            compile_to_object_bytes(module_name, module.green_tree.clone(), module, opt_level)?;
+            compile_to_object_bytes(&module_name, module.green_tree.clone(), module, opt_level)?;
 
-        object_files.push((module_name.to_string(), object_bytes));
+        object_files.push((module_name, object_bytes));
     }
 
     Ok(object_files)

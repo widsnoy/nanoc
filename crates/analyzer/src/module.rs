@@ -176,7 +176,7 @@ impl Module {
         &mut self,
         name: String,
         params: Vec<VariableID>,
-        param_types: Vec<NType>,
+        meta_types: Vec<(String, NType)>,
         ret_type: NType,
         have_impl: bool,
         range: TextRange,
@@ -184,7 +184,7 @@ impl Module {
         let function = Function {
             name,
             params,
-            param_types,
+            meta_types,
             ret_type,
             have_impl,
             range,
@@ -377,7 +377,7 @@ pub enum ReferenceTag {
 pub struct Function {
     pub name: String,
     pub params: Vec<VariableID>,
-    pub param_types: Vec<NType>,
+    pub meta_types: Vec<(String, NType)>,
     pub ret_type: NType,
     pub have_impl: bool,
     pub range: TextRange,

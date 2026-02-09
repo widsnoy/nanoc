@@ -32,6 +32,11 @@ fn try_it(code: &str) -> String {
 
     Project::fill_definitions(&mut module);
 
+    module.analyze();
+
+    // 插入 module 到 project
+    project.modules.insert(file_id, module);
+
     {
         let module = project.modules.iter().next().unwrap();
         assert!(

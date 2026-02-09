@@ -129,7 +129,7 @@ impl HeaderAnalyzer {
             }
         })?;
 
-        Ok((*target_file_id, symbol_name))
+        Ok((target_file_id, symbol_name))
     }
 
     /// 从目标模块收集需要导入的符号信息
