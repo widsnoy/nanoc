@@ -15,7 +15,7 @@ pub fn parse(input_path: &Path, input: String) -> Result<GreenNode> {
 
     if !errors.is_empty() {
         // 创建临时 VFS 用于错误报告
-        let mut vfs = Vfs::default();
+        let vfs = Vfs::default();
         let absolute_path = input_path
             .canonicalize()
             .unwrap_or_else(|_| input_path.to_path_buf());

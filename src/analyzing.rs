@@ -16,7 +16,7 @@ pub fn analyze_project(input_paths: &[PathBuf]) -> Result<Project> {
     }
 
     // 构建 VFS
-    let mut vfs = Vfs::default();
+    let vfs = Vfs::default();
     for input_path in input_paths {
         let text = std::fs::read_to_string(input_path).map_err(CompilerError::Io)?;
         let absolute_path = input_path
@@ -27,7 +27,7 @@ pub fn analyze_project(input_paths: &[PathBuf]) -> Result<Project> {
 
     // 初始化并分析项目
     let mut project = Project::default();
-    project.initialize(vfs);
+    project.full_initialize(vfs);
 
     // 按文件收集错误
     let mut errors_by_file = HashMap::new();

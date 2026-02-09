@@ -84,12 +84,13 @@ fn main() {
                         std::path::Path::new(&file.path)
                             .file_stem()
                             .and_then(|s| s.to_str())
+                            .map(|s| s.to_string())
                     })
-                    .unwrap_or("unknown");
+                    .unwrap_or_else(|| "unknown".to_string());
 
                 let output_path = args.output_dir.join(format!("{}.ll", module_name));
                 if let Err(e) = codegen::compiler::compile_to_ir_file(
-                    module_name,
+                    &module_name,
                     module.green_tree.clone(),
                     &module,
                     opt_level,

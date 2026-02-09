@@ -20,6 +20,9 @@ pub(crate) fn hover(pos: Position, line_index: &LineIndex, module: &Module) -> O
             analyzer::module::ReferenceTag::FuncCall(function_id) => {
                 build_hover_for_function(module, function_id, line_index, refer.range)
             }
+            analyzer::module::ReferenceTag::FieldRead(field_id) => {
+                build_hover_for_field(module, field_id, line_index, refer.range)
+            }
         };
     }
 
@@ -100,6 +103,25 @@ fn build_hover_for_struct(
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
             value: format!("```rust\n{}\n```", definition),
+        }),
+        range: Some(text_range_to_ls_range(line_index, range)),
+    })
+}
+
+/// 为字段构建 hover 信息
+fn build_hover_for_field(
+    module: &Module,
+    field_id: analyzer::module::FieldID,
+    line_index: &LineIndex,
+    range: tools::TextRange,
+) -> Option<Hover> {
+    let field = module.get_field_by_id(field_id)?;
+    let signature = format!("{}: {}", field.name, field.ty);
+
+    Some(Hover {
+        contents: HoverContents::Markup(MarkupContent {
+            kind: MarkupKind::Markdown,
+            value: format!("```rust\n{}\n```", signature),
         }),
         range: Some(text_range_to_ls_range(line_index, range)),
     })

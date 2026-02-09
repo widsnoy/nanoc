@@ -25,6 +25,9 @@ pub(crate) fn goto_definition(
             analyzer::module::ReferenceTag::FuncCall(function_id) => {
                 module.get_function_by_id(function_id).map(|v| v.range)
             }
+            analyzer::module::ReferenceTag::FieldRead(field_id) => {
+                module.get_field_by_id(field_id).map(|f| f.range)
+            }
         };
         return range.map(|range| {
             GotoDefinitionResponse::Scalar(Location::new(

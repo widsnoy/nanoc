@@ -18,11 +18,10 @@ pub(crate) fn get_references(
         return Some(
             refer_list
                 .iter()
-                .flat_map(|id| module.get_reference_by_id(*id))
-                .map(|r| {
+                .map(|citer_info| {
                     Location::new(
                         source_uri.clone(),
-                        text_range_to_ls_range(line_index, r.range),
+                        text_range_to_ls_range(line_index, citer_info.range),
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -34,11 +33,10 @@ pub(crate) fn get_references(
         return Some(
             refer_list
                 .iter()
-                .flat_map(|id| module.get_reference_by_id(*id))
-                .map(|r| {
+                .map(|citer_info| {
                     Location::new(
                         source_uri.clone(),
-                        text_range_to_ls_range(line_index, r.range),
+                        text_range_to_ls_range(line_index, citer_info.range),
                     )
                 })
                 .collect::<Vec<_>>(),
