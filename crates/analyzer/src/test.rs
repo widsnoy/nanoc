@@ -25,7 +25,7 @@ fn analyze(source: &str) -> Module {
     let mut module = Module::new(tree);
     module.file_id = file_id;
 
-    Project::collect_symbols_for_module(&mut module);
+    Project::allocate_module_symbols(&mut module);
 
     let module_imports =
         HeaderAnalyzer::collect_module_imports(&module, file_id, &project.vfs, &project.modules);

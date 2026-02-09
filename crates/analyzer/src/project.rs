@@ -50,23 +50,19 @@ impl Project {
                     .push(crate::error::SemanticError::ParserError(e))
             });
 
-            Self::collect_symbols_for_module(&mut module);
+            Self::allocate_module_symbols(&mut module);
 
             self.modules.insert(file_id, module);
         }
 
         // 分析头文件
-        for entry in self.modules.iter() {
+        for mut entry in self.modules.iter_mut() {
             let file_id = *entry.key();
-            let module = entry.value();
+            let module = entry.value_mut();
             let module_imports =
                 HeaderAnalyzer::collect_module_imports(module, file_id, &self.vfs, &self.modules);
 
-            drop(entry);
-
-            if let Some(mut module) = self.modules.get_mut(&file_id) {
-                HeaderAnalyzer::apply_module_imports(&mut module, module_imports);
-            }
+            HeaderAnalyzer::apply_module_imports(module, module_imports);
         }
 
         // 预处理元数据，跨文件使用
@@ -105,7 +101,7 @@ impl Project {
     }
 
     /// 为模块收集符号并分配 ID
-    pub fn collect_symbols_for_module(module: &mut Module) {
+    pub fn allocate_module_symbols(module: &mut Module) {
         let root = SyntaxNode::new_root(module.green_tree.clone());
         for ele in root.children() {
             if let Some(func_def) = FuncDef::cast(ele.clone()) {
