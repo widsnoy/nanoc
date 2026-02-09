@@ -10,6 +10,7 @@ use syntax::SyntaxNode;
 use syntax::Visitor;
 use thunderdome::Arena;
 use tools::TextRange;
+use utils::{define_id_type, define_module_id_type};
 use vfs::FileID;
 
 use crate::{array::ArrayTree, error::SemanticError, r#type::NType, value::Value};
@@ -95,7 +96,7 @@ pub struct ModuleIndex {
     pub scope_tree: HashMap<ScopeID, Vec<ScopeID>>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CiterInfo {
     pub file_id: FileID,
     pub range: TextRange,
@@ -137,7 +138,6 @@ impl Module {
         let root = SyntaxNode::new_root(self.green_tree.clone());
         self.walk(&root);
         self.analyzing = AnalyzeContext::default();
-        self.metadata = None;
     }
 
     /// 检查是否为编译时常量
@@ -333,66 +333,9 @@ impl Module {
     }
 }
 
-/// 定义 ID 包装类型的宏，用于 arena 索引
-macro_rules! define_id_type {
-    ($name:ident) => {
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-        pub struct $name(pub thunderdome::Index);
-
-        impl $name {
-            pub fn none() -> Self {
-                $name(thunderdome::Index::DANGLING)
-            }
-        }
-
-        impl From<thunderdome::Index> for $name {
-            fn from(index: thunderdome::Index) -> Self {
-                $name(index)
-            }
-        }
-
-        impl Deref for $name {
-            type Target = thunderdome::Index;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-    };
-}
-
 define_id_type!(VariableID);
 define_id_type!(ScopeID);
 define_id_type!(ReferenceID);
-
-macro_rules! define_module_id_type {
-    ($name:ident) => {
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-        pub struct $name {
-            pub module: FileID,
-            pub index: thunderdome::Index,
-        }
-
-        impl $name {
-            pub fn none() -> Self {
-                $name {
-                    module: FileID::none(),
-                    index: thunderdome::Index::DANGLING,
-                }
-            }
-
-            pub fn new(module: FileID, index: thunderdome::Index) -> Self {
-                $name { module, index }
-            }
-        }
-
-        impl From<(FileID, thunderdome::Index)> for $name {
-            fn from((module, index): (FileID, thunderdome::Index)) -> Self {
-                $name { module, index }
-            }
-        }
-    };
-}
 
 define_module_id_type!(StructID);
 define_module_id_type!(FunctionID);

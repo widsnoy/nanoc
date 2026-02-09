@@ -91,46 +91,51 @@ impl Project {
                 .insert(*entry.key(), ThinModule::new(entry.value()));
         }
 
-        /// 构建索引
+        // 构建索引
         let mut temp: HashMap<FileID, ModuleIndex> = Default::default();
         for entry in self.modules.iter() {
             let module = entry.value();
-            for (_, refer) in module.reference {
+            for (_, refer) in &module.reference {
                 match refer.tag {
                     crate::module::ReferenceTag::VarRead(variable_id) => {
                         let file_id = module.file_id;
                         let index = temp.entry(file_id).or_default();
                         index
                             .variable_reference
-                            .insert(variable_id, CiterInfo::new(file_id, refer.range))
+                            .entry(variable_id)
+                            .or_default()
+                            .push(CiterInfo::new(file_id, refer.range));
                     }
                     crate::module::ReferenceTag::FieldRead(field_id) => {
                         let file_id = field_id.module;
                         let index = temp.entry(file_id).or_default();
                         index
                             .field_reference
-                            .insert(field_id, CiterInfo::new(file_id, refer.range));
+                            .entry(field_id)
+                            .or_default()
+                            .push(CiterInfo::new(file_id, refer.range));
                     }
                     crate::module::ReferenceTag::FuncCall(function_id) => {
                         let file_id = function_id.module;
-                        let index = temp.entry(function_id).or_default();
+                        let index = temp.entry(file_id).or_default();
                         index
                             .function_reference
-                            .insert(function_id, CiterInfo::new(file_id, refer.range));
+                            .entry(function_id)
+                            .or_default()
+                            .push(CiterInfo::new(file_id, refer.range));
                     }
                 }
             }
         }
-        for entry in self.modules.iter_mut() {
-            entry.index = temp.remove(entry.key());
+        for mut entry in self.modules.iter_mut() {
+            entry.value_mut().index = temp.remove(entry.key()).unwrap_or_default();
         }
     }
 
     /// 为代码生成准备：重新设置所有模块的 MetaData
     pub fn prepare_for_codegen(&mut self) {
-        let metadata_arc = Arc::clone(&self.metadata);
         for mut entry in self.modules.iter_mut() {
-            entry.value_mut().metadata = Some(Arc::clone(&metadata_arc));
+            entry.value_mut().metadata = Some(Arc::clone(&self.metadata));
         }
     }
 

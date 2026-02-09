@@ -1325,6 +1325,7 @@ name = "vfs"
 version = "0.1.0"
 dependencies = [
  "thunderdome",
+ "utils",
  "walkdir",
 ]
 

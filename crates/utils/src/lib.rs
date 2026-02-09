@@ -42,3 +42,62 @@ pub fn extract_name_and_range(name_node: &syntax::ast::Name) -> Option<(String, 
     let range = name_node.var_range()?;
     Some((name, range))
 }
+
+/// 定义 ID 包装类型的宏，用于 arena 索引
+#[macro_export]
+macro_rules! define_id_type {
+    ($name:ident) => {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+        pub struct $name(pub thunderdome::Index);
+
+        impl $name {
+            pub fn none() -> Self {
+                $name(thunderdome::Index::DANGLING)
+            }
+        }
+
+        impl From<thunderdome::Index> for $name {
+            fn from(index: thunderdome::Index) -> Self {
+                $name(index)
+            }
+        }
+
+        impl Deref for $name {
+            type Target = thunderdome::Index;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! define_module_id_type {
+    ($name:ident) => {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+        pub struct $name {
+            pub module: FileID,
+            pub index: thunderdome::Index,
+        }
+
+        impl $name {
+            pub fn none() -> Self {
+                $name {
+                    module: FileID::none(),
+                    index: thunderdome::Index::DANGLING,
+                }
+            }
+
+            pub fn new(module: FileID, index: thunderdome::Index) -> Self {
+                $name { module, index }
+            }
+        }
+
+        impl From<(FileID, thunderdome::Index)> for $name {
+            fn from((module, index): (FileID, thunderdome::Index)) -> Self {
+                $name { module, index }
+            }
+        }
+    };
+}

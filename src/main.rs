@@ -69,7 +69,6 @@ fn main() {
 
     let opt_level = args.opt_level.into();
 
-    // 为代码生成准备：重新设置 project 指针
     project.prepare_for_codegen();
 
     // 代码生成

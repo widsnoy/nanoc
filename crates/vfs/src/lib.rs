@@ -23,22 +23,7 @@ impl VirtulFile {
     }
 }
 
-#[derive(Default, Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub struct FileID(pub Index);
-
-impl FileID {
-    pub fn none() -> Self {
-        Self(Index::DANGLING)
-    }
-}
-
-impl Deref for FileID {
-    type Target = Index;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+utils::define_id_type!(FileID);
 
 impl Vfs {
     pub fn get_file_id_by_path(&self, path: &PathBuf) -> Option<&FileID> {
