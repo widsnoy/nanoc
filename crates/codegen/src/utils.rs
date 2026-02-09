@@ -388,7 +388,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let struct_name = self
                     .analyzer
                     .get_struct_by_id(*struct_id)
-                    .map(|s| s.name.clone())
+                    .map(|s| s.name)
                     .unwrap_or_default();
                 let struct_ntype = NType::Struct {
                     id: *struct_id,

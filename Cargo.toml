@@ -28,7 +28,7 @@ text-size = "1.1.1"
 thiserror = "2.0.17"
 rowan = "0.16.1"
 insta = "1.44.3"
-inkwell = { version = "0.7.1", features = ["llvm21-1"] }
+inkwell = { version = "0.7.1", features = ["llvm21-1-prefer-dynamic"] }
 thunderdome = "0.6.1"
 anyhow = "1.0"
 clap = { version = "4.5.54", features = ["derive"] }
@@ -70,3 +70,4 @@ rowan.workspace = true
 [profile.release]
 lto = true
 opt-level = 2 
+strip = true

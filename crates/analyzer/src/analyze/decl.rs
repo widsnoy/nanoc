@@ -5,11 +5,11 @@ use syntax::visitor::DeclVisitor;
 
 use crate::array::ArrayTree;
 use crate::error::SemanticError;
-use crate::module::{FieldID, Module};
-use crate::r#type::NType;
+use crate::module::Module;
+use crate::utils::parse_type_node;
 use crate::value::Value;
 
-impl DeclVisitor for Module<'_> {
+impl DeclVisitor for Module {
     fn enter_comp_unit(&mut self, node: CompUnit) {
         self.analyzing.current_scope = self.new_scope(None, node.text_range());
         self.global_scope = self.analyzing.current_scope;
@@ -25,45 +25,42 @@ impl DeclVisitor for Module<'_> {
             return;
         };
 
-        let field_ids: *const [FieldID] = if let Some(struct_def) = self.get_struct_by_id(struct_id)
-        {
-            &struct_def.fields[..]
-        } else {
-            return;
-        };
-
         let mut field_names = std::collections::HashSet::new();
-        for field_id in unsafe { &*field_ids } {
-            if let Some(field) = self.get_field_by_id(*field_id)
-                && !field_names.insert(field.name.clone())
-            {
-                self.new_error(SemanticError::VariableDefined {
-                    name: field.name.clone(),
-                    range: field.range,
-                });
-            }
-        }
+        let mut field_list = vec![];
+        for field in node.fields() {
+            let Some((name, range)) = field.name().and_then(|n| utils::extract_name_and_range(&n))
+            else {
+                continue;
+            };
 
-        for field_id in unsafe { &*field_ids } {
-            if let Some(field) = self.get_field_by_id(*field_id) {
-                let mut ty = &field.ty;
-                let self_refer = loop {
-                    match ty {
-                        NType::Struct { id: idx, .. } if *idx == struct_id => break true,
-                        NType::Array(inner, _) => ty = inner,
-                        _ => break false,
-                    }
-                };
+            let Some(ty_node) = field.ty() else {
+                continue;
+            };
 
-                if self_refer {
-                    self.new_error(SemanticError::StructSelfRef {
-                        name: field.name.clone(),
-                        range: field.range,
-                    });
+            let ty = match parse_type_node(self, &ty_node, Some(&self.value_table)) {
+                Ok(Some(ty)) => ty,
+                Ok(None) => {
                     return;
                 }
+                Err(e) => {
+                    self.new_error(e);
+                    return;
+                }
+            };
+
+            if !field_names.insert(name.clone()) {
+                self.new_error(SemanticError::VariableDefined { name, range });
+                continue;
             }
+            let field_id = self.new_field(name.clone(), ty, range);
+            field_list.push(field_id);
         }
+
+        // TODO: 跨文件的后置分析循环引用
+        let Some(struct_def) = self.get_struct_mut_by_id(struct_id) else {
+            return;
+        };
+        struct_def.fields = field_list;
     }
 
     fn leave_var_def(&mut self, def: VarDef) {

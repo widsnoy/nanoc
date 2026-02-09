@@ -10,7 +10,7 @@ pub struct Document {
     #[allow(unused)] // FIXME
     pub text: String,
     pub line_index: LineIndex,
-    pub module: Module<'static>,
+    pub module: Module,
     pub errors: Vec<LspError>,
 }
 

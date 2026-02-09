@@ -1,163 +1,146 @@
-use std::collections::HashMap;
+use std::sync::Arc;
 
+use dashmap::DashMap;
 use parser::parse::Parser;
-use thunderdome::Arena;
+use syntax::{
+    AstNode as _, SyntaxNode,
+    ast::{FuncDef, StructDef},
+};
 use vfs::{FileID, Vfs};
 
 use crate::{
     header::HeaderAnalyzer,
-    module::{Module, ModuleID, StructID},
-    r#type::NType::Void,
+    module::{Field, FieldID, Module, ThinModule},
+    r#type::NType,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Project {
-    pub modules: Arena<Module<'static>>,
+    pub modules: DashMap<FileID, Module>,
+    pub metadata: Arc<DashMap<FileID, ThinModule>>,
     pub vfs: Vfs,
-    pub file_index: HashMap<FileID, ModuleID>,
+}
+
+impl Default for Project {
+    fn default() -> Self {
+        Self {
+            modules: DashMap::new(),
+            metadata: Arc::new(DashMap::new()),
+            vfs: Vfs::default(),
+        }
+    }
 }
 
 impl Project {
     pub fn initialize(&mut self, vfs: Vfs) {
         self.vfs = vfs;
 
+        // 初始化所有 module，语法分析
         for (index, file) in self.vfs.files.iter() {
-            // 语法分析
+            let file_id = FileID(index);
+
             let parser = Parser::new(&file.text);
             let (green_tree, errors) = parser.parse();
-            // 初始化 Module
-            let id = self.modules.insert(Module::new(green_tree.clone()));
-            let module_id = ModuleID(id);
-            let module = self.modules.get_mut(id).unwrap();
-            module.module_id = module_id;
+
+            let mut module = Module::new(green_tree.clone());
+            module.file_id = file_id;
             errors.into_iter().for_each(|e| {
                 module
                     .semantic_errors
                     .push(crate::error::SemanticError::ParserError(e))
             });
 
-            self.file_index.insert(FileID(index), module_id);
+            Self::collect_symbols_for_module(&mut module);
 
-            // 符号分析：分配 ID
-            Self::collect_symbols_for_module(module);
+            self.modules.insert(file_id, module);
         }
 
-        // 引用模块分析
-        for (file_id, &module_id) in &self.file_index {
-            let module = self.modules.get(module_id.0).unwrap();
-            let module_imports = HeaderAnalyzer::collect_module_imports(
-                module,
-                *file_id,
-                &self.vfs,
-                &self.file_index,
-                &self.modules,
-            );
+        // 分析头文件
+        for entry in self.modules.iter() {
+            let file_id = *entry.key();
+            let module = entry.value();
+            let module_imports =
+                HeaderAnalyzer::collect_module_imports(module, file_id, &self.vfs, &self.modules);
 
-            let module = self.modules.get_mut(module_id.0).unwrap();
-            HeaderAnalyzer::apply_module_imports(module, module_imports);
+            drop(entry);
+
+            if let Some(mut module) = self.modules.get_mut(&file_id) {
+                HeaderAnalyzer::apply_module_imports(&mut module, module_imports);
+            }
         }
 
-        // 填充 struct 字段和 function 返回类型
-        for (id, module) in self.modules.iter_mut() {
-            Self::fill_definitions(module, ModuleID(id));
+        // 预处理元数据，跨文件使用
+        for mut entry in self.modules.iter_mut() {
+            Self::fill_definitions(entry.value_mut());
         }
 
-        // 语义分析
-        // 安全性：Project 在整个分析期间保持不变，指针在 analyze() 结束后被清除
-        let project_ptr = self as *const Project;
+        for entry in self.modules.iter() {
+            self.metadata
+                .insert(*entry.key(), ThinModule::new(entry.value()));
+        }
 
-        // TODO: 如果改成并行的话，其实可以拷贝一份数据
-        for (_, module) in self.modules.iter_mut() {
-            // 设置 project 指针用于跨模块访问
-            module.project = Some(unsafe { &*project_ptr });
+        // 语法分析
+        let metadata_arc = Arc::clone(&self.metadata);
+        for mut entry in self.modules.iter_mut() {
+            let module = entry.value_mut();
+            module.metadata = Some(Arc::clone(&metadata_arc));
             module.analyze();
+            module.metadata = None;
+        }
+
+        // 重新拷贝分析完成的元数据
+        // TODO：看看能不能优化
+        for entry in self.modules.iter() {
+            self.metadata
+                .insert(*entry.key(), ThinModule::new(entry.value()));
         }
     }
 
-    /// 为代码生成准备：重新设置所有模块的 project 指针
-    ///
-    /// 在 analyze() 结束后，所有模块的 project 字段被设置为 None。
-    /// 但代码生成阶段需要访问 project 来处理跨模块引用。
-    /// 此方法在代码生成前调用，重新设置 project 指针。
+    /// 为代码生成准备：重新设置所有模块的 MetaData
     pub fn prepare_for_codegen(&mut self) {
-        let project_ptr = self as *const Project;
-        for (_, module) in self.modules.iter_mut() {
-            module.project = Some(unsafe { &*project_ptr });
+        let metadata_arc = Arc::clone(&self.metadata);
+        for mut entry in self.modules.iter_mut() {
+            entry.value_mut().metadata = Some(Arc::clone(&metadata_arc));
         }
     }
 
     /// 为模块收集符号并分配 ID
     pub fn collect_symbols_for_module(module: &mut Module) {
-        use crate::module::{Function, Struct};
-        use syntax::{
-            AstNode as _, SyntaxNode,
-            ast::{FuncDef, StructDef},
-        };
-
         let root = SyntaxNode::new_root(module.green_tree.clone());
-        let module_id = module.module_id;
-
         for ele in root.children() {
             if let Some(func_def) = FuncDef::cast(ele.clone()) {
-                // 解析函数名
-                if let Some(name) = func_def
+                if let Some((name, range)) = func_def
                     .sign()
                     .and_then(|n| n.name())
-                    .and_then(|n| n.var_name())
+                    .and_then(|n| utils::extract_name_and_range(&n))
                 {
-                    let range = func_def.text_range();
-                    let have_impl = func_def.block().is_some();
-
-                    // 创建空的 Function（参数和返回类型稍后填充）
-                    let function = Function {
-                        name: name.clone(),
-                        params: vec![],
-                        ret_type: Void,
-                        have_impl,
+                    let func_id = module.new_function(
+                        name.clone(),
+                        vec![],
+                        vec![],
+                        NType::Void,
+                        false,
                         range,
-                    };
-
-                    let idx = module.functions.insert(function);
-                    let func_id = crate::module::FunctionID::new(module_id, idx);
-
-                    // 更新 function_map
+                    );
                     module.function_map.insert(name, func_id);
                 }
-            } else if let Some(struct_def) = StructDef::cast(ele) {
-                // 解析结构体名
-                if let Some(name) = struct_def.name().and_then(|n| n.var_name()) {
-                    let range = struct_def.text_range();
-
-                    // 创建空的 Struct（字段稍后填充）
-                    let struct_data = Struct {
-                        name: name.clone(),
-                        fields: vec![],
-                        range,
-                    };
-
-                    let idx = module.structs.insert(struct_data);
-                    let struct_id = StructID::new(module_id, idx);
-
-                    // 更新 struct_map
-                    module.struct_map.insert(name, struct_id);
-                }
+            } else if let Some(struct_def) = StructDef::cast(ele)
+                && let Some((name, range)) = struct_def
+                    .name()
+                    .and_then(|n| utils::extract_name_and_range(&n))
+            {
+                let struct_id = module.new_struct(name.clone(), vec![], range);
+                module.struct_map.insert(name, struct_id);
             }
         }
     }
 
     /// 填充模块的 struct 和 function 定义
-    /// Struct: 填充字段
-    /// Function: 只填充返回类型
-    pub fn fill_definitions(module: &mut Module, module_id: ModuleID) {
-        use crate::module::{Field, FieldID};
-        use syntax::{
-            AstNode as _, SyntaxNode,
-            ast::{FuncDef, StructDef},
-        };
-
+    /// Struct: 字段
+    /// Function: 返回类型
+    pub fn fill_definitions(module: &mut Module) {
         let root = SyntaxNode::new_root(module.green_tree.clone());
 
-        // 填充 struct 定义
         let struct_defs: Vec<_> = root.children().filter_map(StructDef::cast).collect();
 
         for struct_def in struct_defs {
@@ -171,7 +154,6 @@ impl Project {
                     if let Some(field_name) = field_node.name().and_then(|n| n.var_name())
                         && let Some(ty_node) = field_node.ty()
                     {
-                        // 使用 utils 中的类型解析函数（阶段 2：不进行常量折叠）
                         match crate::utils::parse_type_node(module, &ty_node, None) {
                             Ok(Some(field_ty)) => {
                                 let field = Field {
@@ -181,7 +163,7 @@ impl Project {
                                 };
 
                                 let idx = module.fields.insert(field);
-                                let field_id = FieldID::new(module_id, idx);
+                                let field_id = FieldID::new(module.file_id, idx);
                                 field_ids.push(field_id);
                             }
                             Ok(None) => {}
@@ -198,7 +180,6 @@ impl Project {
             }
         }
 
-        // 填充 function 定义
         let func_defs: Vec<_> = root.children().filter_map(FuncDef::cast).collect();
 
         for func_def in func_defs {
@@ -217,14 +198,13 @@ impl Project {
                         }
                         Err(e) => {
                             module.semantic_errors.push(e);
-                            Void
+                            NType::Void
                         }
                     }
                 } else {
-                    Void
+                    NType::Void
                 };
 
-                // 更新 function 定义
                 if let Some(func_data) = module.get_function_mut_by_id(func_id) {
                     func_data.ret_type = ret_type;
                 }

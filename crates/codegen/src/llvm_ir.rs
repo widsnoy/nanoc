@@ -26,7 +26,7 @@ pub struct Program<'a, 'ctx> {
     pub context: &'ctx Context,
     pub builder: &'a Builder<'ctx>,
     pub module: &'a inkwell::module::Module<'ctx>,
-    pub analyzer: &'a analyzer::module::Module<'a>,
+    pub analyzer: &'a analyzer::module::Module,
     pub symbols: SymbolTable<'a, 'ctx>,
 }
 
@@ -51,20 +51,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     pub fn compile_comp_unit(&mut self, node: CompUnit) -> Result<()> {
         self.declare_sysy_runtime();
 
-        debug_assert!(self.analyzer.project.is_some());
-
-        let project = self.analyzer.project.unwrap();
-
-        // 声明外部函数
-        for func_id in self.analyzer.function_map.values() {
-            if func_id.module != self.analyzer.module_id {
-                let Some(module) = project.modules.get(*func_id.module) else {
-                    continue;
-                };
-                let Some(func_info) = module.get_function_by_id(*func_id) else {
-                    continue;
-                };
-                self.declare_function(module, func_info)?;
+        if let Some(ref metadata) = self.analyzer.metadata {
+            for func_id in self.analyzer.function_map.values() {
+                if func_id.module != self.analyzer.file_id
+                    && let Some(thin_module) = metadata.get(&func_id.module)
+                    && let Some(func_info) = thin_module.functions.get(func_id.index)
+                {
+                    self.declare_function(func_info)?;
+                }
             }
         }
 

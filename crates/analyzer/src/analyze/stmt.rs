@@ -7,7 +7,7 @@ use crate::error::SemanticError;
 use crate::module::Module;
 use crate::r#type::NType;
 
-impl StmtVisitor for Module<'_> {
+impl StmtVisitor for Module {
     fn enter_block(&mut self, node: Block) {
         self.analyzing.current_scope =
             self.new_scope(Some(self.analyzing.current_scope), node.text_range());

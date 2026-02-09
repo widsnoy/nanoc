@@ -2,14 +2,13 @@ use core::default::Default;
 use std::path::PathBuf;
 
 use parser::parse::Parser;
-use thunderdome::Arena;
 
 use crate::error::SemanticError;
 use crate::header::HeaderAnalyzer;
-use crate::module::{Module, ModuleID};
+use crate::module::Module;
 use crate::project::Project;
 
-fn analyze(source: &str) -> Module<'static> {
+fn analyze(source: &str) -> Module {
     let parser = Parser::new(source);
     let (tree, errors) = parser.parse();
 
@@ -17,53 +16,27 @@ fn analyze(source: &str) -> Module<'static> {
         panic!("Parser errors: {:?}", errors);
     }
 
-    // 创建一个简单的 VFS 和 Project 来模拟完整的分析流程
-
-    let mut project = Project {
-        modules: Arena::new(),
-        vfs: Default::default(),
-        file_index: Default::default(),
-    };
+    let mut project = Project::default();
 
     let file_id = project
         .vfs
         .new_file(PathBuf::from("test.airy"), source.to_string());
 
-    // 添加模块
-    let module = Module::new(tree);
-    let module_id = ModuleID(project.modules.insert(module));
+    let mut module = Module::new(tree);
+    module.file_id = file_id;
 
-    // 设置 module_id 和 file_index
-    let module = project.modules.get_mut(module_id.0).unwrap();
-    module.module_id = module_id;
-    project.file_index.insert(file_id, module_id);
+    Project::collect_symbols_for_module(&mut module);
 
-    // 收集符号
-    Project::collect_symbols_for_module(module);
+    let module_imports =
+        HeaderAnalyzer::collect_module_imports(&module, file_id, &project.vfs, &project.modules);
 
-    // Header 分析（对于单文件测试，这一步不会有导入）
-    let module = project.modules.get(module_id.0).unwrap();
-    let module_imports = HeaderAnalyzer::collect_module_imports(
-        module,
-        file_id,
-        &project.vfs,
-        &project.file_index,
-        &project.modules,
-    );
+    HeaderAnalyzer::apply_module_imports(&mut module, module_imports);
 
-    let module = project.modules.get_mut(module_id.0).unwrap();
-    HeaderAnalyzer::apply_module_imports(module, module_imports);
+    Project::fill_definitions(&mut module);
 
-    // 填充定义
-    let module = project.modules.get_mut(module_id.0).unwrap();
-    Project::fill_definitions(module, module_id);
-
-    // 语义分析
-    let module = project.modules.get_mut(module_id.0).unwrap();
     module.analyze();
 
-    // 提取模块并返回
-    project.modules.remove(module_id.0).unwrap()
+    module
 }
 
 #[test]

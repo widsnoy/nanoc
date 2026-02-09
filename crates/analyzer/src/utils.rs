@@ -117,7 +117,7 @@ pub fn parse_type_node(
     }
 }
 
-impl Module<'_> {
+impl Module {
     /// 计算索引后的类型：去掉 index_count 层数组/指针
     /// 如果结果是数组类型，自动 decay 成指向元素的指针
     pub(crate) fn compute_indexed_type(

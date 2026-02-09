@@ -31,10 +31,10 @@ pub fn analyze_project(input_paths: &[PathBuf]) -> Result<Project> {
 
     // 按文件收集错误
     let mut errors_by_file = HashMap::new();
-    for (file_id, &module_id) in project.file_index.iter() {
-        let module = project.modules.get(module_id.0).unwrap();
+    for item in project.modules.iter() {
+        let module = item.value();
         if !module.semantic_errors.is_empty() {
-            errors_by_file.insert(*file_id, module.semantic_errors.clone());
+            errors_by_file.insert(module.file_id, module.semantic_errors.clone());
         }
     }
 

@@ -29,7 +29,7 @@ impl Value {
             Value::Struct(struct_id, _) => {
                 let name = module
                     .get_struct_by_id(*struct_id)
-                    .map(|s| s.name.clone())
+                    .map(|s| s.name)
                     .unwrap_or_else(|| format!("struct#{:?}", struct_id.index));
                 NType::Struct {
                     id: *struct_id,
@@ -39,7 +39,7 @@ impl Value {
             Value::StructZero(struct_id) => {
                 let name = module
                     .get_struct_by_id(*struct_id)
-                    .map(|s| s.name.clone())
+                    .map(|s| s.name)
                     .unwrap_or_else(|| format!("struct#{:?}", struct_id.index));
                 NType::Struct {
                     id: *struct_id,

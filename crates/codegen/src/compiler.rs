@@ -7,8 +7,8 @@ use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
 use rowan::GreenNode;
-use syntax::SyntaxNode;
 use syntax::ast::{AstNode, CompUnit};
+use syntax::SyntaxNode;
 
 use crate::error::{CodegenError, Result};
 use crate::llvm_ir::Program;
@@ -179,14 +179,14 @@ pub fn compile_project_to_object_bytes(
 ) -> Result<Vec<(String, Vec<u8>)>> {
     let mut object_files = Vec::new();
 
-    // 为每个模块生成目标文件
-    for (module_id, module) in project.modules.iter() {
-        // 获取模块名称（从 VFS 中查找对应的文件名）
+    for entry in project.modules.iter() {
+        let file_id = entry.key();
+        let module = entry.value();
+
         let module_name = project
-            .file_index
-            .iter()
-            .find(|(_, mid)| mid.0 == module_id)
-            .and_then(|(file_id, _)| project.vfs.files.get(file_id.0))
+            .vfs
+            .files
+            .get(**file_id)
             .and_then(|file| {
                 std::path::Path::new(&file.path)
                     .file_stem()
@@ -194,7 +194,6 @@ pub fn compile_project_to_object_bytes(
             })
             .unwrap_or("unknown");
 
-        // 编译模块到目标文件
         let object_bytes =
             compile_to_object_bytes(module_name, module.green_tree.clone(), module, opt_level)?;
 

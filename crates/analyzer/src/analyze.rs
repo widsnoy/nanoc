@@ -9,4 +9,4 @@ use syntax::Visitor;
 
 use crate::module::Module;
 
-impl Visitor for Module<'_> {}
+impl Visitor for Module {}

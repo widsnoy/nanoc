@@ -8,7 +8,7 @@ use crate::error::SemanticError;
 use crate::module::Module;
 use crate::r#type::NType;
 
-impl FuncVisitor for Module<'_> {
+impl FuncVisitor for Module {
     fn enter_func_def(&mut self, node: FuncDef) {
         self.analyzing.current_scope =
             self.new_scope(Some(self.analyzing.current_scope), node.text_range());
@@ -26,7 +26,8 @@ impl FuncVisitor for Module<'_> {
     }
 
     fn leave_func_sign(&mut self, node: FuncSign) {
-        let mut param_list = Vec::new();
+        let mut param_types = vec![];
+        let mut param_list = vec![];
 
         let Some(scope) = self.scopes.get(*self.analyzing.current_scope) else {
             return;
@@ -42,10 +43,14 @@ impl FuncVisitor for Module<'_> {
                     return;
                 };
                 let name = ident.text();
-                let Some(v) = scope.look_up_variable(self, name) else {
+                let Some(vid) = scope.look_up_variable(self, name) else {
                     return;
                 };
-                param_list.push(v);
+                let Some(var) = self.get_varaible_by_id(vid) else {
+                    return;
+                };
+                param_types.push(var.ty.clone());
+                param_list.push(vid);
             }
         }
 
@@ -79,6 +84,7 @@ impl FuncVisitor for Module<'_> {
             // 更新现有的 Function，填充参数
             if let Some(func_data) = self.get_function_mut_by_id(func_id) {
                 func_data.params = param_list;
+                func_data.param_types = param_types;
                 func_data.ret_type = ret_type.clone();
                 func_data.have_impl = have_impl;
             }

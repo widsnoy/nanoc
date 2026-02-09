@@ -10,7 +10,7 @@ use crate::module::{Module, ReferenceTag};
 use crate::r#type::NType;
 use crate::value::Value;
 
-impl ExprVisitor for Module<'_> {
+impl ExprVisitor for Module {
     fn leave_call_expr(&mut self, node: CallExpr) {
         let Some((func_name, func_range)) =
             node.name().and_then(|n| utils::extract_name_and_range(&n))
@@ -368,10 +368,9 @@ impl ExprVisitor for Module<'_> {
 
         // 查找 struct 定义
         let struct_def = self.get_struct_by_id(struct_id).unwrap();
-        let struct_def: *const crate::module::Struct = struct_def;
 
         // 查找字段并设置类型
-        if let Some(field_id) = unsafe { &*struct_def }.field(self, &member_name) {
+        if let Some(field_id) = struct_def.field(self, &member_name) {
             let field = self.get_field_by_id(field_id).unwrap();
             // 计算索引后的类型（如果有数组索引）
             let indices: Vec<_> = field_access_node.indices().collect();
@@ -405,7 +404,7 @@ impl ExprVisitor for Module<'_> {
             // 常量处理：如果基础表达式是常量 struct，提取字段值
             if let Some(Value::Struct(_struct_id, field_values)) =
                 self.value_table.get(&base_range).cloned()
-                && let Some(field_idx) = unsafe { &*struct_def }.field_index(self, &member_name)
+                && let Some(field_idx) = struct_def.field_index(self, &member_name)
                 && let Some(field_value) = field_values.get(field_idx as usize)
             {
                 if indices.is_empty() {
@@ -430,7 +429,7 @@ impl ExprVisitor for Module<'_> {
             }
         } else {
             self.new_error(SemanticError::FieldNotFound {
-                struct_name: unsafe { &*struct_def }.name.clone(),
+                struct_name: struct_def.name.clone(),
                 field_name: member_name,
                 range: utils::trim_node_text_range(&node),
             });

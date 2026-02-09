@@ -1,4 +1,4 @@
-use analyzer::module::{Function, Module};
+use analyzer::module::Function;
 use analyzer::r#type::NType;
 use inkwell::types::BasicType;
 use syntax::ast::*;
@@ -30,32 +30,19 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .analyzer
             .get_function_by_id(func_id)
             .ok_or_else(|| CodegenError::UndefinedFunc(name.clone()))?;
-        self.declare_function(self.analyzer, func_info)?;
+        self.declare_function(&func_info)?;
         Ok(())
     }
 
-    pub(super) fn declare_function(
-        &mut self,
-        module: &'a Module,
-        func_info: &Function,
-    ) -> Result<()> {
+    pub(super) fn declare_function(&mut self, func_info: &Function) -> Result<()> {
         let name = &func_info.name;
         let ret_ty = &func_info.ret_type;
         let is_void = matches!(ret_ty, NType::Void);
 
-        // 从 func_info.params 获取参数信息
-        let params: Vec<(String, &'a NType)> = func_info
-            .params
+        let basic_params = func_info
+            .param_types
             .iter()
-            .map(|var_id| {
-                let var = module.variables.get(**var_id).unwrap();
-                (var.name.clone(), &var.ty)
-            })
-            .collect();
-
-        let basic_params = params
-            .iter()
-            .map(|(_, p)| self.convert_ntype_to_type(p).map(|t| t.into()))
+            .map(|ty| self.convert_ntype_to_type(ty).map(|t| t.into()))
             .collect::<Result<Vec<_>>>()?;
 
         let ret_llvm_ty = self.convert_ntype_to_type(ret_ty)?;

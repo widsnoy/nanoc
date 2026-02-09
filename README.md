@@ -7,7 +7,8 @@ A toy programming language
 ```text
 CompUnit    := {Header}{GlobalDecl}
 
-Header      := 'import' Path     // eg. import "../lib" or import "../lib::Symbol"
+Header      := 'import' Path  
+Path        := String ['::' Ident]  
 
 GlobalDecl  := VarDef | FuncDef | StructDef | FuncAttach
 

@@ -1,21 +1,22 @@
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Deref,
+    sync::Arc,
 };
 
+use dashmap::DashMap;
 use rowan::GreenNode;
 use syntax::SyntaxNode;
 use syntax::Visitor;
 use thunderdome::Arena;
 use tools::TextRange;
+use vfs::FileID;
 
-use crate::{
-    array::ArrayTree, error::SemanticError, project::Project, r#type::NType, value::Value,
-};
+use crate::{array::ArrayTree, error::SemanticError, r#type::NType, value::Value};
 
 #[derive(Debug)]
-pub struct Module<'a> {
-    pub module_id: ModuleID,
+pub struct Module {
+    pub file_id: FileID,
 
     pub variables: Arena<Variable>,
     pub reference: Arena<Reference>,
@@ -59,7 +60,24 @@ pub struct Module<'a> {
     pub index: ModuleIndex,
 
     /// 用于跨文件分析
-    pub project: Option<&'a Project>,
+    pub metadata: Option<Arc<DashMap<FileID, ThinModule>>>,
+}
+
+#[derive(Debug, Default)]
+pub struct ThinModule {
+    pub functions: Arena<Function>,
+    pub structs: Arena<Struct>,
+    pub fields: Arena<Field>,
+}
+
+impl ThinModule {
+    pub fn new(module: &Module) -> Self {
+        Self {
+            functions: module.functions.clone(),
+            structs: module.structs.clone(),
+            fields: module.fields.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -76,11 +94,11 @@ pub struct ModuleIndex {
     pub scope_tree: HashMap<ScopeID, Vec<ScopeID>>,
 }
 
-impl<'a> Module<'a> {
+impl Module {
     pub fn new(green_tree: GreenNode) -> Self {
         Self {
             green_tree,
-            module_id: ModuleID::none(),
+            file_id: FileID::none(),
             variables: Default::default(),
             reference: Default::default(),
             functions: Default::default(),
@@ -98,7 +116,7 @@ impl<'a> Module<'a> {
             semantic_errors: Default::default(),
             analyzing: Default::default(),
             index: Default::default(),
-            project: None,
+            metadata: None,
         }
     }
     /// 分析
@@ -106,7 +124,7 @@ impl<'a> Module<'a> {
         let root = SyntaxNode::new_root(self.green_tree.clone());
         self.walk(&root);
         self.analyzing = AnalyzeContext::default();
-        self.project = None;
+        self.metadata = None;
     }
 
     /// 检查是否为编译时常量
@@ -145,6 +163,7 @@ impl<'a> Module<'a> {
         &mut self,
         name: String,
         params: Vec<VariableID>,
+        param_types: Vec<NType>,
         ret_type: NType,
         have_impl: bool,
         range: TextRange,
@@ -152,12 +171,13 @@ impl<'a> Module<'a> {
         let function = Function {
             name,
             params,
+            param_types,
             ret_type,
             have_impl,
             range,
         };
         let id = self.functions.insert(function);
-        FunctionID::new(self.module_id, id)
+        FunctionID::new(self.file_id, id)
     }
 
     pub fn get_varaible_by_id(&self, var_id: VariableID) -> Option<&Variable> {
@@ -181,15 +201,17 @@ impl<'a> Module<'a> {
     }
 
     /// 获取 struct 定义
-    pub fn get_struct_by_id(&self, id: StructID) -> Option<&Struct> {
-        if id.module == self.module_id {
-            // 本地结构体
-            self.structs.get(id.index)
+    /// TODO: 看看能不能优化
+    pub fn get_struct_by_id(&self, id: StructID) -> Option<Struct> {
+        if id.module == self.file_id {
+            self.structs.get(id.index).cloned()
         } else {
-            // 跨模块结构体
-            self.project
-                .and_then(|project| project.modules.get(id.module.0))
-                .and_then(|module| module.structs.get(id.index))
+            self.metadata
+                .as_ref()?
+                .get(&id.module)?
+                .structs
+                .get(id.index)
+                .cloned()
         }
     }
 
@@ -197,7 +219,7 @@ impl<'a> Module<'a> {
     /// 注意：只能获取本地模块的结构体
     pub fn get_struct_mut_by_id(&mut self, id: StructID) -> Option<&mut Struct> {
         debug_assert_eq!(
-            id.module, self.module_id,
+            id.module, self.file_id,
             "Cannot get mutable reference to struct in another module"
         );
         self.structs.get_mut(id.index)
@@ -214,15 +236,17 @@ impl<'a> Module<'a> {
     }
 
     /// 获取函数定义
-    pub fn get_function_by_id(&self, id: FunctionID) -> Option<&Function> {
-        if id.module == self.module_id {
-            // 本地函数
-            self.functions.get(id.index)
+    /// TODO: 看看能不能优化
+    pub fn get_function_by_id(&self, id: FunctionID) -> Option<Function> {
+        if id.module == self.file_id {
+            self.functions.get(id.index).cloned()
         } else {
-            // 跨模块函数
-            self.project
-                .and_then(|project| project.modules.get(id.module.0))
-                .and_then(|module| module.functions.get(id.index))
+            self.metadata
+                .as_ref()?
+                .get(&id.module)?
+                .functions
+                .get(id.index)
+                .cloned()
         }
     }
 
@@ -230,7 +254,7 @@ impl<'a> Module<'a> {
     /// 注意：只能获取本地模块的函数
     pub fn get_function_mut_by_id(&mut self, id: FunctionID) -> Option<&mut Function> {
         debug_assert_eq!(
-            id.module, self.module_id,
+            id.module, self.file_id,
             "Cannot get mutable reference to function in another module"
         );
         self.functions.get_mut(id.index)
@@ -244,19 +268,26 @@ impl<'a> Module<'a> {
             range,
         };
         let id = self.structs.insert(struct_def);
-        StructID::new(self.module_id, id)
+        StructID::new(self.file_id, id)
+    }
+
+    pub fn new_field(&mut self, name: String, ty: NType, range: TextRange) -> FieldID {
+        let field = Field { name, ty, range };
+        let id = self.fields.insert(field);
+        FieldID::new(self.file_id, id)
     }
 
     /// 获取字段定义（支持跨模块访问）
-    pub fn get_field_by_id(&self, id: FieldID) -> Option<&Field> {
-        if id.module == self.module_id {
-            // 本地字段
-            self.fields.get(id.index)
+    pub fn get_field_by_id(&self, id: FieldID) -> Option<Field> {
+        if id.module == self.file_id {
+            self.fields.get(id.index).cloned()
         } else {
-            // 跨模块字段
-            self.project
-                .and_then(|project| project.modules.get(id.module.0))
-                .and_then(|module| module.fields.get(id.index))
+            self.metadata
+                .as_ref()?
+                .get(&id.module)?
+                .fields
+                .get(id.index)
+                .cloned()
         }
     }
 
@@ -337,32 +368,30 @@ macro_rules! define_id_type {
 define_id_type!(VariableID);
 define_id_type!(ScopeID);
 define_id_type!(ReferenceID);
-define_id_type!(ModuleID);
 
-/// 定义带模块信息的 ID 包装类型的宏，用于跨模块的 arena 索引
 macro_rules! define_module_id_type {
     ($name:ident) => {
         #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
-            pub module: ModuleID,
+            pub module: FileID,
             pub index: thunderdome::Index,
         }
 
         impl $name {
             pub fn none() -> Self {
                 $name {
-                    module: ModuleID::none(),
+                    module: FileID::none(),
                     index: thunderdome::Index::DANGLING,
                 }
             }
 
-            pub fn new(module: ModuleID, index: thunderdome::Index) -> Self {
+            pub fn new(module: FileID, index: thunderdome::Index) -> Self {
                 $name { module, index }
             }
         }
 
-        impl From<(ModuleID, thunderdome::Index)> for $name {
-            fn from((module, index): (ModuleID, thunderdome::Index)) -> Self {
+        impl From<(FileID, thunderdome::Index)> for $name {
+            fn from((module, index): (FileID, thunderdome::Index)) -> Self {
                 $name { module, index }
             }
         }
@@ -408,6 +437,7 @@ pub enum ReferenceTag {
 pub struct Function {
     pub name: String,
     pub params: Vec<VariableID>,
+    pub param_types: Vec<NType>,
     pub ret_type: NType,
     pub have_impl: bool,
     pub range: TextRange,

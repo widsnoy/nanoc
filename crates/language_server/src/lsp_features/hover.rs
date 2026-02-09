@@ -75,7 +75,7 @@ fn build_hover_for_function(
     range: tools::TextRange,
 ) -> Option<Hover> {
     let function = module.get_function_by_id(func_id)?;
-    let signature = format_function_signature(function, module);
+    let signature = format_function_signature(&function, module);
 
     Some(Hover {
         contents: HoverContents::Markup(MarkupContent {
@@ -94,7 +94,7 @@ fn build_hover_for_struct(
     range: tools::TextRange,
 ) -> Option<Hover> {
     let struct_def = module.get_struct_by_id(struct_id)?;
-    let definition = format_struct_definition(struct_def, module);
+    let definition = format_struct_definition(&struct_def, module);
 
     Some(Hover {
         contents: HoverContents::Markup(MarkupContent {
