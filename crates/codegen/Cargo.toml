@@ -14,3 +14,6 @@ inkwell.workspace = true
 rowan.workspace = true
 insta.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+thunderdome.workspace = true

@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap},
     ops::Deref,
+    sync::Arc,
 };
 
 use rowan::GreenNode;
@@ -8,17 +9,20 @@ use syntax::SyntaxNode;
 use syntax::Visitor;
 use thunderdome::Arena;
 use tools::TextRange;
+use utils::{define_id_type, define_module_id_type};
+use vfs::FileID;
 
 use crate::{array::ArrayTree, error::SemanticError, r#type::NType, value::Value};
 
 #[derive(Debug)]
 pub struct Module {
-    pub module_id: ModuleID,
+    pub file_id: FileID,
 
     pub variables: Arena<Variable>,
     pub reference: Arena<Reference>,
     pub functions: Arena<Function>,
     pub structs: Arena<Struct>,
+    pub fields: Arena<Field>,
     pub scopes: Arena<Scope>,
 
     pub global_scope: ScopeID,
@@ -54,32 +58,65 @@ pub struct Module {
 
     /// 各种索引
     pub index: ModuleIndex,
+
+    /// 用于跨文件分析
+    pub metadata: Option<Arc<HashMap<FileID, ThinModule>>>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ThinModule {
+    pub functions: Arena<Function>,
+    pub structs: Arena<Struct>,
+    pub fields: Arena<Field>,
+}
+
+impl ThinModule {
+    pub fn new(module: &Module) -> Self {
+        Self {
+            functions: module.functions.clone(),
+            structs: module.structs.clone(),
+            fields: module.fields.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Default)]
-pub struct AnalyzeContext {
-    pub current_scope: ScopeID,
-    pub current_var_type: Option<NType>,
-    pub current_function_ret_type: Option<NType>,
-    pub loop_depth: usize,
+pub(crate) struct AnalyzeContext {
+    pub(crate) current_scope: ScopeID,
+    pub(crate) current_function_ret_type: Option<NType>,
+    pub(crate) loop_depth: usize,
 }
 
 #[derive(Debug, Default)]
 pub struct ModuleIndex {
-    pub variable_reference: HashMap<VariableID, Vec<ReferenceID>>,
-    pub function_reference: HashMap<FunctionID, Vec<ReferenceID>>,
+    pub variable_reference: HashMap<VariableID, Vec<CiterInfo>>,
+    pub function_reference: HashMap<FunctionID, Vec<CiterInfo>>,
+    pub field_reference: HashMap<FieldID, Vec<CiterInfo>>,
     pub scope_tree: HashMap<ScopeID, Vec<ScopeID>>,
+}
+
+#[derive(Debug)]
+pub struct CiterInfo {
+    pub file_id: FileID,
+    pub range: TextRange,
+}
+
+impl CiterInfo {
+    pub fn new(file_id: FileID, range: TextRange) -> Self {
+        Self { file_id, range }
+    }
 }
 
 impl Module {
     pub fn new(green_tree: GreenNode) -> Self {
         Self {
             green_tree,
-            module_id: ModuleID::none(),
+            file_id: FileID::none(),
             variables: Default::default(),
             reference: Default::default(),
             functions: Default::default(),
             structs: Default::default(),
+            fields: Default::default(),
             scopes: Default::default(),
             global_scope: Default::default(),
             value_table: Default::default(),
@@ -92,6 +129,7 @@ impl Module {
             semantic_errors: Default::default(),
             analyzing: Default::default(),
             index: Default::default(),
+            metadata: None,
         }
     }
     /// 分析
@@ -137,21 +175,21 @@ impl Module {
         &mut self,
         name: String,
         params: Vec<VariableID>,
+        meta_types: Vec<(String, NType)>,
         ret_type: NType,
         have_impl: bool,
         range: TextRange,
-        module_id: ModuleID,
     ) -> FunctionID {
         let function = Function {
             name,
             params,
+            meta_types,
             ret_type,
             have_impl,
             range,
-            module_id,
         };
         let id = self.functions.insert(function);
-        FunctionID(id)
+        FunctionID::new(self.file_id, id)
     }
 
     pub fn get_varaible_by_id(&self, var_id: VariableID) -> Option<&Variable> {
@@ -175,13 +213,28 @@ impl Module {
     }
 
     /// 获取 struct 定义
-    pub fn get_struct_by_id(&self, id: StructID) -> Option<&Struct> {
-        self.structs.get(*id)
+    /// TODO: 看看能不能优化
+    pub fn get_struct_by_id(&self, id: StructID) -> Option<Struct> {
+        if id.module == self.file_id {
+            self.structs.get(id.index).cloned()
+        } else {
+            self.metadata
+                .as_ref()?
+                .get(&id.module)?
+                .structs
+                .get(id.index)
+                .cloned()
+        }
     }
 
     /// 获取可变 struct 定义
+    /// 注意：只能获取本地模块的结构体
     pub fn get_struct_mut_by_id(&mut self, id: StructID) -> Option<&mut Struct> {
-        self.structs.get_mut(*id)
+        debug_assert_eq!(
+            id.module, self.file_id,
+            "Cannot get mutable reference to struct in another module"
+        );
+        self.structs.get_mut(id.index)
     }
 
     /// 根据名称查找 struct
@@ -195,31 +248,64 @@ impl Module {
     }
 
     /// 获取函数定义
-    pub fn get_function_by_id(&self, id: FunctionID) -> Option<&Function> {
-        self.functions.get(*id)
+    /// TODO: 看看能不能优化
+    pub fn get_function_by_id(&self, id: FunctionID) -> Option<Function> {
+        if id.module == self.file_id {
+            self.functions.get(id.index).cloned()
+        } else {
+            self.metadata
+                .as_ref()?
+                .get(&id.module)?
+                .functions
+                .get(id.index)
+                .cloned()
+        }
     }
 
-    /// 获取函数定义
+    /// 获取函数定义（可变引用）
+    /// 注意：只能获取本地模块的函数
     pub fn get_function_mut_by_id(&mut self, id: FunctionID) -> Option<&mut Function> {
-        self.functions.get_mut(*id)
+        debug_assert_eq!(
+            id.module, self.file_id,
+            "Cannot get mutable reference to function in another module"
+        );
+        self.functions.get_mut(id.index)
     }
 
     /// 添加新的 struct 定义
-    pub fn new_struct(
-        &mut self,
-        name: String,
-        fields: Vec<VariableID>,
-        range: TextRange,
-        module_id: ModuleID,
-    ) -> StructID {
+    pub fn new_struct(&mut self, name: String, fields: Vec<FieldID>, range: TextRange) -> StructID {
         let struct_def = Struct {
             name,
             fields,
             range,
-            module_id,
         };
         let id = self.structs.insert(struct_def);
-        StructID(id)
+        StructID::new(self.file_id, id)
+    }
+
+    pub fn new_field(&mut self, name: String, ty: NType, range: TextRange) -> FieldID {
+        let field = Field { name, ty, range };
+        let id = self.fields.insert(field);
+        FieldID::new(self.file_id, id)
+    }
+
+    /// 获取字段定义（支持跨模块访问）
+    pub fn get_field_by_id(&self, id: FieldID) -> Option<Field> {
+        if id.module == self.file_id {
+            self.fields.get(id.index).cloned()
+        } else {
+            self.metadata
+                .as_ref()?
+                .get(&id.module)?
+                .fields
+                .get(id.index)
+                .cloned()
+        }
+    }
+
+    /// 获取变量定义
+    pub fn get_variable_by_id(&self, id: VariableID) -> Option<&Variable> {
+        self.variables.get(*id)
     }
 
     /// 记录引用
@@ -229,21 +315,6 @@ impl Module {
         let ref_id = ReferenceID(ref_idx);
 
         self.reference_map.insert(range, ref_id);
-
-        match tag {
-            ReferenceTag::VarRead(variable_id) => self
-                .index
-                .variable_reference
-                .entry(variable_id)
-                .or_default()
-                .push(ref_id),
-            ReferenceTag::FuncCall(function_id) => self
-                .index
-                .function_reference
-                .entry(function_id)
-                .or_default()
-                .push(ref_id),
-        };
     }
 
     /// 查找变量定义，返回定义处的 VariableID
@@ -261,40 +332,13 @@ impl Module {
     }
 }
 
-/// 定义 ID 包装类型的宏，用于 arena 索引
-macro_rules! define_id_type {
-    ($name:ident) => {
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-        pub struct $name(pub thunderdome::Index);
-
-        impl $name {
-            pub fn none() -> Self {
-                $name(thunderdome::Index::DANGLING)
-            }
-        }
-
-        impl From<thunderdome::Index> for $name {
-            fn from(index: thunderdome::Index) -> Self {
-                $name(index)
-            }
-        }
-
-        impl Deref for $name {
-            type Target = thunderdome::Index;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-    };
-}
-
 define_id_type!(VariableID);
-define_id_type!(FunctionID);
 define_id_type!(ScopeID);
-define_id_type!(StructID);
 define_id_type!(ReferenceID);
-define_id_type!(ModuleID);
+
+define_module_id_type!(StructID);
+define_module_id_type!(FunctionID);
+define_module_id_type!(FieldID);
 
 impl Default for ScopeID {
     fn default() -> Self {
@@ -325,23 +369,30 @@ pub struct Reference {
 pub enum ReferenceTag {
     // TODO: VarWrite,
     VarRead(VariableID),
+    FieldRead(FieldID),
     FuncCall(FunctionID),
 }
 #[derive(Debug, Clone)]
 pub struct Function {
     pub name: String,
     pub params: Vec<VariableID>,
+    pub meta_types: Vec<(String, NType)>,
     pub ret_type: NType,
     pub have_impl: bool,
-    pub module_id: ModuleID,
     pub range: TextRange,
 }
 
 #[derive(Debug, Clone)]
 pub struct Struct {
     pub name: String,
-    pub fields: Vec<VariableID>,
-    pub module_id: ModuleID,
+    pub fields: Vec<FieldID>,
+    pub range: TextRange,
+}
+
+#[derive(Debug, Clone)]
+pub struct Field {
+    pub name: String,
+    pub ty: NType,
     pub range: TextRange,
 }
 
@@ -352,30 +403,30 @@ impl Struct {
             .iter()
             .position(|field_id| {
                 module
-                    .variables
-                    .get(**field_id)
-                    .map(|var| var.name == name)
+                    .fields
+                    .get(field_id.index)
+                    .map(|field| field.name == name)
                     .unwrap_or(false)
             })
             .map(|i| i as u32)
     }
 
     /// 根据字段名查找字段 ID
-    pub fn field(&self, module: &Module, name: &str) -> Option<VariableID> {
+    pub fn field(&self, module: &Module, name: &str) -> Option<FieldID> {
         self.fields
             .iter()
             .find(|field_id| {
                 module
-                    .variables
-                    .get(***field_id)
-                    .map(|var| var.name == name)
+                    .fields
+                    .get(field_id.index)
+                    .map(|field| field.name == name)
                     .unwrap_or(false)
             })
             .copied()
     }
 
     /// 根据索引获取字段 ID
-    pub fn field_at(&self, index: usize) -> Option<VariableID> {
+    pub fn field_at(&self, index: usize) -> Option<FieldID> {
         self.fields.get(index).copied()
     }
 }

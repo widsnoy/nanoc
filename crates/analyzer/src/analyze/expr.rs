@@ -71,30 +71,15 @@ impl ExprVisitor for Module {
 
         self.new_reference(func_range, ReferenceTag::FuncCall(func_id));
 
-        let func = self.get_function_by_id(func_id).unwrap();
-        let expected_arg_count = func.params.len();
-        let ret_type = func.ret_type.clone();
-        let have_impl = func.have_impl;
+        // 获取函数定义（支持跨模块访问）
+        let Some(func) = self.get_function_by_id(func_id) else {
+            // 理论上不应该发生（函数 ID 存在但找不到定义）
+            debug_assert!(false, "Function {:?} not found", func_id);
+            return;
+        };
 
         // 设置返回类型
-        self.set_expr_type(node.text_range(), ret_type);
-
-        // 检查函数是否有实现
-        if !have_impl {
-            self.new_error(SemanticError::FunctionUnImplemented {
-                name: func_name.clone(),
-                range: func_range,
-            });
-        }
-        // 检查参数数量
-        if arg_count != expected_arg_count {
-            self.new_error(SemanticError::ArgumentCountMismatch {
-                function_name: func_name,
-                expected: expected_arg_count,
-                found: arg_count,
-                range: func_range,
-            });
-        }
+        self.set_expr_type(node.text_range(), func.ret_type.clone());
     }
 
     fn leave_binary_expr(&mut self, node: BinaryExpr) {
@@ -383,11 +368,10 @@ impl ExprVisitor for Module {
 
         // 查找 struct 定义
         let struct_def = self.get_struct_by_id(struct_id).unwrap();
-        let struct_def: *const crate::module::Struct = struct_def;
 
         // 查找字段并设置类型
-        if let Some(field_id) = unsafe { &*struct_def }.field(self, &member_name) {
-            let field = self.variables.get(*field_id).unwrap();
+        if let Some(field_id) = struct_def.field(self, &member_name) {
+            let field = self.get_field_by_id(field_id).unwrap();
             // 计算索引后的类型（如果有数组索引）
             let indices: Vec<_> = field_access_node.indices().collect();
             let result_ty = if indices.is_empty() {
@@ -415,12 +399,12 @@ impl ExprVisitor for Module {
 
             self.set_expr_type(range, result_ty);
 
-            self.new_reference(member_range, ReferenceTag::VarRead(field_id));
+            self.new_reference(member_range, ReferenceTag::FieldRead(field_id));
 
             // 常量处理：如果基础表达式是常量 struct，提取字段值
             if let Some(Value::Struct(_struct_id, field_values)) =
                 self.value_table.get(&base_range).cloned()
-                && let Some(field_idx) = unsafe { &*struct_def }.field_index(self, &member_name)
+                && let Some(field_idx) = struct_def.field_index(self, &member_name)
                 && let Some(field_value) = field_values.get(field_idx as usize)
             {
                 if indices.is_empty() {
@@ -445,7 +429,7 @@ impl ExprVisitor for Module {
             }
         } else {
             self.new_error(SemanticError::FieldNotFound {
-                struct_name: unsafe { &*struct_def }.name.clone(),
+                struct_name: struct_def.name.clone(),
                 field_name: member_name,
                 range: utils::trim_node_text_range(&node),
             });

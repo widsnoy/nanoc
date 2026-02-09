@@ -459,7 +459,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .ok_or(CodegenError::NotImplemented("field not found"))?;
 
         let field_id = struct_def.fields[field_idx as usize];
-        let field = self.analyzer.variables.get(*field_id).unwrap();
+        let field = self.analyzer.fields.get(field_id.index).unwrap();
         let field_ty = field.ty.clone();
 
         let struct_ntype = NType::Struct {

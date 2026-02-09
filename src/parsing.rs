@@ -1,33 +1,38 @@
-use lexer::LexerError;
-use parser::parse::ParserError;
+use std::collections::HashMap;
+use std::path::Path;
+
+use analyzer::error::SemanticError;
+use parser::parse::Parser;
 use rowan::GreenNode;
+use vfs::Vfs;
 
-use crate::error::{CompilerError, Result};
+use crate::error::{CompilerError, Result, SemanticErrors};
 
-/// 语法分析阶段
-///
-/// 对输入源代码进行词法分析和语法分析，生成 Green Node（lossless syntax tree）
-///
-/// # 参数
-/// - `input`: 源代码字符串
-///
-/// # 返回
-/// - `Ok((GreenNode, Vec<ParserError>, Vec<LexerError>))`: 成功时返回 green node 和错误列表
-/// - `Err(CompilerError)`: 如果有 parser 错误，返回包含所有错误的 CompilerError
-///
-/// # 错误处理
-/// 如果存在 parser 错误，会立即返回错误，不继续后续编译阶段
-pub fn parse(input: &str) -> Result<(GreenNode, Vec<ParserError>, Vec<LexerError>)> {
-    let parser = parser::parse::Parser::new(input);
-    let (green_node, parser_errors, lexer_errors) = parser.parse();
+/// 解析源代码为语法树
+pub fn parse(input_path: &Path, input: String) -> Result<GreenNode> {
+    let parser = Parser::new(input.as_str());
+    let (green_node, errors) = parser.parse();
 
-    if !lexer_errors.is_empty() {
-        return Err(CompilerError::Lexer(lexer_errors));
+    if !errors.is_empty() {
+        // 创建临时 VFS 用于错误报告
+        let vfs = Vfs::default();
+        let absolute_path = input_path
+            .canonicalize()
+            .unwrap_or_else(|_| input_path.to_path_buf());
+        let file_id = vfs.new_file(absolute_path, input);
+
+        // 将 ParserError 包装为 SemanticError
+        let semantic_errors: Vec<SemanticError> =
+            errors.into_iter().map(SemanticError::ParserError).collect();
+
+        let mut errors_by_file = HashMap::new();
+        errors_by_file.insert(file_id, semantic_errors);
+
+        return Err(CompilerError::Semantic(Box::new(SemanticErrors {
+            errors_by_file,
+            vfs,
+        })));
     }
 
-    if !parser_errors.is_empty() {
-        return Err(CompilerError::Parser(parser_errors));
-    }
-
-    Ok((green_node, parser_errors, lexer_errors))
+    Ok(green_node)
 }

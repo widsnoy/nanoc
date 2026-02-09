@@ -1,6 +1,7 @@
 #![allow(unused_assignments)]
 
 use miette::Diagnostic;
+use parser::parse::ParserError;
 use thiserror::Error;
 use tools::TextRange;
 
@@ -8,12 +9,9 @@ use crate::{array::ArrayInitError, r#type::NType};
 
 #[derive(Debug, Clone, Error, Diagnostic)]
 pub enum SemanticError {
-    #[error("invalid import path")]
-    #[diagnostic(code(semantic::invalid_path))]
-    InvalidPath {
-        #[label("here")]
-        range: TextRange,
-    },
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    ParserError(ParserError),
 
     #[error("type mismatch: expected {expected}, found {found}")]
     #[diagnostic(code(semantic::type_mismatch))]
@@ -225,14 +223,39 @@ pub enum SemanticError {
         #[label("this module is part of a circular dependency")]
         range: TextRange,
     },
+
+    #[error("import path not found: {path}")]
+    #[diagnostic(code(semantic::import_path_not_found))]
+    ImportPathNotFound {
+        path: String,
+        #[label("here")]
+        range: TextRange,
+    },
+
+    #[error("symbol '{symbol}' not found in module '{module_path}'")]
+    #[diagnostic(code(semantic::import_symbol_not_found))]
+    ImportSymbolNotFound {
+        symbol: String,
+        module_path: String,
+        #[label("here")]
+        range: TextRange,
+    },
+
+    #[error("symbol '{symbol}' conflicts with existing definition")]
+    #[diagnostic(code(semantic::import_symbol_conflict))]
+    ImportSymbolConflict {
+        symbol: String,
+        #[label("imported symbol conflicts with this definition")]
+        range: TextRange,
+    },
 }
 
 impl SemanticError {
     /// 获取错误的位置范围
     pub fn range(&self) -> &TextRange {
         match self {
-            Self::InvalidPath { range }
-            | Self::TypeMismatch { range, .. }
+            Self::ParserError(e) => e.range(),
+            Self::TypeMismatch { range, .. }
             | Self::ConstantExprExpected { range }
             | Self::VariableDefined { range, .. }
             | Self::FunctionDefined { range, .. }
@@ -257,7 +280,10 @@ impl SemanticError {
             | Self::AddressOfRight { range }
             | Self::FunctionImplemented { range, .. }
             | Self::FunctionUnImplemented { range, .. }
-            | Self::CircularDependency { range } => range,
+            | Self::CircularDependency { range }
+            | Self::ImportPathNotFound { range, .. }
+            | Self::ImportSymbolNotFound { range, .. }
+            | Self::ImportSymbolConflict { range, .. } => range,
         }
     }
 }

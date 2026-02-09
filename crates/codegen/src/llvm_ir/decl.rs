@@ -1,5 +1,4 @@
 use analyzer::array::{ArrayTree, ArrayTreeValue};
-use analyzer::module::VariableID;
 use analyzer::r#type::NType;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::{BasicValueEnum, IntValue, PointerValue};
@@ -142,7 +141,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         // Safety: struct_def 的生命周期与 self.analyzer 相同，
         // 而 self.analyzer 在整个编译过程中都是有效的。
         // 这里用裸指针避免 clone 开销，因为我们只需要读取 fields。
-        let field_ids: *const [VariableID] = &struct_def.fields[..];
+        let field_ids: *const [analyzer::module::FieldID] = &struct_def.fields[..];
 
         let inits: Vec<_> = init_node.inits().collect();
 
@@ -151,7 +150,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .zip(unsafe { &*field_ids }.iter())
             .enumerate()
         {
-            let field = self.analyzer.variables.get(**field_id).unwrap();
+            let field = self.analyzer.fields.get(field_id.index).unwrap();
             let field_llvm_ty = self.convert_ntype_to_type(&field.ty)?;
 
             // 获取字段指针
@@ -246,8 +245,8 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let struct_name = self
                     .analyzer
                     .get_struct_by_id(*id)
-                    .map(|s| s.name.clone())
-                    .unwrap_or_else(|| format!("struct#{:?}", id.0));
+                    .map(|s| s.name)
+                    .unwrap_or_else(|| format!("struct#{:?}", id.index));
                 let struct_ty = NType::Struct {
                     id: *id,
                     name: struct_name,

@@ -4,7 +4,6 @@ mod decl;
 mod expr;
 mod func;
 mod stmt;
-mod r#type;
 
 use syntax::Visitor;
 

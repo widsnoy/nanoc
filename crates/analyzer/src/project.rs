@@ -1,169 +1,255 @@
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-};
+use std::{collections::HashMap, sync::Arc};
 
-use rowan::GreenNode;
-use syntax::{AstNode as _, SyntaxNode, ast::Header};
-use thunderdome::Arena;
+use parser::parse::Parser;
+use syntax::{
+    AstNode as _, SyntaxNode,
+    ast::{FuncDef, StructDef},
+};
+use tools::LineIndex;
 use vfs::{FileID, Vfs};
 
-use crate::{error::SemanticError, module::{Module, ModuleID}};
+use crate::{
+    header::HeaderAnalyzer,
+    module::{CiterInfo, Field, FieldID, Module, ModuleIndex, ThinModule},
+    r#type::NType,
+};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Project {
-    pub modules: Arena<Module>,
-    /// 如果是文件，代表分析单文件
-    pub workspace: PathBuf,
+    pub modules: HashMap<FileID, Module>,
+    pub line_indexes: HashMap<FileID, LineIndex>,
+    pub metadata: Arc<HashMap<FileID, ThinModule>>,
     pub vfs: Vfs,
-    pub file_index: HashMap<FileID, ModuleID>,
-    /// a->b, 代表 a 模块依赖 b
-    pub reference_map: HashMap<ModuleID, HashSet<ModuleID>>,
-    /// 记录被哪些模块依赖
-    pub reference_map_rev: HashMap<ModuleID, HashSet<ModuleID>>,
+}
+
+impl Default for Project {
+    fn default() -> Self {
+        Self {
+            modules: HashMap::new(),
+            line_indexes: HashMap::new(),
+            metadata: Arc::new(HashMap::new()),
+            vfs: Vfs::default(),
+        }
+    }
 }
 
 impl Project {
-    pub fn new(workspace: PathBuf, vfs: Vfs, green_trees: HashMap<FileID, GreenNode>) -> Self {
-        let mut project = Project {
-            workspace,
-            vfs,
-            ..Default::default()
-        };
-        for (file_id, green_tree) in green_trees {
-            let id = project.modules.insert(Module::new(green_tree));
-            let module = project.modules.get_mut(id).unwrap();
-            let module_id = ModuleID(id);
-            module.module_id = module_id;
-            project.file_index.insert(file_id, module_id);
-        }
-
-        // 初始化 Module 并分析头文件
-        for (module_id, module) in project.modules.iter_mut() {
-            Self::first_analyze_header(
-                &project.vfs,
-                &project.file_index,
-                module,
-                ModuleID(module_id),
-                &mut project.reference_map,
-                &mut project.reference_map_rev,
+    /// 全量初始化
+    pub fn full_initialize(&mut self, vfs: Vfs) {
+        self.vfs = vfs;
+        // 初始化所有 module，语法分析
+        self.vfs.for_each_file(|file_id, file| {
+            let parser = Parser::new(&file.text);
+            let line_index = LineIndex::new(
+                parser
+                    .lexer
+                    .get_tokens()
+                    .iter()
+                    .filter(|(kind, _, _)| *kind == syntax::SyntaxKind::NEWLINE)
+                    .map(|(_, _, r)| r.end().into())
+                    .collect::<Vec<u32>>(),
             );
+            let (green_tree, errors) = parser.parse();
+
+            let mut module = Module::new(green_tree.clone());
+            module.file_id = file_id;
+            errors.into_iter().for_each(|e| {
+                module
+                    .semantic_errors
+                    .push(crate::error::SemanticError::ParserError(e))
+            });
+
+            Self::allocate_module_symbols(&mut module);
+
+            self.modules.insert(file_id, module);
+            self.line_indexes.insert(file_id, line_index);
+        });
+
+        // 分析头文件
+        let mut all_imports = Vec::with_capacity(self.modules.len());
+        for (file_id, module) in &self.modules {
+            let module_imports =
+                HeaderAnalyzer::collect_module_imports(module, *file_id, &self.vfs, &self.modules);
+            all_imports.push((*file_id, module_imports));
         }
-
-        // 拓扑排序依赖图，并按顺序分析模块
-        let mut sort = Vec::with_capacity(project.modules.len());
-        let mut deg = Vec::new();
-        let mut stack = vec![];
-
-        // 初始化入度数组
-        for (_index, _) in project.modules.iter() {
-            deg.push(0);
-        }
-
-        // 计算每个模块的入度
-        for (index, _) in project.modules.iter() {
-            let module_id = ModuleID(index);
-            let i = index.slot() as usize;
-            if let Some(s) = project.reference_map.get(&module_id) {
-                deg[i] = s.len();
-            } else {
-                stack.push(module_id);
+        for (file_id, module_imports) in all_imports {
+            if let Some(module) = self.modules.get_mut(&file_id) {
+                HeaderAnalyzer::apply_module_imports(module, module_imports);
             }
         }
 
-        // Kahn 算法进行拓扑排序
-        while let Some(module_id) = stack.pop() {
-            sort.push(module_id);
-            let Some(list) = project.reference_map_rev.get(&module_id) else {
-                continue;
-            };
-            for v in list.iter() {
-                let i = v.slot() as usize;
-                deg[i] -= 1;
-                if deg[i] == 0 {
-                    stack.push(*v);
-                }
-            }
+        // 预处理元数据，跨文件使用
+        for module in self.modules.values_mut() {
+            Self::fill_definitions(module);
         }
 
-        // 检测循环依赖
-        if sort.len() != project.modules.len() {
-            // 找出所有在环中的模块（入度不为 0 的模块）
-            let modules_in_cycle: Vec<_> = project
-                .modules
-                .iter()
-                .filter_map(|(index, _)| {
-                    let i = index.slot() as usize;
-                    if deg[i] > 0 {
-                        Some(index)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-
-            // 为每个在环中的模块添加错误
-            for index in modules_in_cycle {
-                if let Some(module) = project.modules.get_mut(index) {
-                    // 获取整个模块的 range（使用根节点的 range）
-                    let root = SyntaxNode::new_root(module.green_tree.clone());
-                    let range = root.text_range().into();
-                    module.new_error(SemanticError::CircularDependency { range });
-                }
-            }
-            // 即使有循环依赖，也继续处理已排序的模块
+        let mut metadata: HashMap<FileID, ThinModule> = HashMap::new();
+        for (file_id, module) in &self.modules {
+            metadata.insert(*file_id, ThinModule::new(module));
         }
 
-        for module_id in sort {
-            if let Some(other_modules) = project.reference_map.get(&module_id) {
-                for other_module_id in other_modules {
-                    if let (Some(module), Some(other_module)) =
-                        project.modules.get2_mut(*module_id, **other_module_id)
-                    {
-                        other_module.functions.iter().for_each(|(_, f)| {
-                            module.functions.insert(f.clone());
-                        });
-                        other_module.structs.iter().for_each(|(_, s)| {
-                            module.structs.insert(s.clone());
-                        });
-                    }
-                }
-            }
-            let Some(module) = project.modules.get_mut(*module_id) else {
-                continue;
-            };
+        // 语义分析
+        let metadata_rc = Arc::new(metadata);
+        for module in self.modules.values_mut() {
+            module.metadata = Some(Arc::clone(&metadata_rc));
             module.analyze();
+            module.metadata = None;
         }
 
-        project
+        // 重新拷贝分析完成的元数据
+        let mut metadata: HashMap<FileID, ThinModule> = HashMap::new();
+        for (file_id, module) in &self.modules {
+            metadata.insert(*file_id, ThinModule::new(module));
+        }
+        self.metadata = Arc::new(metadata);
+
+        // 构建索引
+        let mut temp: HashMap<FileID, ModuleIndex> = Default::default();
+        for module in self.modules.values() {
+            for (_, refer) in &module.reference {
+                match refer.tag {
+                    crate::module::ReferenceTag::VarRead(variable_id) => {
+                        let target_file_id = module.file_id;
+                        let index = temp.entry(target_file_id).or_default();
+                        index
+                            .variable_reference
+                            .entry(variable_id)
+                            .or_default()
+                            .push(CiterInfo::new(module.file_id, refer.range));
+                    }
+                    crate::module::ReferenceTag::FieldRead(field_id) => {
+                        let target_file_id = field_id.module;
+                        let index = temp.entry(target_file_id).or_default();
+                        index
+                            .field_reference
+                            .entry(field_id)
+                            .or_default()
+                            .push(CiterInfo::new(module.file_id, refer.range));
+                    }
+                    crate::module::ReferenceTag::FuncCall(function_id) => {
+                        let target_file_id = function_id.module;
+                        let index = temp.entry(target_file_id).or_default();
+                        index
+                            .function_reference
+                            .entry(function_id)
+                            .or_default()
+                            .push(CiterInfo::new(module.file_id, refer.range));
+                    }
+                }
+            }
+        }
+
+        for (file_id, module) in &mut self.modules {
+            module.index = temp.remove(file_id).unwrap_or_default();
+            module.metadata = Some(Arc::clone(&self.metadata));
+        }
     }
 
-    /// 初次分析头文件，引用关系存到引用表
-    pub fn first_analyze_header(
-        vfs: &Vfs,
-        file_index: &HashMap<FileID, ModuleID>,
-        module: &mut Module,
-        module_id: ModuleID,
-        ref_map: &mut HashMap<ModuleID, HashSet<ModuleID>>,
-        ref_map_rev: &mut HashMap<ModuleID, HashSet<ModuleID>>,
-    ) {
+    /// 为模块收集符号并分配 ID
+    pub fn allocate_module_symbols(module: &mut Module) {
         let root = SyntaxNode::new_root(module.green_tree.clone());
-        root.children().flat_map(Header::cast).for_each(|n| {
-            if let Some(p) = n.path()
-                && let Some(path) = p.ident().map(|i| i.to_string())
-            {
-                let path = PathBuf::from(path);
-                if let Some(file_id) = vfs.get_file_id_by_path(&path)
-                    && let Some(other_id) = file_index.get(file_id)
+        for ele in root.children() {
+            if let Some(func_def) = FuncDef::cast(ele.clone()) {
+                if let Some((name, range)) = func_def
+                    .sign()
+                    .and_then(|n| n.name())
+                    .and_then(|n| utils::extract_name_and_range(&n))
                 {
-                    ref_map.entry(module_id).or_default().insert(*other_id);
-                    ref_map_rev.entry(*other_id).or_default().insert(module_id);
-                } else {
-                    module.new_error(SemanticError::InvalidPath {
-                        range: utils::trim_node_text_range(&p),
-                    });
+                    let func_id = module.new_function(
+                        name.clone(),
+                        vec![],
+                        vec![],
+                        NType::Void,
+                        false,
+                        range,
+                    );
+                    module.function_map.insert(name, func_id);
+                }
+            } else if let Some(struct_def) = StructDef::cast(ele)
+                && let Some((name, range)) = struct_def
+                    .name()
+                    .and_then(|n| utils::extract_name_and_range(&n))
+            {
+                let struct_id = module.new_struct(name.clone(), vec![], range);
+                module.struct_map.insert(name, struct_id);
+            }
+        }
+    }
+
+    /// 填充模块的 struct 和 function 定义
+    /// Struct: 字段
+    /// Function: 返回类型
+    pub fn fill_definitions(module: &mut Module) {
+        let root = SyntaxNode::new_root(module.green_tree.clone());
+
+        let struct_defs: Vec<_> = root.children().filter_map(StructDef::cast).collect();
+
+        for struct_def in struct_defs {
+            if let Some(name) = struct_def.name().and_then(|n| n.var_name()) {
+                let Some(&struct_id) = module.struct_map.get(&name) else {
+                    continue;
+                };
+
+                let mut field_ids = Vec::new();
+                for field_node in struct_def.fields() {
+                    if let Some(field_name) = field_node.name().and_then(|n| n.var_name())
+                        && let Some(ty_node) = field_node.ty()
+                    {
+                        match crate::utils::parse_type_node(module, &ty_node, None) {
+                            Ok(Some(field_ty)) => {
+                                let field = Field {
+                                    name: field_name,
+                                    ty: field_ty,
+                                    range: field_node.text_range(),
+                                };
+
+                                let idx = module.fields.insert(field);
+                                let field_id = FieldID::new(module.file_id, idx);
+                                field_ids.push(field_id);
+                            }
+                            Ok(None) => {}
+                            Err(e) => {
+                                module.semantic_errors.push(e);
+                            }
+                        }
+                    }
+                }
+
+                if let Some(struct_data) = module.get_struct_mut_by_id(struct_id) {
+                    struct_data.fields = field_ids;
                 }
             }
-        });
+        }
+
+        let func_defs: Vec<_> = root.children().filter_map(FuncDef::cast).collect();
+
+        for func_def in func_defs {
+            if let Some(sign) = func_def.sign()
+                && let Some(name) = sign.name().and_then(|n| n.var_name())
+            {
+                let Some(&func_id) = module.function_map.get(&name) else {
+                    continue;
+                };
+
+                let ret_type = if let Some(ty_node) = sign.ret_type() {
+                    match crate::utils::parse_type_node(module, &ty_node, None) {
+                        Ok(Some(ty)) => ty,
+                        Ok(None) => {
+                            continue;
+                        }
+                        Err(e) => {
+                            module.semantic_errors.push(e);
+                            NType::Void
+                        }
+                    }
+                } else {
+                    NType::Void
+                };
+
+                if let Some(func_data) = module.get_function_mut_by_id(func_id) {
+                    func_data.ret_type = ret_type;
+                }
+            }
+        }
     }
 }

@@ -6,7 +6,7 @@ pub enum NType {
     Int,
     Float,
     Void,
-    Array(Box<NType>, i32),
+    Array(Box<NType>, Option<i32>),
     Pointer { pointee: Box<NType>, is_const: bool },
     Struct { id: StructID, name: String },
     Const(Box<NType>),
@@ -18,7 +18,13 @@ impl fmt::Display for NType {
             NType::Int => write!(f, "i32"),
             NType::Float => write!(f, "f32"),
             NType::Void => write!(f, "void"),
-            NType::Array(inner, size) => write!(f, "[{}; {}]", inner, size),
+            NType::Array(inner, size) => {
+                if let Some(s) = size {
+                    write!(f, "[{}; {}]", inner, s)
+                } else {
+                    write!(f, "[{}; ?]", inner)
+                }
+            }
             NType::Pointer { pointee, is_const } => {
                 if *is_const {
                     write!(f, "*const {}", pointee)

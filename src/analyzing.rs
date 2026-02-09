@@ -1,32 +1,48 @@
-use analyzer::module::Module;
-use rowan::GreenNode;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
-use crate::error::{CompilerError, Result};
+use analyzer::project::Project;
+use vfs::Vfs;
 
-/// 语义分析阶段
-///
-/// 对语法树进行语义分析，包括：
-/// - 符号解析
-/// - 类型检查
-/// - 作用域分析
-/// - 常量求值
-///
-/// # 参数
-/// - `green_node`: 语法分析阶段生成的 green node
-///
-/// # 返回
-/// - `Ok(Module)`: 成功时返回包含符号表和类型信息的 Module
-/// - `Err(CompilerError)`: 如果有语义错误，返回包含所有错误的 CompilerError
-///
-/// # 错误处理
-/// 如果存在语义错误，会立即返回错误，不继续后续编译阶段
-pub fn analyze(green_node: GreenNode) -> Result<Module> {
-    let mut analyzer = Module::new(green_node);
-    analyzer.analyze();
+use crate::error::{CompilerError, Result, SemanticErrors};
 
-    if !analyzer.semantic_errors.is_empty() {
-        return Err(CompilerError::Semantic(analyzer.semantic_errors));
+/// 分析项目中的所有文件
+pub fn analyze_project(input_paths: &[PathBuf]) -> Result<Project> {
+    if input_paths.is_empty() {
+        return Err(CompilerError::Semantic(Box::new(SemanticErrors {
+            errors_by_file: HashMap::new(),
+            vfs: Vfs::default(),
+        })));
     }
 
-    Ok(analyzer)
+    // 构建 VFS
+    let vfs = Vfs::default();
+    for input_path in input_paths {
+        let text = std::fs::read_to_string(input_path).map_err(CompilerError::Io)?;
+        let absolute_path = input_path
+            .canonicalize()
+            .unwrap_or_else(|_| input_path.clone());
+        vfs.new_file(absolute_path, text);
+    }
+
+    // 初始化并分析项目
+    let mut project = Project::default();
+    project.full_initialize(vfs);
+
+    // 按文件收集错误
+    let mut errors_by_file = HashMap::new();
+    for module in project.modules.values() {
+        if !module.semantic_errors.is_empty() {
+            errors_by_file.insert(module.file_id, module.semantic_errors.clone());
+        }
+    }
+
+    if !errors_by_file.is_empty() {
+        return Err(CompilerError::Semantic(Box::new(SemanticErrors {
+            errors_by_file,
+            vfs: project.vfs,
+        })));
+    }
+
+    Ok(project)
 }

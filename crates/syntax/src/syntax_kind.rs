@@ -27,36 +27,38 @@ pub enum SyntaxKind {
     MUT_KW,      // "mut"
     ATTACH_KW,   // "attach"
 
-    IDENT,         // my_var
-    INT_LITERAL,   // 123, 0xFF
-    FLOAT_LITERAL, // 3.14
-    PLUS,          // +
-    MINUS,         // -
-    STAR,          // *
-    SLASH,         // /
-    PERCENT,       // %
-    EQ,            // =
-    EQEQ,          // ==
-    NEQ,           // !=
-    LT,            // <
-    GT,            // >
-    LTEQ,          // <=
-    GTEQ,          // >=
-    AMP,           // &
-    AMPAMP,        // &&
-    PIPEPIPE,      // ||
-    BANG,          // !
-    DOT,           // .
-    ARROW,         // ->
-    COMMA,         // ,
-    SEMI,          // ;
-    COLON,         // :
-    L_PAREN,       // (
-    R_PAREN,       // )
-    L_BRACE,       // {
-    R_BRACE,       // }
-    L_BRACK,       // [
-    R_BRACK,       // ]
+    IDENT,          // my_var
+    STRING_LITERAL, // "string"
+    INT_LITERAL,    // 123, 0xFF
+    FLOAT_LITERAL,  // 3.14
+    PLUS,           // +
+    MINUS,          // -
+    STAR,           // *
+    SLASH,          // /
+    PERCENT,        // %
+    EQ,             // =
+    EQEQ,           // ==
+    NEQ,            // !=
+    LT,             // <
+    GT,             // >
+    LTEQ,           // <=
+    GTEQ,           // >=
+    AMP,            // &
+    AMPAMP,         // &&
+    PIPEPIPE,       // ||
+    BANG,           // !
+    DOT,            // .
+    ARROW,          // ->
+    COMMA,          // ,
+    SEMI,           // ;
+    COLON,          // :
+    COLONCOLON,     // ::
+    L_PAREN,        // (
+    R_PAREN,        // )
+    L_BRACE,        // {
+    R_BRACE,        // }
+    L_BRACK,        // [
+    R_BRACK,        // ]
 
     // 语法树节点
     COMP_UNIT,

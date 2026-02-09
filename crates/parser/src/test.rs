@@ -5,7 +5,7 @@ use syntax::AirycLanguage;
 
 fn try_it(source: &str) -> SyntaxNode<AirycLanguage> {
     let parser = Parser::new(source);
-    let (tree, errors, _) = parser.parse();
+    let (tree, errors) = parser.parse();
 
     if !errors.is_empty() {
         eprintln!("Source: {}", source);
@@ -254,7 +254,7 @@ fn test_struct_trailing_comma_no_deadloop() {
     // 测试尾随逗号不会导致死循环，并且现在是合法的
     let source = "struct x {a:i32, } fn main() {}";
     let parser = Parser::new(source);
-    let (tree, errors, _) = parser.parse();
+    let (tree, errors) = parser.parse();
     // 不应该有解析错误，因为尾随逗号现在是合法的
     // 只要能完成解析就说明没有死循环
     assert!(
@@ -268,4 +268,46 @@ fn test_struct_trailing_comma_no_deadloop() {
     let debug_str = format!("{:#?}", root);
     assert!(debug_str.contains("STRUCT_DEF"));
     assert!(debug_str.contains("FUNC_DEF"));
+}
+#[test]
+fn test_import_parsing() {
+    use crate::parse::Parser;
+    use syntax::{AstNode, ast::CompUnit};
+
+    let text = r#"import "../lib"
+import "../utils"::add
+"#;
+
+    let parser = Parser::new(text);
+    let (green_tree, errors) = parser.parse();
+
+    println!("Parse errors: {:?}", errors);
+
+    assert!(errors.is_empty(), "Parse errors: {:?}", errors);
+
+    let root = syntax::SyntaxNode::new_root(green_tree);
+    if let Some(comp_unit) = CompUnit::cast(root) {
+        let headers: Vec<_> = comp_unit.headers().collect();
+        assert_eq!(headers.len(), 2, "Should have 2 headers");
+
+        // 第一个 header: import "../lib"
+        if let Some(path) = headers[0].path() {
+            if let Some(string_lit) = path.string_literal() {
+                assert_eq!(string_lit.text(), r#""../lib""#);
+            }
+            assert!(path.symbol().is_none());
+        }
+
+        // 第二个 header: import "../utils"::add
+        if let Some(path) = headers[1].path() {
+            if let Some(string_lit) = path.string_literal() {
+                assert_eq!(string_lit.text(), r#""../utils""#);
+            }
+            if let Some(symbol) = path.symbol() {
+                assert_eq!(symbol.text(), "add");
+            }
+        }
+    } else {
+        panic!("Failed to parse CompUnit");
+    }
 }

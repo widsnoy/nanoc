@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+
+use analyzer::{header::HeaderAnalyzer, module::Module, project::Project};
 use inkwell::context::Context;
 use syntax::{
     SyntaxNode,
@@ -8,31 +11,54 @@ use crate::llvm_ir;
 
 fn try_it(code: &str) -> String {
     let parser = parser::parse::Parser::new(code);
-    let (green_node, errors, _) = parser.parse();
+    let (green_node, errors) = parser.parse();
     assert!(errors.is_empty(), "Parser errors: {:?}", errors);
 
-    let root = SyntaxNode::new_root(green_node.clone());
-    let mut analyzer = analyzer::module::Module::new(green_node);
-    analyzer.analyze();
+    let mut project = Project::default();
 
-    assert!(
-        analyzer.semantic_errors.is_empty(),
-        "Analyzer erros: {:?}",
-        analyzer.semantic_errors
-    );
+    let file_id = project
+        .vfs
+        .new_file(PathBuf::from("test.airy"), code.to_string());
 
-    // dbg!(&root);
+    let mut module = Module::new(green_node.clone());
+    module.file_id = file_id;
+
+    Project::allocate_module_symbols(&mut module);
+
+    let module_imports =
+        HeaderAnalyzer::collect_module_imports(&module, file_id, &project.vfs, &project.modules);
+
+    HeaderAnalyzer::apply_module_imports(&mut module, module_imports);
+
+    Project::fill_definitions(&mut module);
+
+    module.analyze();
+
+    // 插入 module 到 project
+    project.modules.insert(file_id, module);
+
+    {
+        let module = project.modules.values().next().unwrap();
+        assert!(
+            module.semantic_errors.is_empty(),
+            "Analyzer errors: {:?}",
+            module.semantic_errors
+        );
+    }
+
+    let root = SyntaxNode::new_root(green_node);
     let comp_unit = CompUnit::cast(root).unwrap();
 
     let context = Context::create();
-    let module = context.create_module("main");
+    let llvm_module = context.create_module("main");
     let builder = context.create_builder();
 
+    let module = project.modules.values().next().unwrap();
     let mut program = llvm_ir::Program {
         context: &context,
         builder: &builder,
-        module: &module,
-        analyzer: &analyzer,
+        module: &llvm_module,
+        analyzer: module,
         symbols: Default::default(),
     };
 

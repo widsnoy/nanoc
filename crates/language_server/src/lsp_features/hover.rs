@@ -20,6 +20,9 @@ pub(crate) fn hover(pos: Position, line_index: &LineIndex, module: &Module) -> O
             analyzer::module::ReferenceTag::FuncCall(function_id) => {
                 build_hover_for_function(module, function_id, line_index, refer.range)
             }
+            analyzer::module::ReferenceTag::FieldRead(field_id) => {
+                build_hover_for_field(module, field_id, line_index, refer.range)
+            }
         };
     }
 
@@ -75,7 +78,7 @@ fn build_hover_for_function(
     range: tools::TextRange,
 ) -> Option<Hover> {
     let function = module.get_function_by_id(func_id)?;
-    let signature = format_function_signature(function, module);
+    let signature = format_function_signature(&function);
 
     Some(Hover {
         contents: HoverContents::Markup(MarkupContent {
@@ -94,12 +97,31 @@ fn build_hover_for_struct(
     range: tools::TextRange,
 ) -> Option<Hover> {
     let struct_def = module.get_struct_by_id(struct_id)?;
-    let definition = format_struct_definition(struct_def, module);
+    let definition = format_struct_definition(&struct_def, module);
 
     Some(Hover {
         contents: HoverContents::Markup(MarkupContent {
             kind: MarkupKind::Markdown,
             value: format!("```rust\n{}\n```", definition),
+        }),
+        range: Some(text_range_to_ls_range(line_index, range)),
+    })
+}
+
+/// 为字段构建 hover 信息
+fn build_hover_for_field(
+    module: &Module,
+    field_id: analyzer::module::FieldID,
+    line_index: &LineIndex,
+    range: tools::TextRange,
+) -> Option<Hover> {
+    let field = module.get_field_by_id(field_id)?;
+    let signature = format!("{}: {}", field.name, field.ty);
+
+    Some(Hover {
+        contents: HoverContents::Markup(MarkupContent {
+            kind: MarkupKind::Markdown,
+            value: format!("```rust\n{}\n```", signature),
         }),
         range: Some(text_range_to_ls_range(line_index, range)),
     })
@@ -119,14 +141,11 @@ fn format_variable_signature(
 }
 
 /// 格式化函数签名
-fn format_function_signature(function: &analyzer::module::Function, module: &Module) -> String {
+fn format_function_signature(function: &analyzer::module::Function) -> String {
     let params = function
-        .params
+        .meta_types
         .iter()
-        .filter_map(|param_id| {
-            let var = module.get_varaible_by_id(*param_id)?;
-            Some(format!("{}: {}", var.name, var.ty))
-        })
+        .map(|(name, ty)| format!("{}: {}", name, ty))
         .collect::<Vec<_>>()
         .join(", ");
 
@@ -143,8 +162,8 @@ fn format_struct_definition(struct_def: &analyzer::module::Struct, module: &Modu
         .fields
         .iter()
         .filter_map(|field_id| {
-            let var = module.get_varaible_by_id(*field_id)?;
-            Some(format!("    {}: {}", var.name, var.ty))
+            let field = module.fields.get(field_id.index)?;
+            Some(format!("    {}: {}", field.name, field.ty))
         })
         .collect::<Vec<_>>()
         .join(",\n");

@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use analyzer::module::Module;
+use analyzer::project::Project;
 use inkwell::context::Context as LlvmContext;
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
@@ -159,6 +160,44 @@ fn generate_and_optimize<'ctx>(
         .map_err(|e| CodegenError::LlvmVerification(e.to_string_lossy().to_string()))?;
 
     Ok(module)
+}
+
+/// 编译多个模块到目标文件字节数据
+///
+/// 将 Project 中的所有模块分别编译为目标文件
+///
+/// # 参数
+/// - `project`: 包含所有模块的项目
+/// - `opt_level`: 优化级别
+///
+/// # 返回
+/// - `Ok(Vec<(String, Vec<u8>)>)`: 成功时返回 (模块名, 目标文件字节) 的列表
+/// - `Err(CodegenError)`: 代码生成失败时返回错误
+pub fn compile_project_to_object_bytes(
+    project: &Project,
+    opt_level: OptLevel,
+) -> Result<Vec<(String, Vec<u8>)>> {
+    let mut object_files = Vec::new();
+
+    for (file_id, module) in &project.modules {
+        let module_name = project
+            .vfs
+            .get_file_by_file_id(file_id)
+            .and_then(|file| {
+                std::path::Path::new(&file.path)
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .map(|s| s.to_string())
+            })
+            .unwrap_or_else(|| "unknown".to_string());
+
+        let object_bytes =
+            compile_to_object_bytes(&module_name, module.green_tree.clone(), module, opt_level)?;
+
+        object_files.push((module_name, object_bytes));
+    }
+
+    Ok(object_files)
 }
 
 /// 内部函数：创建目标机器

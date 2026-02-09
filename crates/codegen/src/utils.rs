@@ -107,7 +107,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             NType::Void => Ok(self.context.i8_type().into()),
             NType::Array(ntype, count) => {
                 let inner = self.convert_ntype_to_type(ntype)?;
-                Ok(inner.array_type(*count as u32).into())
+                let size = count.ok_or_else(|| {
+                    CodegenError::NotImplemented("array with runtime size not supported")
+                })?;
+                Ok(inner.array_type(size as u32).into())
             }
             NType::Pointer { .. } => Ok(self.context.ptr_type(AddressSpace::default()).into()),
             NType::Struct {
@@ -125,7 +128,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .fields
                     .iter()
                     .map(|field_id| {
-                        let field = self.analyzer.variables.get(**field_id).unwrap();
+                        let field = self.analyzer.fields.get(field_id.index).unwrap();
                         self.convert_ntype_to_type(&field.ty)
                     })
                     .collect::<Result<Vec<_>>>()?;
@@ -385,7 +388,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let struct_name = self
                     .analyzer
                     .get_struct_by_id(*struct_id)
-                    .map(|s| s.name.clone())
+                    .map(|s| s.name)
                     .unwrap_or_default();
                 let struct_ntype = NType::Struct {
                     id: *struct_id,
@@ -433,7 +436,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .fields
                     .iter()
                     .map(|field_id| {
-                        let field = self.analyzer.variables.get(**field_id).unwrap();
+                        let field = self.analyzer.fields.get(field_id.index).unwrap();
                         let field_llvm_ty = self.convert_ntype_to_type(&field.ty)?;
                         Ok(field_llvm_ty.const_zero())
                     })
@@ -502,7 +505,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             NType::Int => Ok(4),
             NType::Float => Ok(4),
             NType::Pointer { .. } => Ok(8),
-            NType::Array(inner, count) => Ok(self.get_type_size(inner)? * (*count as u64)),
+            NType::Array(inner, count) => {
+                let size = count.ok_or_else(|| {
+                    CodegenError::NotImplemented("array with runtime size not supported")
+                })?;
+                Ok(self.get_type_size(inner)? * (size as u64))
+            }
             NType::Const(inner) => self.get_type_size(inner),
             _ => Err(CodegenError::Unsupported("unknown type size".into())),
         }

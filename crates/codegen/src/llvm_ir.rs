@@ -50,6 +50,18 @@ pub struct LoopContext<'ctx> {
 impl<'a, 'ctx> Program<'a, 'ctx> {
     pub fn compile_comp_unit(&mut self, node: CompUnit) -> Result<()> {
         self.declare_sysy_runtime();
+
+        if let Some(ref metadata) = self.analyzer.metadata {
+            for func_id in self.analyzer.function_map.values() {
+                if func_id.module != self.analyzer.file_id
+                    && let Some(thin_module) = metadata.get(&func_id.module)
+                    && let Some(func_info) = thin_module.functions.get(func_id.index)
+                {
+                    self.declare_function(func_info)?;
+                }
+            }
+        }
+
         for global in node.global_decls() {
             match global {
                 GlobalDecl::VarDef(decl) => self.compile_var_def(decl)?,

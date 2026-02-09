@@ -1,6 +1,7 @@
 pub mod analyze;
 pub mod array;
 pub mod error;
+pub mod header;
 pub mod module;
 pub mod project;
 pub mod r#type;
