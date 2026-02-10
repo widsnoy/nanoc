@@ -251,12 +251,31 @@ pub enum AnalyzeError {
 
     #[error("recursive type `{struct_name}` has infinite size")]
     #[diagnostic(
-        code(recursive_type),
+        code(semantic::recursive_type),
         help("{}", cycle.join("->") )
     )]
     RecursiveType {
         struct_name: String,
         cycle: Vec<String>,
+        #[label("here")]
+        range: TextRange,
+    },
+
+    #[error("initializer type mismatch: expected {expected}, found {found}")]
+    #[diagnostic(code(semantic::initializer_mismatch))]
+    InitializerMismatch {
+        expected: String,
+        found: String,
+        #[label("here")]
+        range: TextRange,
+    },
+
+    #[error("cannot apply binary operator '{op}' to types {lhs} and {rhs}")]
+    #[diagnostic(code(semantic::binary_op_type_mismatch))]
+    BinaryOpTypeMismatch {
+        op: String,
+        lhs: NType,
+        rhs: NType,
         #[label("here")]
         range: TextRange,
     },
@@ -296,7 +315,9 @@ impl AnalyzeError {
             | Self::ImportPathNotFound { range, .. }
             | Self::ImportSymbolNotFound { range, .. }
             | Self::ImportSymbolConflict { range, .. }
-            | Self::RecursiveType { range, .. } => range,
+            | Self::RecursiveType { range, .. }
+            | Self::InitializerMismatch { range, .. }
+            | Self::BinaryOpTypeMismatch { range, .. } => range,
         }
     }
 }

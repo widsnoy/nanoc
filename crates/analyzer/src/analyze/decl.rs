@@ -56,7 +56,6 @@ impl DeclVisitor for Module {
             field_list.push(field_id);
         }
 
-        // TODO: 跨文件的后置分析循环引用
         let Some(struct_def) = self.get_struct_mut_by_id(struct_id) else {
             return;
         };
@@ -103,10 +102,28 @@ impl DeclVisitor for Module {
             let init_range = init_val_node.text_range();
             let init_range_trimmed = utils::trim_node_text_range(&init_val_node);
             // 如果 InitVal 包含一个表达式，使用表达式的范围
-            let expr_range = init_val_node
-                .expr()
-                .map(|e| e.text_range())
-                .unwrap_or(init_range);
+            let need_list = var_type.is_struct() || var_type.is_array();
+            let expr_range = if let Some(expr) = init_val_node.expr() {
+                if need_list {
+                    self.new_error(AnalyzeError::InitializerMismatch {
+                        expected: "list initializer".to_string(),
+                        found: "expression".to_string(),
+                        range: utils::trim_node_text_range(&init_val_node),
+                    });
+                    return;
+                }
+                expr.text_range()
+            } else {
+                if !need_list {
+                    self.new_error(AnalyzeError::InitializerMismatch {
+                        expected: "expression".to_string(),
+                        found: "list initializer".to_string(),
+                        range: utils::trim_node_text_range(&init_val_node),
+                    });
+                    return;
+                }
+                init_range
+            };
             if var_type.is_array() {
                 let (array_tree, is_const_list) =
                     match ArrayTree::new(self, &var_type, init_val_node) {

@@ -1,5 +1,6 @@
 use crate::{module::StructID, value::Value};
 use std::fmt;
+use syntax::SyntaxKind;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NType {
@@ -134,5 +135,92 @@ impl NType {
             (_, NType::Const(inner)) => self.assign_to_me_is_ok(inner),
             _ => false,
         }
+    }
+
+    /// 计算二元表达式的结果类型  
+    /// 指针算术不检查 pointee 类型（指针透明）
+    /// 不允许隐式类型转换
+    /// 结果总是非 const
+    pub fn compute_binary_result_type(lhs: &NType, rhs: &NType, op: SyntaxKind) -> Option<NType> {
+        use SyntaxKind::*;
+
+        // 先去掉 const 包装，统一处理
+        let lhs_unwrapped = lhs.unwrap_const();
+        let rhs_unwrapped = rhs.unwrap_const();
+
+        match op {
+            // 算术运算符: +, -, *, /, %
+            PLUS | MINUS | STAR | SLASH | PERCENT => match (&lhs_unwrapped, &rhs_unwrapped) {
+                // 整数运算
+                (NType::Int, NType::Int) => Some(NType::Int),
+                // 浮点运算
+                (NType::Float, NType::Float) => Some(NType::Float),
+
+                // 指针算术: ptr + int, ptr - int
+                // 不检查 pointee 类型，只要是指针就行
+                (l, NType::Int) if l.is_pointer() && matches!(op, PLUS | MINUS) => Some(l.clone()),
+                // int + ptr
+                (NType::Int, r) if r.is_pointer() && op == PLUS => Some(r.clone()),
+                // ptr - ptr (不检查 pointee 类型)
+                (l, r) if l.is_pointer() && r.is_pointer() && op == MINUS => Some(NType::Int),
+
+                // 其他情况不合法
+                _ => None,
+            },
+
+            // 比较运算符: <, >, <=, >=, ==, !=
+            LT | GT | LTEQ | GTEQ | EQEQ | NEQ => match (&lhs_unwrapped, &rhs_unwrapped) {
+                // 数值比较
+                (NType::Int, NType::Int) => Some(NType::Int),
+                (NType::Float, NType::Float) => Some(NType::Int),
+                // 指针比较（不检查 pointee 类型）
+                (l, r) if l.is_pointer() && r.is_pointer() => Some(NType::Int),
+                _ => None,
+            },
+
+            // 逻辑运算符: &&, ||
+            AMPAMP | PIPEPIPE => match (&lhs_unwrapped, &rhs_unwrapped) {
+                // 只允许整数类型
+                (NType::Int, NType::Int) => Some(NType::Int),
+                _ => None,
+            },
+
+            // 未知操作符
+            _ => None,
+        }
+        // 注意：结果总是非 const，不需要包装
+    }
+
+    /// 验证一元操作符并计算结果类型        
+    /// 结果总是非 const
+    pub fn validate_unary_op(&self, op: SyntaxKind) -> Option<NType> {
+        use SyntaxKind::*;
+
+        // 先去掉 const 包装
+        let unwrapped = self.unwrap_const();
+
+        match (&unwrapped, op) {
+            // 算术运算符: +, -
+            (NType::Int, PLUS | MINUS) => Some(NType::Int),
+            (NType::Float, PLUS | MINUS) => Some(NType::Float),
+
+            // 逻辑非: !
+            (NType::Int, BANG) => Some(NType::Int),
+
+            // 取地址: &
+            // 注意：这里生成的指针类型是 *mut，不继承 const
+            (ty, AMP) => Some(NType::Pointer {
+                pointee: Box::new(ty.clone()),
+                is_const: false,
+            }),
+
+            // 解引用: *
+            // 不检查指针的 const/mut 修饰符
+            (NType::Pointer { pointee, .. }, STAR) => Some((**pointee).clone()),
+
+            // 其他情况不合法
+            _ => None,
+        }
+        // 注意：结果总是非 const
     }
 }

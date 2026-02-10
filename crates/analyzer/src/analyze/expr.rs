@@ -18,7 +18,6 @@ impl ExprVisitor for Module {
             return;
         };
 
-        // FIXME: 内置函数列表（运行时库提供）
         let builtin_functions = [
             ("getint", 0, NType::Int),
             ("getch", 0, NType::Int),
@@ -97,28 +96,21 @@ impl ExprVisitor for Module {
         let lhs_ty = self.get_expr_type(lhs.text_range()).cloned();
         let rhs_ty = self.get_expr_type(rhs.text_range()).cloned();
 
-        // FIXME: 应该到 `type.rs` 加一个方法计算类型
         if let (Some(l), Some(r)) = (&lhs_ty, &rhs_ty) {
-            let result_ty = match op_kind {
-                SyntaxKind::PLUS | SyntaxKind::MINUS
-                    if l.is_pointer() && matches!(r, NType::Int) =>
-                {
-                    l.clone()
+            match NType::compute_binary_result_type(l, r, op_kind) {
+                Some(result_ty) => {
+                    self.set_expr_type(node.text_range(), result_ty);
                 }
-                SyntaxKind::PLUS if matches!(l, NType::Int) && r.is_pointer() => r.clone(),
-                SyntaxKind::MINUS if l.is_pointer() && r.is_pointer() => NType::Int,
-                SyntaxKind::LT
-                | SyntaxKind::GT
-                | SyntaxKind::LTEQ
-                | SyntaxKind::GTEQ
-                | SyntaxKind::EQEQ
-                | SyntaxKind::NEQ
-                | SyntaxKind::AMPAMP
-                | SyntaxKind::PIPEPIPE => NType::Int,
-                _ => l.clone(),
-            };
-
-            self.set_expr_type(node.text_range(), result_ty);
+                None => {
+                    self.new_error(AnalyzeError::BinaryOpTypeMismatch {
+                        op: op.op_str(),
+                        lhs: l.clone(),
+                        rhs: r.clone(),
+                        range: node.text_range(),
+                    });
+                    return;
+                }
+            }
         }
 
         if self.is_compile_time_constant(lhs.text_range())
@@ -143,47 +135,27 @@ impl ExprVisitor for Module {
         let op_kind = op.op().kind();
 
         if let Some(inner_ty) = self.get_expr_type(expr.text_range()) {
-            let result_ty = if op_kind == SyntaxKind::AMP {
-                if !self.is_lvalue_expr(&expr) {
-                    self.new_error(AnalyzeError::AddressOfRight {
-                        range: utils::trim_node_text_range(&expr),
-                    });
+            // 特殊处理取地址操作（需要检查左值）
+            if op_kind == SyntaxKind::AMP && !self.is_lvalue_expr(&expr) {
+                self.new_error(AnalyzeError::AddressOfRight {
+                    range: utils::trim_node_text_range(&expr),
+                });
+                return;
+            }
 
-                    return;
+            match inner_ty.validate_unary_op(op_kind) {
+                Some(result_ty) => {
+                    self.set_expr_type(node.text_range(), result_ty);
                 }
-                // 取地址操作，默认生成 *mut 指针
-                NType::Pointer {
-                    pointee: Box::new(inner_ty.clone()),
-                    is_const: false,
-                }
-            } else if op_kind == SyntaxKind::STAR {
-                let pointee: Option<NType> = match inner_ty {
-                    NType::Pointer { pointee, .. } => Some((*pointee).as_ref().clone()),
-                    NType::Const(inner) => {
-                        if let NType::Pointer { pointee, .. } = inner.as_ref() {
-                            Some(pointee.as_ref().clone())
-                        } else {
-                            None
-                        }
-                    }
-                    _ => None,
-                };
-                if let Some(pointee) = pointee {
-                    pointee
-                } else {
+                None => {
                     self.new_error(AnalyzeError::ApplyOpOnType {
                         ty: inner_ty.clone(),
-                        op: "*".to_string(),
-                        range: expr.text_range(),
+                        op: op.op_str(),
+                        range: utils::trim_node_text_range(&expr),
                     });
                     return;
                 }
-            } else {
-                inner_ty.clone()
-            };
-
-            // FIXME: 需要加检查，表达式是不是合法
-            self.set_expr_type(node.text_range(), result_ty);
+            }
         }
 
         if matches!(op_kind, SyntaxKind::STAR | SyntaxKind::AMP) {
