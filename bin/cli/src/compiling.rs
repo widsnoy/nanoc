@@ -29,6 +29,10 @@ pub fn compile_to_ir_file(
     module
         .print_to_file(output_path)
         .map_err(|e| CodegenError::LlvmWrite(e.to_string()))?;
+    // 验证
+    module
+        .verify()
+        .map_err(|e| CodegenError::LlvmVerification(e.to_string_lossy().to_string()))?;
     Ok(())
 }
 
@@ -42,6 +46,9 @@ pub fn compile_to_object_bytes(
 ) -> Result<Vec<u8>> {
     let context = LlvmContext::create();
     let module = generate_and_optimize(&context, module_name, green_node, analyzer, opt_level)?;
+    module
+        .verify()
+        .map_err(|e| CodegenError::LlvmVerification(e.to_string_lossy().to_string()))?;
 
     // 初始化目标机器
     let machine = create_target_machine(opt_level)?;
@@ -82,11 +89,6 @@ fn generate_and_optimize<'ctx>(
     let machine = create_target_machine(opt_level)?;
     module.set_triple(&machine.get_triple());
     module.set_data_layout(&machine.get_target_data().get_data_layout());
-
-    // 验证
-    module
-        .verify()
-        .map_err(|e| CodegenError::LlvmVerification(e.to_string_lossy().to_string()))?;
 
     Ok(module)
 }
