@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // 确定平台和可执行文件名
     const platform = process.platform === 'win32' ? 'windows' : 'linux';
-    const executableName = process.platform === 'win32' ? 'language_server.exe' : 'language_server';
+    const executableName = process.platform === 'win32' ? 'airyc-server.exe' : 'airyc-server';
 
     // 固定路径：editor/code/server/{platform}/{debug|release}/language_server
     const debugServerPath = path.join(context.extensionPath, 'server', platform, 'debug', executableName);

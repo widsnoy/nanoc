@@ -1,18 +1,19 @@
 [package]
-name = "codegen"
+name = "airyc-cli"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
 parser.workspace = true
+codegen.workspace = true
 analyzer.workspace = true
-utils.workspace = true
+lexer.workspace = true
 syntax.workspace = true
-tools.workspace = true
 vfs.workspace = true
+tools.workspace = true
 
-inkwell.workspace = true
-rowan.workspace = true
-insta.workspace = true
+clap.workspace = true
+miette.workspace = true
 thiserror.workspace = true
-
+rowan.workspace = true
+inkwell.workspace = true

@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "airyc-lang"
+name = "airyc-cli"
 version = "0.1.0"
 dependencies = [
  "analyzer",
@@ -41,6 +41,30 @@ dependencies = [
  "syntax",
  "thiserror",
  "tools",
+ "vfs",
+]
+
+[[package]]
+name = "airyc-server"
+version = "0.1.0"
+dependencies = [
+ "analyzer",
+ "dashmap",
+ "lexer",
+ "logos",
+ "miette",
+ "parking_lot",
+ "parser",
+ "rowan",
+ "serde",
+ "serde_json",
+ "syntax",
+ "thiserror",
+ "tokio",
+ "tools",
+ "tower-lsp-server",
+ "tracing",
+ "tracing-subscriber",
  "vfs",
 ]
 
@@ -232,7 +256,6 @@ dependencies = [
  "rowan",
  "syntax",
  "thiserror",
- "thunderdome",
  "tools",
  "utils",
  "vfs",
@@ -492,30 +515,6 @@ name = "itoa"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
-
-[[package]]
-name = "language_server"
-version = "0.1.0"
-dependencies = [
- "analyzer",
- "dashmap",
- "lexer",
- "logos",
- "miette",
- "parking_lot",
- "parser",
- "rowan",
- "serde",
- "serde_json",
- "syntax",
- "thiserror",
- "tokio",
- "tools",
- "tower-lsp-server",
- "tracing",
- "tracing-subscriber",
- "vfs",
-]
 
 [[package]]
 name = "lazy_static"

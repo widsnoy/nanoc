@@ -58,10 +58,10 @@ fi
 # 根据目标平台设置 Rust target 和可执行文件名
 if [ "$TARGET_PLATFORM" == "windows" ]; then
     RUST_TARGET="x86_64-pc-windows-gnu"
-    EXECUTABLE_NAME="language_server.exe"
+    EXECUTABLE_NAME="airyc-server.exe"
 else
     RUST_TARGET="x86_64-unknown-linux-gnu"
-    EXECUTABLE_NAME="language_server"
+    EXECUTABLE_NAME="airyc-server"
 fi
 
 echo -e "${BLUE}Target platform:${NC} $TARGET_PLATFORM"
@@ -73,7 +73,7 @@ echo -e "${BLUE}Project root:${NC} $PROJECT_ROOT"
 echo -e "\n${BLUE}Checking Rust target...${NC}"
 if ! rustup target list --installed | grep -q "$RUST_TARGET"; then
     echo -e "${YELLOW}Target $RUST_TARGET not installed, installing...${NC}"
-    rustup target add "$RUST_TARGET"
+    exit 1 
 fi
 
 # 构建语言服务器
@@ -81,10 +81,10 @@ echo -e "\n${BLUE}Building language server...${NC}"
 cd "$PROJECT_ROOT"
 
 if [ "$BUILD_MODE" == "release" ]; then
-    cargo build --release --target "$RUST_TARGET" -p language_server
+    cargo build --release --target "$RUST_TARGET" --bin airyc-server
     SOURCE_PATH="$PROJECT_ROOT/target/$RUST_TARGET/release/$EXECUTABLE_NAME"
 else
-    cargo build --target "$RUST_TARGET" -p language_server
+    cargo build --target "$RUST_TARGET" --bin airyc-server
     SOURCE_PATH="$PROJECT_ROOT/target/$RUST_TARGET/debug/$EXECUTABLE_NAME"
 fi
 

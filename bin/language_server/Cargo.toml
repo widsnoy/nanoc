@@ -1,5 +1,5 @@
 [package]
-name = "language_server"
+name = "airyc-server"
 version.workspace = true
 edition.workspace = true
 
