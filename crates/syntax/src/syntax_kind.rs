@@ -26,6 +26,7 @@ pub enum SyntaxKind {
     FN_KW,       // "fn"
     MUT_KW,      // "mut"
     ATTACH_KW,   // "attach"
+    NULL_KW,     // "null"
 
     IDENT,          // my_var
     STRING_LITERAL, // "string"

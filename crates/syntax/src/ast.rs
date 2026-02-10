@@ -352,6 +352,7 @@ ast_node!(
     Literal ~ LITERAL {
         int_token: token(INT_LITERAL),
         float_token: token(FLOAT_LITERAL),
+        null_token: token(NULL_KW),
     }
 );
 

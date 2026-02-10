@@ -53,6 +53,8 @@ pub enum Token {
     MUT_KW,
     #[token("attach")]
     ATTACH_KW,
+    #[token("null")]
+    NULL_KW,
 
     // 运算符和标点符号
     #[token("=")]
@@ -154,6 +156,7 @@ impl From<Token> for SyntaxKind {
             Token::RETURN_KW => SyntaxKind::RETURN_KW,
             Token::STRUCT_KW => SyntaxKind::STRUCT_KW,
             Token::ATTACH_KW => SyntaxKind::ATTACH_KW,
+            Token::NULL_KW => SyntaxKind::NULL_KW,
             Token::FN_KW => SyntaxKind::FN_KW,
             Token::MUT_KW => SyntaxKind::MUT_KW,
             Token::LET_KW => SyntaxKind::LET_KW,

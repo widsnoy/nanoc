@@ -63,11 +63,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
                 if let Some(expr) = init_node.expr() {
                     // 单值初始化
-                    let init_val = if let Ok(const_val) = self.get_const_var_value(&expr, None) {
-                        const_val
-                    } else {
-                        self.compile_expr(expr)?
-                    };
+                    let init_val = self.compile_expr(expr)?;
                     self.builder
                         .build_store(alloca, init_val)
                         .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
@@ -106,9 +102,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         self.store_struct_init(var_ty, init_node, alloca, llvm_ty)?;
                     }
                 } else {
-                    return Err(CodegenError::Unsupported(
-                        "unsupported init list type".into(),
-                    ));
+                    return Err(CodegenError::Unsupported("init list type".into()));
                 }
             } else {
                 // 无初始值，zero init
@@ -218,16 +212,11 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     ) -> Result<()> {
         match array_tree {
             ArrayTree::Val(ArrayTreeValue::Expr(expr_range)) => {
-                // 尝试获取编译时常量值，否则编译表达式
-                let value =
-                    if let Ok(const_val) = self.get_const_var_value_by_range(*expr_range, None) {
-                        const_val
-                    } else {
-                        let syntax_tree = SyntaxNode::new_root(self.analyzer.get_green_tree());
-                        let expr = find_node_by_range::<Expr>(&syntax_tree, *expr_range)
-                            .ok_or(CodegenError::Missing("expr node not found"))?;
-                        self.compile_expr(expr)?
-                    };
+                let syntax_tree = SyntaxNode::new_root(self.analyzer.get_green_tree());
+                let expr = find_node_by_range::<Expr>(&syntax_tree, *expr_range)
+                    .ok_or(CodegenError::Missing("expr node not found"))?;
+                let value = self.compile_expr(expr)?;
+
                 let gep = unsafe {
                     self.builder
                         .build_gep(llvm_ty, ptr, indices, "idx.gep")
@@ -241,7 +230,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 struct_id: id,
                 init_list: list_range,
             }) => {
-                // 尝试获取编译时常量值，否则逐个 store
                 let struct_name = self
                     .analyzer
                     .get_struct_by_id(*id)

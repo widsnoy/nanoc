@@ -1,0 +1,35 @@
+// 测试基本的 null 指针功能
+
+// 测试 1: null 指针赋值
+fn test_null_assignment() -> i32 {
+    let p: *mut i32 = null;
+    return 1;
+}
+
+// 测试 2: null 指针比较
+fn test_null_compare() -> i32 {
+    let p: *mut i32 = null;
+    let result: i32 = p == null;
+    return result;
+}
+
+// 测试 3: null 与非空指针比较
+fn test_null_vs_ptr() -> i32 {
+    let x: i32 = 42;
+    let p: *mut i32 = &x;
+    let result: i32 = p != null;
+    return result;
+}
+
+// 测试 4: const 指针的 null
+fn test_const_null() -> i32 {
+    let p: *const i32 = null;
+    let result: i32 = p == null;
+    return result;
+}
+
+fn main() -> i32 {
+    let result: i32 = test_null_assignment() + test_null_compare() 
+                    + test_null_vs_ptr() + test_const_null();
+    return result;
+}

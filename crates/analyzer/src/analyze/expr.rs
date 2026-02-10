@@ -96,6 +96,8 @@ impl ExprVisitor for Module {
 
         let lhs_ty = self.get_expr_type(lhs.text_range()).cloned();
         let rhs_ty = self.get_expr_type(rhs.text_range()).cloned();
+
+        // FIXME: 应该到 `type.rs` 加一个方法计算类型
         if let (Some(l), Some(r)) = (&lhs_ty, &rhs_ty) {
             let result_ty = match op_kind {
                 SyntaxKind::PLUS | SyntaxKind::MINUS
@@ -115,6 +117,7 @@ impl ExprVisitor for Module {
                 | SyntaxKind::PIPEPIPE => NType::Int,
                 _ => l.clone(),
             };
+
             self.set_expr_type(node.text_range(), result_ty);
         }
 
@@ -178,6 +181,8 @@ impl ExprVisitor for Module {
             } else {
                 inner_ty.clone()
             };
+
+            // FIXME: 需要加检查，表达式是不是合法
             self.set_expr_type(node.text_range(), result_ty);
         }
 
@@ -441,6 +446,17 @@ impl ExprVisitor for Module {
             let s = n.text();
             self.set_expr_type(range, NType::Float);
             Value::Float(s.parse::<f32>().unwrap())
+        } else if node.null_token().is_some() {
+            // null 是多态的，类型将在赋值时确定
+            // 这里暂时设置为 void 指针类型
+            self.set_expr_type(
+                range,
+                NType::Pointer {
+                    pointee: Box::new(NType::Void),
+                    is_const: false,
+                },
+            );
+            Value::Null
         } else {
             let Some(n) = node.int_token() else {
                 return;

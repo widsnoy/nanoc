@@ -445,6 +445,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 Ok(struct_llvm_ty.const_named_struct(&field_values).into())
             }
             Value::Pointee(_, _) => Err(CodegenError::NotImplemented("pointer constant")),
+            Value::Null => {
+                // 生成 LLVM null 指针
+                // 如果提供了类型，使用该类型；否则使用 void*
+                let ptr_ty = ty
+                    .map(|t| t.into_pointer_type())
+                    .unwrap_or_else(|| self.context.ptr_type(inkwell::AddressSpace::default()));
+                Ok(ptr_ty.const_null().into())
+            }
         }
     }
 

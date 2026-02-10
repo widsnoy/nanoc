@@ -170,41 +170,80 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             }
             // 指针 - 指针
             (BasicValueEnum::PointerValue(p1), BasicValueEnum::PointerValue(p2)) => {
-                if op_token.kind() != SyntaxKind::MINUS {
-                    return Err(CodegenError::Unsupported("ptr + ptr".into()));
+                match op_token.kind() {
+                    SyntaxKind::MINUS => {
+                        let lhs_ty = self
+                            .analyzer
+                            .get_expr_type(lhs_node.text_range())
+                            .ok_or(CodegenError::Missing("lhs type"))?;
+                        let pointee = lhs_ty
+                            .pointer_inner()
+                            .ok_or_else(|| CodegenError::TypeMismatch("expected pointer".into()))?;
+                        let elem_size = self.get_type_size(pointee)?;
+                        let i64_ty = self.context.i64_type();
+                        let i1 = self
+                            .builder
+                            .build_ptr_to_int(p1, i64_ty, "p1")
+                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
+                        let i2 = self
+                            .builder
+                            .build_ptr_to_int(p2, i64_ty, "p2")
+                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
+                        let diff = self
+                            .builder
+                            .build_int_sub(i1, i2, "diff")
+                            .map_err(|_| CodegenError::LlvmBuild("sub"))?;
+                        let size_val = i64_ty.const_int(elem_size, false);
+                        let result = self
+                            .builder
+                            .build_int_signed_div(diff, size_val, "ptr.diff")
+                            .map_err(|_| CodegenError::LlvmBuild("div"))?;
+                        let i32_ty = self.context.i32_type();
+                        let truncated = self
+                            .builder
+                            .build_int_truncate(result, i32_ty, "diff.i32")
+                            .map_err(|_| CodegenError::LlvmBuild("trunc"))?;
+                        Ok(truncated.into())
+                    }
+                    SyntaxKind::EQEQ => {
+                        // 指针相等比较：转换为整数后比较
+                        let i64_ty = self.context.i64_type();
+                        let i1 = self
+                            .builder
+                            .build_ptr_to_int(p1, i64_ty, "p1")
+                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
+                        let i2 = self
+                            .builder
+                            .build_ptr_to_int(p2, i64_ty, "p2")
+                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
+                        let cmp = self
+                            .builder
+                            .build_int_compare(inkwell::IntPredicate::EQ, i1, i2, "ptr.eq")
+                            .map_err(|_| CodegenError::LlvmBuild("ptr compare"))?;
+                        Ok(self.bool_to_i32(cmp)?.into())
+                    }
+                    SyntaxKind::NEQ => {
+                        // 指针不等比较：转换为整数后比较
+                        let i64_ty = self.context.i64_type();
+                        let i1 = self
+                            .builder
+                            .build_ptr_to_int(p1, i64_ty, "p1")
+                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
+                        let i2 = self
+                            .builder
+                            .build_ptr_to_int(p2, i64_ty, "p2")
+                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
+                        let cmp = self
+                            .builder
+                            .build_int_compare(inkwell::IntPredicate::NE, i1, i2, "ptr.ne")
+                            .map_err(|_| CodegenError::LlvmBuild("ptr compare"))?;
+                        Ok(self.bool_to_i32(cmp)?.into())
+                    }
+                    _ => Err(CodegenError::Unsupported(format!(
+                        "unsupported pointer operation: {:?}",
+                        op_token.kind()
+                    ))),
                 }
-                let lhs_ty = self
-                    .analyzer
-                    .get_expr_type(lhs_node.text_range())
-                    .ok_or(CodegenError::Missing("lhs type"))?;
-                let pointee = lhs_ty
-                    .pointer_inner()
-                    .ok_or_else(|| CodegenError::TypeMismatch("expected pointer".into()))?;
-                let elem_size = self.get_type_size(pointee)?;
-                let i64_ty = self.context.i64_type();
-                let i1 = self
-                    .builder
-                    .build_ptr_to_int(p1, i64_ty, "p1")
-                    .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
-                let i2 = self
-                    .builder
-                    .build_ptr_to_int(p2, i64_ty, "p2")
-                    .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
-                let diff = self
-                    .builder
-                    .build_int_sub(i1, i2, "diff")
-                    .map_err(|_| CodegenError::LlvmBuild("sub"))?;
-                let size_val = i64_ty.const_int(elem_size, false);
-                let result = self
-                    .builder
-                    .build_int_signed_div(diff, size_val, "ptr.diff")
-                    .map_err(|_| CodegenError::LlvmBuild("div"))?;
-                let i32_ty = self.context.i32_type();
-                let truncated = self
-                    .builder
-                    .build_int_truncate(result, i32_ty, "diff.i32")
-                    .map_err(|_| CodegenError::LlvmBuild("trunc"))?;
-                Ok(truncated.into())
             }
             (BasicValueEnum::IntValue(l), BasicValueEnum::IntValue(r)) => {
                 let res = match op_token.kind() {
@@ -436,6 +475,11 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .parse()
                 .map_err(|_| CodegenError::Unsupported(format!("invalid float: {}", s)))?;
             return Ok(self.context.f32_type().const_float(v as f64).into());
+        }
+        if expr.null_token().is_some() {
+            // 生成 null 指针
+            let ptr_ty = self.context.ptr_type(inkwell::AddressSpace::default());
+            return Ok(ptr_ty.const_null().into());
         }
         Err(CodegenError::Unsupported("unknown literal".into()))
     }

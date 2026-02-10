@@ -192,6 +192,11 @@ impl Parser<'_> {
             self.bump(); // number
             self.finish_node();
             true
+        } else if self.at(SyntaxKind::NULL_KW) {
+            self.start_node(SyntaxKind::LITERAL);
+            self.bump(); // null
+            self.finish_node();
+            true
         } else {
             self.parse_lval_or_call_expr()
         }

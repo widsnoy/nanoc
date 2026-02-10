@@ -13,6 +13,8 @@ pub enum Value {
     Struct(StructID, Vec<Value>),
     StructZero(StructID),
     Pointee(String, i32),
+    /// 空指针（null）
+    Null,
 }
 
 pub enum EvalError {
@@ -49,6 +51,10 @@ impl Value {
             Value::Pointee(_, _) => NType::Pointer {
                 pointee: Box::new(NType::Void),
                 is_const: false,
+            },
+            Value::Null => NType::Pointer {
+                pointee: Box::new(NType::Void),
+                is_const: true,
             },
         }
     }
@@ -124,6 +130,18 @@ impl Value {
                 }
                 "==" => Ok(Value::Int((s1 == s2 && off1 == off2) as i32)),
                 "!=" => Ok(Value::Int((s1 != s2 || off1 != off2) as i32)),
+                _ => Err(EvalError::UnsupportedOperation(op.to_string())),
+            },
+            // null 与 null 比较
+            (Value::Null, Value::Null) => match op {
+                "==" => Ok(Value::Int(1)),
+                "!=" => Ok(Value::Int(0)),
+                _ => Err(EvalError::UnsupportedOperation(op.to_string())),
+            },
+            // null 与指针比较
+            (Value::Null, Value::Pointee(_, _)) | (Value::Pointee(_, _), Value::Null) => match op {
+                "==" => Ok(Value::Int(0)), // null != 非空指针
+                "!=" => Ok(Value::Int(1)),
                 _ => Err(EvalError::UnsupportedOperation(op.to_string())),
             },
             _ => Err(EvalError::TypeMismatch),
