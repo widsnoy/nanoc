@@ -25,6 +25,13 @@
                 "configuration": "./language-configuration.json"
             }
         ],
+        "grammars": [
+            {
+                "language": "airyc",
+                "scopeName": "source.airyc",
+                "path": "./syntaxes/airyc.tmLanguage.json"
+            }
+        ],
         "configuration": {
             "type": "object",
             "title": "Airyc Language Server",

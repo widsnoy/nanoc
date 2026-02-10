@@ -7,15 +7,16 @@ use tower_lsp_server::ls_types::{SemanticToken, SemanticTokenModifier, SemanticT
 
 /// LSP 语义 token 类型定义
 pub const LEGEND_TYPE: &[SemanticTokenType] = &[
-    SemanticTokenType::KEYWORD,  // 0 - fn, let, if, while 等
-    SemanticTokenType::TYPE,     // 1 - i32, f32, void, 自定义类型
-    SemanticTokenType::STRUCT,   // 2 - struct 名称
-    SemanticTokenType::FUNCTION, // 3 - 函数名
-    SemanticTokenType::VARIABLE, // 4 - 变量（包括参数）
-    SemanticTokenType::NUMBER,   // 5 - 数字字面量
-    SemanticTokenType::COMMENT,  // 6 - 注释
-    SemanticTokenType::OPERATOR, // 7 - 运算符
-    SemanticTokenType::STRING,   // 8 - 字符串
+    SemanticTokenType::KEYWORD,   // 0 - fn, let, if, while 等
+    SemanticTokenType::TYPE,      // 1 - i32, f32, void, 自定义类型
+    SemanticTokenType::STRUCT,    // 2 - struct 名称
+    SemanticTokenType::FUNCTION,  // 3 - 函数名
+    SemanticTokenType::VARIABLE,  // 4 - 变量
+    SemanticTokenType::NUMBER,    // 5 - 数字字面量
+    SemanticTokenType::COMMENT,   // 6 - 注释
+    SemanticTokenType::OPERATOR,  // 7 - 运算符
+    SemanticTokenType::STRING,    // 8 - 字符串
+    SemanticTokenType::PARAMETER, // 9 - 函数参数
 ];
 
 /// 语义 token 修饰符
@@ -201,6 +202,13 @@ fn classify_identifier(
         )
     {
         return (Some(3), 0);
+    }
+
+    // parameter
+    if let Some(node) = token.parent().and_then(|n| n.parent())
+        && matches!(node.kind(), SyntaxKind::FUNC_F_PARAM)
+    {
+        return (Some(9), 1);
     }
 
     // struct

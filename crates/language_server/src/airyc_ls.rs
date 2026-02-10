@@ -17,6 +17,8 @@ pub(crate) struct Backend {
     client: Client,
     /// 项目管理器（使用 RwLock 实现内部可变性）
     project: RwLock<Project>,
+    /// virtul file system
+    vfs: Vfs,
     /// URI 到 FileID 的映射
     uri_to_file_id: DashMap<Uri, FileID>,
     /// FileID 到 URI 的反向映射
@@ -30,6 +32,7 @@ impl Backend {
             project: RwLock::new(Project::default()),
             uri_to_file_id: DashMap::new(),
             file_id_to_uri: DashMap::new(),
+            vfs: Default::default(),
         }
     }
 
@@ -61,12 +64,9 @@ impl Backend {
     fn rebuild_project(&self) {
         let mut project = self.project.write();
 
-        // 获取当前的 Vfs
-        let vfs = std::mem::take(&mut project.vfs);
-
         // 重新初始化 Project
         *project = Project::default();
-        project.full_initialize(vfs);
+        project.full_initialize(&self.vfs);
     }
 
     /// 发布所有文件的诊断信息
@@ -106,9 +106,7 @@ impl Backend {
     }
 
     /// 扫描工作区目录下的所有 .airy 文件
-    fn scan_workspace(&self, root_path: PathBuf) -> Vfs {
-        let vfs = Vfs::default();
-
+    fn scan_workspace(&self, root_path: PathBuf) {
         if let Ok(entries) = std::fs::read_dir(&root_path) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -116,13 +114,10 @@ impl Backend {
                     && path.extension().and_then(|s| s.to_str()) == Some("airy")
                     && let Ok(text) = std::fs::read_to_string(&path)
                 {
-                    tracing::info!("path: {:?}", &path);
-                    vfs.new_file(path, text);
+                    self.vfs.new_file(path, text);
                 }
             }
         }
-
-        vfs
     }
 }
 
@@ -133,10 +128,10 @@ impl LanguageServer for Backend {
             && let Some(uri) = root_uri.first()
             && let Some(root) = uri.uri.to_file_path()
         {
-            let vfs = self.scan_workspace(root.to_path_buf());
+            self.scan_workspace(root.to_path_buf());
 
             // 构建 URI 到 FileID 的映射
-            vfs.for_each_file(|file_id, file| {
+            self.vfs.for_each_file(|file_id, file| {
                 // 将 PathBuf 转换为 file:// URI
                 let path_str = file.path.to_string_lossy();
                 let uri_str = if cfg!(windows) {
@@ -153,7 +148,7 @@ impl LanguageServer for Backend {
 
             // 初始化项目
             let mut project = self.project.write();
-            project.full_initialize(vfs);
+            project.full_initialize(&self.vfs);
         }
 
         Ok(InitializeResult {
@@ -172,21 +167,21 @@ impl LanguageServer for Backend {
                         ..Default::default()
                     },
                 )),
-                semantic_tokens_provider: Some(
-                    SemanticTokensServerCapabilities::SemanticTokensOptions(
-                        SemanticTokensOptions {
-                            legend: SemanticTokensLegend {
-                                token_types: crate::lsp_features::semantic_tokens::LEGEND_TYPE
-                                    .to_vec(),
-                                token_modifiers:
-                                    crate::lsp_features::semantic_tokens::LEGEND_MODIFIER.to_vec(),
-                            },
-                            full: Some(SemanticTokensFullOptions::Bool(true)),
-                            range: None,
-                            ..Default::default()
-                        },
-                    ),
-                ),
+                // semantic_tokens_provider: Some(
+                //     SemanticTokensServerCapabilities::SemanticTokensOptions(
+                //         SemanticTokensOptions {
+                //             legend: SemanticTokensLegend {
+                //                 token_types: crate::lsp_features::semantic_tokens::LEGEND_TYPE
+                //                     .to_vec(),
+                //                 token_modifiers:
+                //                     crate::lsp_features::semantic_tokens::LEGEND_MODIFIER.to_vec(),
+                //             },
+                //             full: Some(SemanticTokensFullOptions::Bool(true)),
+                //             range: None,
+                //             ..Default::default()
+                //         },
+                //     ),
+                // ),
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
@@ -214,7 +209,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
+        let uri = params.text_document.uri;
         let text = params.text_document.text;
 
         // 将 URI 转换为路径
@@ -224,52 +219,39 @@ impl LanguageServer for Backend {
         };
 
         // 检查文件是否已在 Project 中
-        {
-            let project = self.project.read();
-            if let Some(file_id) = self.get_file_id(&uri) {
-                // 文件已存在，更新内容
-                project.vfs.update_file(&file_id, text);
-            } else {
-                // 新文件，添加到 VFS
-                let file_id = project.vfs.new_file(path, text);
-                self.uri_to_file_id.insert(uri.clone(), file_id);
-                self.file_id_to_uri.insert(file_id, uri.clone());
-            }
+        if let Some(file_id) = self.get_file_id(&uri) {
+            // 文件已存在，更新内容
+            self.vfs.update_file(&file_id, text);
+        } else {
+            // 新文件，添加到 VFS
+            let file_id = self.vfs.new_file(path, text);
+            self.uri_to_file_id.insert(uri.clone(), file_id);
+            self.file_id_to_uri.insert(file_id, uri.clone());
         };
 
         // 重新分析整个项目
         self.rebuild_project();
 
         // 发布诊断信息
-        if let Some((diagnostics, uri_clone)) =
-            self.with_module_and_line_index(&uri, |module, line_index| {
-                let diagnostics = lsp_features::diagnostics::compute_diagnostics(
-                    &module.semantic_errors,
-                    line_index,
-                );
-
-                (diagnostics, uri.clone())
-            })
-        {
-            self.client
-                .publish_diagnostics(uri_clone, diagnostics, None)
-                .await;
-        }
+        self.publish_all_diagnostics().await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri.clone();
 
-        if let Some(change) = params.content_changes.first() {
+        if let Some(change) = params.content_changes.into_iter().next() {
             // 获取 FileID
             if let Some(file_id) = self.get_file_id(&uri) {
                 // 更新文件内容
-                let project = self.project.read();
-                project.vfs.update_file(&file_id, change.text.clone());
-                drop(project);
+                self.vfs.update_file(&file_id, change.text);
 
-                // 重新分析整个项目
+                // 假设只改当前文件，可以只重新分析单文件
+                // 但是需要新增切换 watch 的文件时候，全量分析
                 self.rebuild_project();
+            } else {
+                self.client
+                    .log_message(MessageType::ERROR, "expect {uri} in vfs")
+                    .await;
             }
         }
     }
@@ -290,24 +272,24 @@ impl LanguageServer for Backend {
         // 文件关闭时不做处理，保留在 Project 中
     }
 
-    async fn semantic_tokens_full(
-        &self,
-        params: SemanticTokensParams,
-    ) -> Result<Option<SemanticTokensResult>> {
-        let uri = params.text_document.uri;
-
-        let tokens = match self.with_module_and_line_index(&uri, |module, line_index| {
-            lsp_features::semantic_tokens::compute_semantic_tokens(module, line_index)
-        }) {
-            Some(t) => t,
-            None => return Ok(None),
-        };
-
-        Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
-            result_id: None,
-            data: tokens,
-        })))
-    }
+    // async fn semantic_tokens_full(
+    //     &self,
+    //     params: SemanticTokensParams,
+    // ) -> Result<Option<SemanticTokensResult>> {
+    //     let uri = params.text_document.uri;
+    //
+    //     let tokens = match self.with_module_and_line_index(&uri, |module, line_index| {
+    //         lsp_features::semantic_tokens::compute_semantic_tokens(module, line_index)
+    //     }) {
+    //         Some(t) => t,
+    //         None => return Ok(None),
+    //     };
+    //
+    //     Ok(Some(SemanticTokensResult::Tokens(SemanticTokens {
+    //         result_id: None,
+    //         data: tokens,
+    //     })))
+    // }
 
     async fn goto_definition(
         &self,

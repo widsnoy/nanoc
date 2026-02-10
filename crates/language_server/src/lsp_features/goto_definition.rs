@@ -48,8 +48,6 @@ where
             }
         };
 
-        tracing::info!("aaa: target_uri");
-
         if let Some(range) = range {
             // 获取目标文件的 URI 和 LineIndex
             let target_uri = if target_file_id == module.file_id {
@@ -59,12 +57,6 @@ where
             };
 
             let target_line_index = project.line_indexes.get(&target_file_id)?;
-
-            tracing::info!(
-                "aaabb: {:?}, {:?}",
-                &target_uri,
-                text_range_to_ls_range(target_line_index, range)
-            );
 
             return Some(GotoDefinitionResponse::Scalar(Location::new(
                 target_uri,
