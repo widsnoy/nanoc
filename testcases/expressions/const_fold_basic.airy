@@ -1,0 +1,48 @@
+// 测试基础常量折叠优化
+
+// 测试 1: 字面量表达式
+fn test_literal() -> i32 {
+    return 1 + 2 * 3;
+}
+
+// 测试 2: const 变量引用
+fn test_const_var() -> i32 {
+    let x: const i32 = 42;
+    return x;
+}
+
+// 测试 3: const 变量在表达式中
+fn test_const_expr() -> i32 {
+    let x: const i32 = 10;
+    let y: const i32 = 20;
+    return x + y * 2;
+}
+
+// 测试 4: 括号表达式
+fn test_paren() -> i32 {
+    return (1 + 2) * (3 + 4);
+}
+
+// 测试 5: 一元表达式
+fn test_unary() -> i32 {
+    let x: const i32 = 10;
+    return -x + 5;
+}
+
+// 测试 6: 比较表达式
+fn test_compare() -> i32 {
+    let x: const i32 = 10;
+    let y: const i32 = 20;
+    return x < y;
+}
+
+// 测试 7: 逻辑表达式
+fn test_logic() -> i32 {
+    return (1 > 0) && (2 < 3);
+}
+
+fn main() -> i32 {
+    let result: i32 = test_literal() + test_const_var() + test_const_expr() 
+                    + test_paren() + test_unary() + test_compare() + test_logic();
+    return result;
+}

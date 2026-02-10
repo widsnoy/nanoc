@@ -9,6 +9,17 @@ use crate::llvm_ir::Program;
 
 impl<'a, 'ctx> Program<'a, 'ctx> {
     pub(crate) fn compile_expr(&mut self, expr: Expr) -> Result<BasicValueEnum<'ctx>> {
+        // 优先检查是否为编译时常量
+        let range = expr.text_range();
+        if self.analyzer.is_compile_time_constant(range) {
+            // 获取表达式类型以正确转换 Array/Struct
+            let ty = self
+                .analyzer
+                .get_expr_type(range)
+                .and_then(|nty| self.convert_ntype_to_type(nty).ok());
+            return self.get_const_var_value_by_range(range, ty);
+        }
+
         match expr {
             Expr::BinaryExpr(e) => self.compile_binary_expr(e),
             Expr::UnaryExpr(e) => self.compile_unary_expr(e),

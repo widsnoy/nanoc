@@ -9,7 +9,7 @@ dependencies = ["build-compiler", "build-runtime"]
 
 [tasks.build-compiler]
 command = "cargo"
-args = ["build", "--bin", "airyc-compiler"]
+args = ["build", "--bin", "airyc-cli"]
 
 [tasks.build-runtime]
 command = "cargo"
@@ -29,7 +29,7 @@ args = [
     "--exclude",
     "performance",
     "--compiler",
-    "./target/debug/airyc-compiler",
+    "./target/debug/airyc-cli",
     "--runtime",
     "./target/debug/libruntime.a",
     "--timeout",

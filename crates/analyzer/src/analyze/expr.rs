@@ -402,8 +402,7 @@ impl ExprVisitor for Module {
             self.new_reference(member_range, ReferenceTag::FieldRead(field_id));
 
             // 常量处理：如果基础表达式是常量 struct，提取字段值
-            if let Some(Value::Struct(_struct_id, field_values)) =
-                self.value_table.get(&base_range).cloned()
+            if let Some(Value::Struct(_, field_values)) = self.value_table.get(&base_range).cloned()
                 && let Some(field_idx) = struct_def.field_index(self, &member_name)
                 && let Some(field_value) = field_values.get(field_idx as usize)
             {

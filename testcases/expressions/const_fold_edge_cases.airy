@@ -1,0 +1,47 @@
+// 测试边界情况
+
+// 测试 1: const 变量取地址
+fn test_address_of() -> i32 {
+    let x: const i32 = 42;
+    let p: *const i32 = &x;
+    return *p;
+}
+
+// 测试 2: 混合 const 和非 const
+fn test_mixed() -> i32 {
+    let a: const i32 = 5;
+    let b: i32 = 10;
+    return a + b;
+}
+
+// 测试 3: const 变量在多处使用
+fn test_multiple_use() -> i32 {
+    let x: const i32 = 10;
+    let y: i32 = x + x;
+    return y + x;
+}
+
+// 测试 4: 嵌套表达式
+fn test_nested() -> i32 {
+    let a: const i32 = 2;
+    let b: const i32 = 3;
+    let c: const i32 = 4;
+    return (a + b) * (c - a);
+}
+
+// 测试 5: const 变量作为函数参数
+fn add(x: i32, y: i32) -> i32 {
+    return x + y;
+}
+
+fn test_func_arg() -> i32 {
+    let a: const i32 = 10;
+    let b: const i32 = 20;
+    return add(a, b);
+}
+
+fn main() -> i32 {
+    let result: i32 = test_address_of() + test_mixed() + test_multiple_use() 
+                    + test_nested() + test_func_arg();
+    return result;
+}
