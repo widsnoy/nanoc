@@ -74,19 +74,29 @@ impl RecursiveTypeChecker {
         self.timestamp = 0;
 
         let mut sccs = Vec::new();
+        let mut self_loop = HashSet::new();
 
         let nodes: Vec<StructID> = self.edge.keys().copied().collect();
 
         for node in nodes {
             if !self.dfn.contains_key(&node) {
-                self.dfs(node, &mut sccs);
+                self.dfs(node, &mut sccs, &mut self_loop);
             }
+        }
+
+        for u in self_loop {
+            sccs.push(vec![u]);
         }
 
         sccs
     }
 
-    fn dfs(&mut self, u: StructID, sccs: &mut Vec<Vec<StructID>>) {
+    fn dfs(
+        &mut self,
+        u: StructID,
+        sccs: &mut Vec<Vec<StructID>>,
+        self_loop: &mut HashSet<StructID>,
+    ) {
         self.timestamp += 1;
         self.dfn.insert(u, self.timestamp);
         self.low.insert(u, self.timestamp);
@@ -96,9 +106,12 @@ impl RecursiveTypeChecker {
 
         if let Some(neighbors) = self.edge.get(&u).cloned() {
             for v in neighbors {
+                if u == v {
+                    self_loop.insert(u);
+                }
                 if !self.dfn.contains_key(&v) {
                     // 未访问过，递归访问
-                    self.dfs(v, sccs);
+                    self.dfs(v, sccs, self_loop);
                     // 更新 low[u]
                     let low_v = *self.low.get(&v).unwrap();
                     let low_u = self.low.get_mut(&u).unwrap();
