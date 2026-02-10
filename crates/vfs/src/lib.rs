@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use thunderdome::{Arena, Index};
+use tools::LineIndex;
 
 /// 虚拟文件系统，支持并发访问
 #[derive(Debug)]
@@ -32,16 +33,22 @@ impl Default for Vfs {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct VirtulFile {
     /// 文件的绝对路径
     pub path: PathBuf,
     pub text: String,
+    pub line_index: LineIndex,
 }
 
 impl VirtulFile {
     pub fn new(path: PathBuf, text: String) -> Self {
-        Self { path, text }
+        let line_index = LineIndex::from_text(&text);
+        Self {
+            path,
+            text,
+            line_index,
+        }
     }
 }
 
@@ -149,6 +156,7 @@ impl Vfs {
     pub fn update_file(&self, file_id: &FileID, text: String) -> bool {
         let mut inner = self.inner.write();
         if let Some(file) = inner.files.get_mut(**file_id) {
+            file.line_index = LineIndex::from_text(&text);
             file.text = text;
             true
         } else {

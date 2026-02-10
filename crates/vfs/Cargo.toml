@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 utils.workspace = true
+tools.workspace = true
 
 thunderdome.workspace = true
 parking_lot.workspace = true

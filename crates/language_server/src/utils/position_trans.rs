@@ -7,11 +7,6 @@ pub(crate) fn ls_position_to_offset(line_index: &LineIndex, pos: &Position) -> u
     line_index.get_offset(pos.line, pos.character)
 }
 
-pub(crate) fn ls_position_to_range(line_index: &LineIndex, pos: &Position) -> TextRange {
-    let p = ls_position_to_offset(line_index, pos);
-    TextRange::new(p, p + 1)
-}
-
 pub(crate) fn offset_to_ls_position(line_index: &LineIndex, offset: u32) -> Position {
     let (r, c) = line_index.get_row_column(offset);
     Position::new(r, c)

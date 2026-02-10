@@ -1,17 +1,14 @@
-use std::fs;
-
-use clap::Parser;
-
 mod analyzing;
 mod cli;
 mod compiling;
 mod error;
 mod linking;
-mod parsing;
 
-use syntax::SyntaxNode;
+use std::fs;
 
+use clap::Parser;
 use cli::{Args, EmitTarget};
+use syntax::SyntaxNode;
 use vfs::Vfs;
 
 use crate::compiling::{compile_project_to_object_bytes, compile_to_ir_file};
@@ -42,13 +39,8 @@ fn main() {
             }
         };
 
-        let green_node = match parsing::parse(input_path, input) {
-            Ok(result) => result,
-            Err(e) => {
-                e.report(vfs);
-                std::process::exit(1);
-            }
-        };
+        let parser = parser::parse::Parser::new(&input);
+        let (green_node, _) = parser.parse();
 
         println!("{:#?}", SyntaxNode::new_root(green_node));
         return;

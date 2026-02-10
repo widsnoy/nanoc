@@ -1,7 +1,6 @@
 use analyzer::{module::Module, project::Project};
-use tools::LineIndex;
 use tower_lsp_server::ls_types::{GotoDefinitionResponse, Location, Position, Uri};
-use vfs::FileID;
+use vfs::{FileID, Vfs};
 
 use crate::utils::get_at_position::{get_function_id_at_position, get_struct_id_at_position};
 use crate::utils::{
@@ -12,14 +11,17 @@ use crate::utils::{
 pub(crate) fn goto_definition<F>(
     source_uri: Uri,
     pos: Position,
-    line_index: &LineIndex,
     module: &Module,
-    project: &Project,
+    _project: &Project,
+    vfs: &Vfs,
     get_uri_by_file_id: F,
 ) -> Option<GotoDefinitionResponse>
 where
     F: Fn(FileID) -> Option<Uri>,
 {
+    // 获取当前文件的 line_index
+    let line_index = &vfs.get_file_by_file_id(&module.file_id)?.line_index;
+
     // 先找是不是分析好的引用
     if let Some(ref_id) = get_reference_id_at_position(module, line_index, &pos)
         && let Some(refer) = module.get_reference_by_id(*ref_id)
@@ -56,7 +58,7 @@ where
                 get_uri_by_file_id(target_file_id)?
             };
 
-            let target_line_index = project.line_indexes.get(&target_file_id)?;
+            let target_line_index = &vfs.get_file_by_file_id(&target_file_id)?.line_index;
 
             return Some(GotoDefinitionResponse::Scalar(Location::new(
                 target_uri,
@@ -85,7 +87,7 @@ where
             get_uri_by_file_id(func_id.module)?
         };
 
-        let target_line_index = project.line_indexes.get(&func_id.module)?;
+        let target_line_index = &vfs.get_file_by_file_id(&func_id.module)?.line_index;
 
         return Some(GotoDefinitionResponse::Scalar(Location::new(
             target_uri,
@@ -103,7 +105,7 @@ where
             get_uri_by_file_id(struct_id.module)?
         };
 
-        let target_line_index = project.line_indexes.get(&struct_id.module)?;
+        let target_line_index = &vfs.get_file_by_file_id(&struct_id.module)?.line_index;
 
         return Some(GotoDefinitionResponse::Scalar(Location::new(
             target_uri,

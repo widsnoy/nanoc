@@ -55,7 +55,8 @@ impl Backend {
         let project = self.project.read();
 
         let module = project.modules.get(&file_id)?;
-        let line_index = project.line_indexes.get(&file_id)?;
+        let file = self.vfs.get_file_by_file_id(&file_id)?;
+        let line_index = &file.line_index;
 
         Some(f(module, line_index))
     }
@@ -83,11 +84,11 @@ impl Backend {
                 let file_id = *entry.value();
 
                 if let Some(module) = project.modules.get(&file_id)
-                    && let Some(line_index) = project.line_indexes.get(&file_id)
+                    && let Some(file) = self.vfs.get_file_by_file_id(&file_id)
                 {
                     let diagnostics = lsp_features::diagnostics::compute_diagnostics(
                         &module.semantic_errors,
-                        line_index,
+                        &file.line_index,
                     );
 
                     result.push((uri, diagnostics));
@@ -269,7 +270,11 @@ impl LanguageServer for Backend {
     }
 
     async fn did_close(&self, _params: DidCloseTextDocumentParams) {
-        // 文件关闭时不做处理，保留在 Project 中
+        // FIXME: 文件关闭时不做处理，保留在 Project 中
+    }
+
+    async fn did_change_watched_files(&self, _params: DidChangeWatchedFilesParams) {
+        // TODO
     }
 
     // async fn semantic_tokens_full(
@@ -308,17 +313,13 @@ impl LanguageServer for Backend {
             Some(m) => m,
             None => return Ok(None),
         };
-        let line_index = match project.line_indexes.get(&file_id) {
-            Some(li) => li,
-            None => return Ok(None),
-        };
 
         Ok(lsp_features::goto_definition::goto_definition(
             uri,
             position,
-            line_index,
             module,
             &project,
+            &self.vfs,
             |file_id| self.get_uri_by_file_id(file_id),
         ))
     }
@@ -337,17 +338,13 @@ impl LanguageServer for Backend {
             Some(m) => m,
             None => return Ok(None),
         };
-        let line_index = match project.line_indexes.get(&file_id) {
-            Some(li) => li,
-            None => return Ok(None),
-        };
 
         Ok(lsp_features::references::get_references(
             uri,
             position,
-            line_index,
             module,
             &project,
+            &self.vfs,
             |file_id| self.get_uri_by_file_id(file_id),
         ))
     }

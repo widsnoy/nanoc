@@ -5,7 +5,6 @@ use syntax::{
     AstNode as _, SyntaxNode,
     ast::{FuncDef, StructDef},
 };
-use tools::LineIndex;
 use vfs::{FileID, Vfs};
 
 use crate::{
@@ -17,7 +16,6 @@ use crate::{
 #[derive(Debug)]
 pub struct Project {
     pub modules: HashMap<FileID, Module>,
-    pub line_indexes: HashMap<FileID, LineIndex>,
     pub metadata: Arc<HashMap<FileID, ThinModule>>,
 }
 
@@ -25,7 +23,6 @@ impl Default for Project {
     fn default() -> Self {
         Self {
             modules: HashMap::new(),
-            line_indexes: HashMap::new(),
             metadata: Arc::new(HashMap::new()),
         }
     }
@@ -37,15 +34,6 @@ impl Project {
         // 初始化所有 module，语法分析
         vfs.for_each_file(|file_id, file| {
             let parser = Parser::new(&file.text);
-            let line_index = LineIndex::new(
-                parser
-                    .lexer
-                    .get_tokens()
-                    .iter()
-                    .filter(|(kind, _, _)| *kind == syntax::SyntaxKind::NEWLINE)
-                    .map(|(_, _, r)| r.end().into())
-                    .collect::<Vec<u32>>(),
-            );
             let (green_tree, errors) = parser.parse();
 
             let mut module = Module::new(green_tree.clone());
@@ -59,7 +47,6 @@ impl Project {
             Self::allocate_module_symbols(&mut module);
 
             self.modules.insert(file_id, module);
-            self.line_indexes.insert(file_id, line_index);
         });
 
         // 分析头文件

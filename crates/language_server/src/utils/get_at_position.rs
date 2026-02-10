@@ -1,13 +1,13 @@
 use analyzer::module::{FunctionID, Module, ReferenceID, ScopeID, StructID, VariableID};
 use rowan::TextSize;
 use syntax::{
-    AstNode, SyntaxNode,
+    AstNode, SyntaxNode, SyntaxToken,
     ast::{FuncSign, PrimitType},
 };
 use tools::{LineIndex, TextRange};
 use tower_lsp_server::ls_types::Position;
 
-use crate::utils::position_trans::{ls_position_to_offset, ls_position_to_range};
+use crate::utils::position_trans::ls_position_to_offset;
 
 pub fn get_reference_id_at_position<'a>(
     module: &'a Module,
@@ -51,8 +51,8 @@ pub fn get_function_id_at_position(
     pos: &Position,
 ) -> Option<FunctionID> {
     let root = SyntaxNode::new_root(module.green_tree.clone());
-    let range = ls_position_to_range(line_index, pos);
-    let token = root.covering_element(*range);
+    let offset = ls_position_to_offset(line_index, pos);
+    let token = get_token_at_offset(&root, offset)?;
 
     if let Some(node) = token.parent().and_then(|n| n.parent())
         && let Some(func_signature) = FuncSign::cast(node)
@@ -70,8 +70,8 @@ pub fn get_struct_id_at_position(
     pos: &Position,
 ) -> Option<StructID> {
     let root = SyntaxNode::new_root(module.green_tree.clone());
-    let range = ls_position_to_range(line_index, pos);
-    let token = root.covering_element(*range);
+    let offset = ls_position_to_offset(line_index, pos);
+    let token = get_token_at_offset(&root, offset)?;
     if let Some(node) = token.parent().and_then(|x| x.parent())
         && let Some(primitive_type_node) = PrimitType::cast(node)
         && primitive_type_node.struct_token().is_some()
@@ -103,4 +103,13 @@ pub fn _get_scope_id_at_position(
     }
 
     scope_id
+}
+
+/// 包装 `rowan::token_at_offset`
+pub fn get_token_at_offset(root: &SyntaxNode, offset: u32) -> Option<SyntaxToken> {
+    match root.token_at_offset(TextSize::new(offset)) {
+        rowan::TokenAtOffset::None => None,
+        rowan::TokenAtOffset::Single(t) => Some(t),
+        rowan::TokenAtOffset::Between(t, _) => Some(t),
+    }
 }

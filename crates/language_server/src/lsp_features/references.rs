@@ -1,7 +1,6 @@
 use analyzer::{module::Module, project::Project};
-use tools::LineIndex;
 use tower_lsp_server::ls_types::{Location, Position, Uri};
-use vfs::FileID;
+use vfs::{FileID, Vfs};
 
 use crate::utils::{
     get_at_position::{get_function_id_at_position, get_variable_id_at_position},
@@ -11,14 +10,16 @@ use crate::utils::{
 pub(crate) fn get_references<F>(
     source_uri: Uri,
     pos: Position,
-    line_index: &LineIndex,
     module: &Module,
-    project: &Project,
+    _project: &Project,
+    vfs: &Vfs,
     get_uri_by_file_id: F,
 ) -> Option<Vec<Location>>
 where
     F: Fn(FileID) -> Option<Uri>,
 {
+    // 获取当前文件的 line_index
+    let line_index = &vfs.get_file_by_file_id(&module.file_id)?.line_index;
     if let Some(var_id) = get_variable_id_at_position(module, line_index, &pos) {
         let refer_list = module.index.variable_reference.get(var_id)?;
         return Some(
@@ -33,7 +34,8 @@ where
                     };
 
                     // 获取引用所在文件的 LineIndex
-                    let target_line_index = project.line_indexes.get(&citer_info.file_id)?;
+                    let target_line_index =
+                        &vfs.get_file_by_file_id(&citer_info.file_id)?.line_index;
 
                     Some(Location::new(
                         target_uri,
@@ -58,7 +60,8 @@ where
                     };
 
                     // 获取引用所在文件的 LineIndex
-                    let target_line_index = project.line_indexes.get(&citer_info.file_id)?;
+                    let target_line_index =
+                        &vfs.get_file_by_file_id(&citer_info.file_id)?.line_index;
 
                     Some(Location::new(
                         target_uri,
