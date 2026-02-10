@@ -40,12 +40,13 @@ pub fn link_multiple_objects(
     }
     cmd.arg(runtime_path).arg("-o").arg(&output_path);
 
-    let status = cmd
-        .status()
+    let output = cmd
+        .output()
         .map_err(|e| CompilerError::Link(e.to_string()))?;
 
-    if !status.success() {
-        return Err(CompilerError::LinkerFailed);
+    if !output.status.success() {
+        let std_err = String::from_utf8_lossy(&output.stderr);
+        return Err(CompilerError::Link(std_err.into_owned()));
     }
 
     // 删除临时目标文件

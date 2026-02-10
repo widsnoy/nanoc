@@ -22,12 +22,6 @@ pub enum CompilerError {
 
     #[error("link failed: {0}")]
     Link(String),
-
-    #[error("linker returned non-zero status")]
-    LinkerFailed,
-
-    #[error("invalid path: {0}")]
-    InvalidPath(#[from] std::path::StripPrefixError),
 }
 
 impl CompilerError {
