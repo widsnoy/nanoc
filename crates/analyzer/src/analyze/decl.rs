@@ -62,6 +62,22 @@ impl DeclVisitor for Module {
         struct_def.fields = field_list;
     }
 
+    fn leave_init_val(&mut self, node: InitVal) {
+        if let Some(expr) = node.expr() {
+            let expr_range = expr.text_range();
+            let node_range = node.text_range();
+            if expr_range != node_range {
+                if let Some(ty) = self.get_expr_type(expr_range).cloned() {
+                    self.set_expr_type(node_range, ty)
+                }
+                self.value_table
+                    .get(&expr_range)
+                    .cloned()
+                    .and_then(|v| self.value_table.insert(node_range, v));
+            }
+        }
+    }
+
     fn leave_var_def(&mut self, def: VarDef) {
         let Some((var_name, var_range)) =
             def.name().and_then(|n| utils::extract_name_and_range(&n))
