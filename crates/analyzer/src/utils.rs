@@ -341,15 +341,6 @@ impl Module {
 
     /// 检查 UnaryExpr（解引用 *ptr）是否可赋值（检测 const 并报错）
     fn check_unary_assignable(&mut self, node: &UnaryExpr) -> bool {
-        let Some(op) = node.op() else {
-            return true;
-        };
-
-        // 只检查解引用操作
-        if op.op().kind() != SyntaxKind::STAR {
-            return true;
-        }
-
         let Some(expr_ty) = self.get_expr_type(node.text_range()) else {
             return false;
         };

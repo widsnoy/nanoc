@@ -44,6 +44,7 @@ impl Project {
                     .push(crate::error::SemanticError::ParserError(e))
             });
 
+            // 收集符号并分配 ID
             Self::allocate_module_symbols(&mut module);
 
             self.modules.insert(file_id, module);
@@ -139,6 +140,14 @@ impl Project {
                     .and_then(|n| n.name())
                     .and_then(|n| utils::extract_name_and_range(&n))
                 {
+                    if module.function_map.contains_key(&name) {
+                        module.new_error(crate::error::SemanticError::FunctionDefined {
+                            name,
+                            range,
+                        });
+                        continue;
+                    }
+
                     let func_id = module.new_function(
                         name.clone(),
                         vec![],
@@ -154,6 +163,10 @@ impl Project {
                     .name()
                     .and_then(|n| utils::extract_name_and_range(&n))
             {
+                if module.struct_map.contains_key(&name) {
+                    module.new_error(crate::error::SemanticError::StructDefined { name, range });
+                    continue;
+                }
                 let struct_id = module.new_struct(name.clone(), vec![], range);
                 module.struct_map.insert(name, struct_id);
             }
