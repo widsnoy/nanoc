@@ -24,6 +24,8 @@ impl ProjectChecker for RecursiveTypeChecker {
         // 使用 Tarjan 算法找出所有强连通分量
         let sccs = self.tarjan();
 
+        dbg!(&sccs);
+
         // 生成错误信息
         self.generate_errors(sccs, modules)
     }

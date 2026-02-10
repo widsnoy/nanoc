@@ -101,7 +101,7 @@ export function activate(context: vscode.ExtensionContext) {
     }).catch((error) => {
         outputChannel.appendLine(`Error starting server: ${error.message}`);
         vscode.window.showErrorMessage(
-            `Failed to start Airyc language server: ${error.message}`
+            `Failed to start airyc language server: ${error.message}`
         );
     });
 

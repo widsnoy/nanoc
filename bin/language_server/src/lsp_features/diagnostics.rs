@@ -14,13 +14,25 @@ pub fn compute_diagnostics(errors: &[AnalyzeError], line_index: &LineIndex) -> V
 
 /// 将单个错误转换为 LSP Diagnostic
 fn error_to_diagnostic(error: &AnalyzeError, line_index: &LineIndex) -> Option<Diagnostic> {
-    let message = error.to_string();
+    let mut message = error.to_string();
+
+    if let Some(help) = error.help() {
+        message = format!("{}\nhelp: {}", message, help)
+    }
+
     let code = error.code().map(|c| c.to_string());
     let range = text_range_to_ls_range(line_index, *error.range());
-
+    let severity = match error.severity() {
+        Some(e) => match e {
+            miette::Severity::Advice => DiagnosticSeverity::HINT,
+            miette::Severity::Warning => DiagnosticSeverity::WARNING,
+            miette::Severity::Error => DiagnosticSeverity::ERROR,
+        },
+        None => DiagnosticSeverity::ERROR,
+    };
     Some(Diagnostic {
         range,
-        severity: Some(DiagnosticSeverity::ERROR),
+        severity: Some(severity),
         code: code.map(NumberOrString::String),
         message,
         source: None,

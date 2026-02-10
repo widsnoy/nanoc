@@ -28,9 +28,10 @@ pub(crate) struct Backend {
 
 impl Backend {
     pub fn new(client: Client) -> Self {
+        let project = Project::new().with_checker::<RecursiveTypeChecker>();
         Self {
             client,
-            project: RwLock::new(Project::new().with_checker::<RecursiveTypeChecker>()),
+            project: RwLock::new(project),
             uri_to_file_id: DashMap::new(),
             file_id_to_uri: DashMap::new(),
             vfs: Default::default(),
@@ -65,9 +66,6 @@ impl Backend {
     /// 重新构建整个项目
     fn rebuild_project(&self) {
         let mut project = self.project.write();
-
-        // 重新初始化 Project
-        *project = Project::default();
         project.full_initialize(&self.vfs);
     }
 

@@ -33,6 +33,9 @@ impl Project {
 
     /// 全量初始化
     pub fn full_initialize(&mut self, vfs: &Vfs) {
+        self.modules.clear();
+        self.metadata = Default::default();
+
         // 初始化所有 module，语法分析
         vfs.for_each_file(|file_id, file| {
             let parser = Parser::new(&file.text);
