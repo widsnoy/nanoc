@@ -12,7 +12,7 @@ fn main() -> i32 {
   n2.next = &n3;
 
   n3.value = 30;
-  n3.next = 0;
+  n3.next = null;
 
   let sum: i32 = 0;
   let current: *mut struct Node = &n1;

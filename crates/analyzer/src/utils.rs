@@ -230,6 +230,18 @@ impl Module {
                     });
                 };
                 let expr_range = expr.text_range();
+                
+                // 检查表达式类型是否与字段类型匹配
+                if let Some(expr_ty) = self.get_expr_type(expr_range) {
+                    if !field_ty.assign_to_me_is_ok(expr_ty) {
+                        return Err(AnalyzeError::TypeMismatch {
+                            expected: field_ty.clone(),
+                            found: expr_ty.clone(),
+                            range: utils::trim_node_text_range(&init_val_node),
+                        });
+                    }
+                }
+                
                 Ok(self.value_table.get(&expr_range).cloned())
             }
 

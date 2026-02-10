@@ -155,6 +155,20 @@ impl DeclVisitor for Module {
                 }
             }
 
+            // 对于标量类型（非数组、非结构体），需要检查表达式类型
+            if !var_type.is_array() && !var_type.is_struct() {
+                if let Some(expr_ty) = self.get_expr_type(expr_range) {
+                    if !var_type.assign_to_me_is_ok(expr_ty) {
+                        self.new_error(AnalyzeError::TypeMismatch {
+                            expected: var_type.clone(),
+                            found: expr_ty.clone(),
+                            range: init_range_trimmed,
+                        });
+                        return;
+                    }
+                }
+            }
+
             match self.value_table.get(&expr_range) {
                 Some(v) => {
                     // 如果是 const ，给变量设置一下初值

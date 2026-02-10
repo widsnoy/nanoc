@@ -89,6 +89,15 @@ pub enum ArrayInitError {
     #[error("Struct initialization error: {0}")]
     #[diagnostic(code(array::initial_struct_value))]
     InitialStructValue(#[from] AnalyzeError),
+
+    #[error("type mismatch in array initialization: expected {expected}, found {found}")]
+    #[diagnostic(code(array::type_mismatch))]
+    TypeMismatch {
+        expected: NType,
+        found: NType,
+        #[label("here")]
+        range: TextRange,
+    },
 }
 
 impl ArrayTree {
@@ -120,6 +129,18 @@ impl ArrayTree {
                 let Some(u) = cursor else { unreachable!() };
                 if let Some(expr) = u.try_expr() {
                     let range = u.text_range();
+
+                    // 检查表达式类型是否与数组元素类型匹配
+                    if let Some(expr_ty) = m.get_expr_type(range) {
+                        if !ty.assign_to_me_is_ok(expr_ty) {
+                            return Err(ArrayInitError::TypeMismatch {
+                                expected: ty.clone(),
+                                found: expr_ty.clone(),
+                                range,
+                            });
+                        }
+                    }
+
                     *is_const &= m.value_table.contains_key(&range);
                     *cursor = u.next_sibling();
                     return Ok(ArrayTree::Val(expr));
