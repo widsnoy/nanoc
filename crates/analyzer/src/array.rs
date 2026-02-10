@@ -92,7 +92,7 @@ pub enum ArrayInitError {
     #[diagnostic(code(array::initial_struct_value))]
     InitialStructValue(#[from] AnalyzeError),
 
-    #[error("type mismatch in array initialization: expected {expected:?}, found {found}")]
+    #[error("expected {expected}, found {found}")]
     #[diagnostic(code(array::type_mismatch))]
     TypeMismatch {
         expected: NType,
