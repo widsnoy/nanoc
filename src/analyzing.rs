@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use analyzer::project::Project;
+use analyzer::{checker::RecursiveTypeChecker, project::Project};
 use vfs::Vfs;
 
 use crate::error::{CompilerError, Result};
@@ -17,7 +17,7 @@ pub fn analyze_project(input_paths: &[PathBuf], vfs: &Vfs) -> Result<Project> {
     }
 
     // 初始化并分析项目
-    let mut project = Project::default();
+    let mut project = Project::new().with_checker::<RecursiveTypeChecker>();
     project.full_initialize(vfs);
 
     // 按文件收集错误

@@ -21,7 +21,7 @@ function getTraceLevel(): Trace {
     const traceSettingValue = vscode.workspace
         .getConfiguration('airyc')
         .get<string>('trace.server') || 'off';
-    return traceMap[traceSettingValue] || Trace.Messages;
+    return traceMap[traceSettingValue] || Trace.Off;
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -37,8 +37,8 @@ export function activate(context: vscode.ExtensionContext) {
     const debugServerPath = path.join(context.extensionPath, 'server', platform, 'debug', executableName);
     const releaseServerPath = path.join(context.extensionPath, 'server', platform, 'release', executableName);
 
-    // AIRYC_LS_LOG_LEVEL 可以在 launch.json 中设置
-    const logLevel = process.env.AIRYC_LS_LOG_LEVEL || 'info';
+    // RUST_LOG 可以在 launch.json 中设置
+    const logLevel = process.env.RUST_LOG || 'info';
     outputChannel.appendLine(`Log level: ${logLevel}`);
 
     // 配置服务器选项

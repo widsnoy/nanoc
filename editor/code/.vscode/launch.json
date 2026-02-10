@@ -13,7 +13,7 @@
       ],
       "preLaunchTask": "dev:linux:debug",
       "env": {
-        "AIRYC_LS_LOG_LEVEL": "debug"
+        "RUST_LOG": "debug"
       },
       "presentation": {
         "group": "dev",
@@ -32,7 +32,7 @@
       ],
       "preLaunchTask": "dev:linux:release",
       "env": {
-        "AIRYC_LS_LOG_LEVEL": "info"
+        "RUST_LOG": "info"
       },
       "presentation": {
         "group": "dev",
@@ -51,7 +51,7 @@
       ],
       "preLaunchTask": "dev:windows:debug",
       "env": {
-        "AIRYC_LS_LOG_LEVEL": "debug"
+        "RUST_LOG": "debug"
       },
       "presentation": {
         "group": "dev",
@@ -70,7 +70,7 @@
       ],
       "preLaunchTask": "dev:windows:release",
       "env": {
-        "AIRYC_LS_LOG_LEVEL": "info"
+        "RUST_LOG": "info"
       },
       "presentation": {
         "group": "dev",

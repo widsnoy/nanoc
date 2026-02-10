@@ -8,27 +8,29 @@ use syntax::{
 use vfs::{FileID, Vfs};
 
 use crate::{
+    checker::ProjectChecker,
     header::HeaderAnalyzer,
     module::{CiterInfo, Field, FieldID, Module, ModuleIndex, ThinModule},
     r#type::NType,
 };
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Project {
     pub modules: HashMap<FileID, Module>,
     pub metadata: Arc<HashMap<FileID, ThinModule>>,
-}
-
-impl Default for Project {
-    fn default() -> Self {
-        Self {
-            modules: HashMap::new(),
-            metadata: Arc::new(HashMap::new()),
-        }
-    }
+    pub(crate) checker: Vec<Box<dyn ProjectChecker>>,
 }
 
 impl Project {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_checker<T: ProjectChecker + Default + 'static>(mut self) -> Self {
+        self.checker.push(Box::new(T::default()));
+        self
+    }
+
     /// 全量初始化
     pub fn full_initialize(&mut self, vfs: &Vfs) {
         // 初始化所有 module，语法分析
@@ -127,6 +129,16 @@ impl Project {
         for (file_id, module) in &mut self.modules {
             module.index = temp.remove(file_id).unwrap_or_default();
             module.metadata = Some(Arc::clone(&self.metadata));
+        }
+
+        // checker
+        for check in &mut self.checker {
+            let result = check.check_project(&self.modules);
+            for (file_id, errors) in result {
+                if let Some(module) = self.modules.get_mut(&file_id) {
+                    module.semantic_errors.extend(errors);
+                }
+            }
         }
     }
 

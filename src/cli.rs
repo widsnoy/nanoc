@@ -4,7 +4,7 @@ use clap::{Parser, ValueEnum};
 
 /// airyc 编译器命令行参数
 #[derive(Parser, Debug)]
-#[command(name = "airyc cli", version = "0.0.1", about = "airyc compiler")]
+#[command(name = "airyc-cli", version = "0.0.1", about = "airyc-lang cli tool")]
 pub struct Args {
     /// source file(s) (.airy) path - can specify multiple files
     #[arg(short, long, num_args = 1..)]

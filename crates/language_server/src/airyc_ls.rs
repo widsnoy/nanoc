@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use analyzer::checker::RecursiveTypeChecker;
 use analyzer::project::Project;
 use dashmap::DashMap;
 use parking_lot::RwLock;
@@ -29,7 +30,7 @@ impl Backend {
     pub fn new(client: Client) -> Self {
         Self {
             client,
-            project: RwLock::new(Project::default()),
+            project: RwLock::new(Project::new().with_checker::<RecursiveTypeChecker>()),
             uri_to_file_id: DashMap::new(),
             file_id_to_uri: DashMap::new(),
             vfs: Default::default(),

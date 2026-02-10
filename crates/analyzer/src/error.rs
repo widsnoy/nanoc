@@ -248,6 +248,18 @@ pub enum AnalyzeError {
         #[label("imported symbol conflicts with this definition")]
         range: TextRange,
     },
+
+    #[error("recursive type `{struct_name}` has infinite size")]
+    #[diagnostic(
+        code(recursive_type),
+        help("{}", cycle.join("->") )
+    )]
+    RecursiveType {
+        struct_name: String,
+        cycle: Vec<String>,
+        #[label("here")]
+        range: TextRange,
+    },
 }
 
 impl AnalyzeError {
@@ -283,7 +295,8 @@ impl AnalyzeError {
             | Self::CircularDependency { range }
             | Self::ImportPathNotFound { range, .. }
             | Self::ImportSymbolNotFound { range, .. }
-            | Self::ImportSymbolConflict { range, .. } => range,
+            | Self::ImportSymbolConflict { range, .. }
+            | Self::RecursiveType { range, .. } => range,
         }
     }
 }

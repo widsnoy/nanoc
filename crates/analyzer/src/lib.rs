@@ -1,5 +1,6 @@
 pub mod analyze;
 pub mod array;
+pub mod checker;
 pub mod error;
 pub mod header;
 pub mod module;
