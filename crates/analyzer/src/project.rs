@@ -41,7 +41,7 @@ impl Project {
             errors.into_iter().for_each(|e| {
                 module
                     .semantic_errors
-                    .push(crate::error::SemanticError::ParserError(e))
+                    .push(crate::error::AnalyzeError::ParserError(e))
             });
 
             // 收集符号并分配 ID
@@ -141,10 +141,8 @@ impl Project {
                     .and_then(|n| utils::extract_name_and_range(&n))
                 {
                     if module.function_map.contains_key(&name) {
-                        module.new_error(crate::error::SemanticError::FunctionDefined {
-                            name,
-                            range,
-                        });
+                        module
+                            .new_error(crate::error::AnalyzeError::FunctionDefined { name, range });
                         continue;
                     }
 
@@ -164,7 +162,7 @@ impl Project {
                     .and_then(|n| utils::extract_name_and_range(&n))
             {
                 if module.struct_map.contains_key(&name) {
-                    module.new_error(crate::error::SemanticError::StructDefined { name, range });
+                    module.new_error(crate::error::AnalyzeError::StructDefined { name, range });
                     continue;
                 }
                 let struct_id = module.new_struct(name.clone(), vec![], range);

@@ -4,7 +4,7 @@ use syntax::visitor::FuncVisitor;
 
 use syntax::ast::*;
 
-use crate::error::SemanticError;
+use crate::error::AnalyzeError;
 use crate::module::Module;
 use crate::r#type::NType;
 
@@ -116,7 +116,7 @@ impl FuncVisitor for Module {
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
         if scope.have_variable_def(&name) {
-            self.new_error(SemanticError::VariableDefined { name, range });
+            self.new_error(AnalyzeError::VariableDefined { name, range });
             return;
         }
 
@@ -136,7 +136,7 @@ impl FuncVisitor for Module {
         };
 
         let Some(func_id) = self.get_function_id_by_name(&func_name) else {
-            self.new_error(SemanticError::FunctionUndefined {
+            self.new_error(AnalyzeError::FunctionUndefined {
                 name: func_name,
                 range: func_var,
             });
@@ -146,7 +146,7 @@ impl FuncVisitor for Module {
         let func = self.get_function_mut_by_id(func_id).unwrap();
 
         if func.have_impl {
-            self.new_error(SemanticError::FunctionImplemented {
+            self.new_error(AnalyzeError::FunctionImplemented {
                 name: func_name,
                 range: func_var,
             });

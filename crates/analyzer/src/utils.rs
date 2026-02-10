@@ -7,7 +7,7 @@ use utils::trim_node_text_range;
 
 use crate::{
     array::ArrayTree,
-    error::SemanticError,
+    error::AnalyzeError,
     module::{Module, StructID},
     r#type::NType,
     value::Value,
@@ -25,7 +25,7 @@ pub fn parse_type_node(
     module: &Module,
     ty_node: &Type,
     value_table: Option<&HashMap<TextRange, Value>>,
-) -> Result<Option<NType>, SemanticError> {
+) -> Result<Option<NType>, AnalyzeError> {
     if ty_node.l_brack_token().is_some() {
         // 数组类型: [Type; Expr]
         let Some(inner_node) = ty_node.inner_type() else {
@@ -43,14 +43,14 @@ pub fn parse_type_node(
                 match vt.get(&expr_range) {
                     Some(Value::Int(n)) => Some(*n),
                     Some(other_value) => {
-                        return Err(SemanticError::TypeMismatch {
+                        return Err(AnalyzeError::TypeMismatch {
                             expected: NType::Const(Box::new(NType::Int)),
                             found: other_value.get_type(module),
                             range: trim_node_text_range(&expr_node),
                         });
                     }
                     None => {
-                        return Err(SemanticError::ConstantExprExpected {
+                        return Err(AnalyzeError::ConstantExprExpected {
                             range: trim_node_text_range(&expr_node),
                         });
                     }
@@ -95,7 +95,7 @@ pub fn parse_type_node(
             };
 
             let Some(sid) = module.get_struct_id_by_name(&name) else {
-                return Err(SemanticError::StructUndefined {
+                return Err(AnalyzeError::StructUndefined {
                     name,
                     range: trim_node_text_range(ty_node),
                 });
@@ -124,7 +124,7 @@ impl Module {
         ty: &NType,
         index_count: usize,
         range: TextRange,
-    ) -> Result<NType, SemanticError> {
+    ) -> Result<NType, AnalyzeError> {
         let mut current = ty.clone();
         for _ in 0..index_count {
             current = match current {
@@ -132,7 +132,7 @@ impl Module {
                 NType::Pointer { pointee, .. } => *pointee,
                 NType::Const(inner) => Self::compute_indexed_type(&inner, 1, range)?,
                 _ => {
-                    return Err(SemanticError::ApplyOpOnType {
+                    return Err(AnalyzeError::ApplyOpOnType {
                         ty: current,
                         op: "[]".to_string(),
                         range,
@@ -159,21 +159,21 @@ impl Module {
         &mut self,
         struct_id: StructID,
         init_val_node: InitVal,
-    ) -> Result<Option<Value>, SemanticError> {
+    ) -> Result<Option<Value>, AnalyzeError> {
         let range_trimmed = utils::trim_node_text_range(&init_val_node); // 获取 struct 定义
-        let struct_def =
-            self.get_struct_by_id(struct_id)
-                .ok_or(SemanticError::StructUndefined {
-                    name: "<uname>".to_string(),
-                    range: range_trimmed,
-                })?;
+        let struct_def = self
+            .get_struct_by_id(struct_id)
+            .ok_or(AnalyzeError::StructUndefined {
+                name: "<uname>".to_string(),
+                range: range_trimmed,
+            })?;
 
         // 否则是初始化列表 { init1, init2, ... }
         let inits: Vec<_> = init_val_node.inits().collect();
 
         // 检查初始化列表长度是否与字段数匹配
         if inits.len() != struct_def.fields.len() {
-            return Err(SemanticError::StructInitFieldCountMismatch {
+            return Err(AnalyzeError::StructInitFieldCountMismatch {
                 expected: struct_def.fields.len(),
                 found: inits.len(),
                 range: range_trimmed,
@@ -215,7 +215,7 @@ impl Module {
         &mut self,
         field_ty: &NType,
         init_val_node: InitVal,
-    ) -> Result<Option<Value>, SemanticError> {
+    ) -> Result<Option<Value>, AnalyzeError> {
         let range = init_val_node.text_range();
         // 去掉 Const 包装
         let inner_ty = field_ty.unwrap_const();
@@ -225,7 +225,7 @@ impl Module {
             NType::Int | NType::Float | NType::Pointer { .. } => {
                 let Some(expr) = init_val_node.expr() else {
                     // 期望表达式，但得到了初始化列表
-                    return Err(SemanticError::ConstantExprExpected {
+                    return Err(AnalyzeError::ConstantExprExpected {
                         range: utils::trim_node_text_range(&init_val_node),
                     });
                 };
@@ -237,7 +237,7 @@ impl Module {
             NType::Array(_, _) => {
                 let range = init_val_node.text_range();
                 let (array_tree, is_const) = ArrayTree::new(self, field_ty, init_val_node)
-                    .map_err(|e| SemanticError::ArrayError {
+                    .map_err(|e| AnalyzeError::ArrayError {
                         message: Box::new(e),
                         range,
                     })?;
@@ -314,7 +314,7 @@ impl Module {
 
         // const 不可被赋值
         if var.ty.is_const() || result_ty.is_const() {
-            self.new_error(SemanticError::AssignToConst {
+            self.new_error(AnalyzeError::AssignToConst {
                 name: var_name.to_string(),
                 range: var_range,
             });
@@ -327,7 +327,7 @@ impl Module {
     fn check_postfix_assignable(&mut self, node: &PostfixExpr) -> bool {
         if let Some(ty) = self.get_expr_type(node.text_range()) {
             if ty.is_const() {
-                self.new_error(SemanticError::AssignToConst {
+                self.new_error(AnalyzeError::AssignToConst {
                     name: "field".to_string(),
                     range: utils::trim_node_text_range(node),
                 });
@@ -346,7 +346,7 @@ impl Module {
         };
 
         if expr_ty.is_const() {
-            self.new_error(SemanticError::AssignToConst {
+            self.new_error(AnalyzeError::AssignToConst {
                 name: "*ptr".to_string(),
                 range: utils::trim_node_text_range(node),
             });

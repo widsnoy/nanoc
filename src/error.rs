@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use analyzer::error::SemanticError;
+use analyzer::error::AnalyzeError;
 use codegen::error::CodegenError;
 use miette::NamedSource;
 use thiserror::Error;
@@ -14,8 +14,8 @@ pub enum CompilerError {
     #[error("failed to read input file: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("semantic errors occurred")]
-    Semantic(HashMap<FileID, Vec<SemanticError>>),
+    #[error("analyze errors occurred")]
+    Analyze(HashMap<FileID, Vec<AnalyzeError>>),
 
     #[error("codegen failed: {0}")]
     Codegen(#[from] CodegenError),
@@ -34,7 +34,7 @@ impl CompilerError {
     /// 报告编译错误
     pub fn report(self, vfs: Vfs) {
         match self {
-            Self::Semantic(semantic_errors) => {
+            Self::Analyze(semantic_errors) => {
                 for (file_id, errors) in semantic_errors {
                     if let Some(file) = vfs.get_file_by_file_id(&file_id) {
                         let source =

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use parser::parse::Parser;
 use vfs::Vfs;
 
-use crate::error::SemanticError;
+use crate::error::AnalyzeError;
 use crate::module::Module;
 use crate::project::Project;
 
@@ -53,7 +53,7 @@ fn test_duplicate_variable_error() {
     let module = analyze(source);
     assert!(!module.semantic_errors.is_empty());
     match &module.semantic_errors[0] {
-        SemanticError::VariableDefined { name, .. } => {
+        AnalyzeError::VariableDefined { name, .. } => {
             assert_eq!(name, "a");
         }
         _ => panic!("Expected VariableDefined error"),
@@ -344,7 +344,7 @@ fn test_break_outside_loop_error() {
     let module = analyze(source);
     assert!(!module.semantic_errors.is_empty());
     match &module.semantic_errors[0] {
-        SemanticError::BreakOutsideLoop { .. } => {}
+        AnalyzeError::BreakOutsideLoop { .. } => {}
         _ => panic!("Expected BreakOutsideLoop error"),
     }
 }
@@ -360,7 +360,7 @@ fn test_continue_outside_loop_error() {
     let module = analyze(source);
     assert!(!module.semantic_errors.is_empty());
     match &module.semantic_errors[0] {
-        SemanticError::ContinueOutsideLoop { .. } => {}
+        AnalyzeError::ContinueOutsideLoop { .. } => {}
         _ => panic!("Expected ContinueOutsideLoop error"),
     }
 }
@@ -408,7 +408,7 @@ fn test_function_undefined_error() {
     let module = analyze(source);
     assert!(!module.semantic_errors.is_empty());
     match &module.semantic_errors[0] {
-        SemanticError::FunctionUndefined { name, .. } => {
+        AnalyzeError::FunctionUndefined { name, .. } => {
             assert_eq!(name, "undefined_func");
         }
         _ => panic!("Expected FunctionUndefined error"),
@@ -468,7 +468,7 @@ fn test_assign_to_const_error() {
     let module = analyze(source);
     assert!(!module.semantic_errors.is_empty());
     match &module.semantic_errors[0] {
-        SemanticError::AssignToConst { name, .. } => {
+        AnalyzeError::AssignToConst { name, .. } => {
             assert_eq!(name, "x");
         }
         _ => panic!("Expected AssignToConst error"),
@@ -555,7 +555,7 @@ fn test_undefined_variable_error() {
     let module = analyze(source);
     assert!(!module.semantic_errors.is_empty());
     match &module.semantic_errors[0] {
-        SemanticError::VariableUndefined { name, .. } => {
+        AnalyzeError::VariableUndefined { name, .. } => {
             assert_eq!(name, "undefined_var");
         }
         _ => panic!("Expected VariableUndefined error"),

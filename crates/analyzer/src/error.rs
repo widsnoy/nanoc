@@ -8,7 +8,7 @@ use tools::TextRange;
 use crate::{array::ArrayInitError, r#type::NType};
 
 #[derive(Debug, Clone, Error, Diagnostic)]
-pub enum SemanticError {
+pub enum AnalyzeError {
     #[error(transparent)]
     #[diagnostic(transparent)]
     ParserError(ParserError),
@@ -250,7 +250,7 @@ pub enum SemanticError {
     },
 }
 
-impl SemanticError {
+impl AnalyzeError {
     /// 获取错误的位置范围
     pub fn range(&self) -> &TextRange {
         match self {

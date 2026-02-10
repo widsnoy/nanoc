@@ -4,7 +4,7 @@ use syntax::ast::*;
 use syntax::visitor::DeclVisitor;
 
 use crate::array::ArrayTree;
-use crate::error::SemanticError;
+use crate::error::AnalyzeError;
 use crate::module::Module;
 use crate::utils::parse_type_node;
 use crate::value::Value;
@@ -49,7 +49,7 @@ impl DeclVisitor for Module {
             };
 
             if !field_names.insert(name.clone()) {
-                self.new_error(SemanticError::VariableDefined { name, range });
+                self.new_error(AnalyzeError::VariableDefined { name, range });
                 continue;
             }
             let field_id = self.new_field(name.clone(), ty, range);
@@ -90,7 +90,7 @@ impl DeclVisitor for Module {
         let is_global = current_scope == self.global_scope;
         let is_const = var_type.is_const();
         if scope.have_variable_def(&var_name) {
-            self.new_error(SemanticError::VariableDefined {
+            self.new_error(AnalyzeError::VariableDefined {
                 name: var_name,
                 range: var_range,
             });
@@ -112,7 +112,7 @@ impl DeclVisitor for Module {
                     match ArrayTree::new(self, &var_type, init_val_node) {
                         Ok(s) => s,
                         Err(e) => {
-                            self.new_error(SemanticError::ArrayError {
+                            self.new_error(AnalyzeError::ArrayError {
                                 message: Box::new(e),
                                 range: init_range_trimmed,
                             });
@@ -148,7 +148,7 @@ impl DeclVisitor for Module {
                 None => {
                     // global 变量必须编译时能求值
                     if is_global {
-                        self.new_error(SemanticError::ConstantExprExpected {
+                        self.new_error(AnalyzeError::ConstantExprExpected {
                             range: init_range_trimmed,
                         });
                         return;
@@ -157,7 +157,7 @@ impl DeclVisitor for Module {
             }
         } else if is_const {
             // 如果是 const 必须要有初始化列表:w
-            self.new_error(SemanticError::ExpectInitialVal {
+            self.new_error(AnalyzeError::ExpectInitialVal {
                 name: var_name,
                 range: var_range,
             });

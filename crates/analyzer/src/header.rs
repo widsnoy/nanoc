@@ -7,7 +7,7 @@ use tools::TextRange;
 use vfs::{FileID, Vfs};
 
 use crate::{
-    error::SemanticError,
+    error::AnalyzeError,
     module::{FunctionID, Module, StructID},
 };
 
@@ -25,7 +25,7 @@ pub struct ImportInfo {
 pub struct ModuleImports {
     pub file_id: FileID,
     pub imports: Vec<(ImportInfo, TextRange)>,
-    pub errors: Vec<SemanticError>,
+    pub errors: Vec<AnalyzeError>,
 }
 
 /// Header 分析器（无状态，使用静态方法）
@@ -90,12 +90,12 @@ impl HeaderAnalyzer {
         path_node: &syntax::ast::Path,
         current_file_id: FileID,
         vfs: &Vfs,
-    ) -> Result<(FileID, Option<String>), SemanticError> {
+    ) -> Result<(FileID, Option<String>), AnalyzeError> {
         let path_node_range_trimmed = utils::trim_node_text_range(path_node);
         let path_token =
             path_node
                 .string_literal()
-                .ok_or_else(|| SemanticError::ImportPathNotFound {
+                .ok_or_else(|| AnalyzeError::ImportPathNotFound {
                     path: "<invalid>".to_string(),
                     range: path_node_range_trimmed,
                 })?;
@@ -106,7 +106,7 @@ impl HeaderAnalyzer {
         let symbol_name = path_node.symbol().map(|s| s.text().to_string());
 
         let current_file = vfs.get_file_by_file_id(&current_file_id).ok_or_else(|| {
-            SemanticError::ImportPathNotFound {
+            AnalyzeError::ImportPathNotFound {
                 path: path_text.to_string(),
                 range: path_node_range_trimmed,
             }
@@ -124,7 +124,7 @@ impl HeaderAnalyzer {
         };
 
         let target_file_id = vfs.get_file_id_by_path(&target_path).ok_or_else(|| {
-            SemanticError::ImportPathNotFound {
+            AnalyzeError::ImportPathNotFound {
                 path: format!("{} (resolved to {:?})", path_text, target_path),
                 range: path_node_range_trimmed,
             }
@@ -139,11 +139,11 @@ impl HeaderAnalyzer {
         symbol_name: Option<&str>,
         range: TextRange,
         modules: &HashMap<FileID, Module>,
-    ) -> Result<ImportInfo, SemanticError> {
+    ) -> Result<ImportInfo, AnalyzeError> {
         let target_module =
             modules
                 .get(&target_file_id)
-                .ok_or_else(|| SemanticError::ImportPathNotFound {
+                .ok_or_else(|| AnalyzeError::ImportPathNotFound {
                     path: format!("{:?}", target_file_id),
                     range,
                 })?;
@@ -160,7 +160,7 @@ impl HeaderAnalyzer {
         target_module: &Module,
         symbol_name: &str,
         range: TextRange,
-    ) -> Result<ImportInfo, SemanticError> {
+    ) -> Result<ImportInfo, AnalyzeError> {
         let mut import_info = ImportInfo {
             functions: Vec::new(),
             structs: Vec::new(),
@@ -180,7 +180,7 @@ impl HeaderAnalyzer {
             return Ok(import_info);
         }
 
-        Err(SemanticError::ImportSymbolNotFound {
+        Err(AnalyzeError::ImportSymbolNotFound {
             symbol: symbol_name.to_string(),
             module_path: format!("{:?}", target_module.file_id),
             range,
@@ -188,7 +188,7 @@ impl HeaderAnalyzer {
     }
 
     /// 收集所有符号
-    fn collect_all_symbols(target_module: &Module) -> Result<ImportInfo, SemanticError> {
+    fn collect_all_symbols(target_module: &Module) -> Result<ImportInfo, AnalyzeError> {
         let mut import_info = ImportInfo {
             functions: Vec::new(),
             structs: Vec::new(),
@@ -210,10 +210,10 @@ impl HeaderAnalyzer {
         module: &mut Module,
         import_info: ImportInfo,
         range: TextRange,
-    ) -> Result<(), SemanticError> {
+    ) -> Result<(), AnalyzeError> {
         for (name, func_id) in import_info.functions {
             if module.function_map.contains_key(&name) {
-                return Err(SemanticError::ImportSymbolConflict {
+                return Err(AnalyzeError::ImportSymbolConflict {
                     symbol: name,
                     range,
                 });
@@ -223,7 +223,7 @@ impl HeaderAnalyzer {
 
         for (name, struct_id) in import_info.structs {
             if module.struct_map.contains_key(&name) {
-                return Err(SemanticError::ImportSymbolConflict {
+                return Err(AnalyzeError::ImportSymbolConflict {
                     symbol: name,
                     range,
                 });

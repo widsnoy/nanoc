@@ -29,7 +29,7 @@ pub fn analyze_project(input_paths: &[PathBuf], vfs: &Vfs) -> Result<Project> {
     }
 
     if !errors_by_file.is_empty() {
-        return Err(CompilerError::Semantic(errors_by_file));
+        return Err(CompilerError::Analyze(errors_by_file));
     }
 
     Ok(project)

@@ -3,7 +3,7 @@
 use syntax::ast::*;
 use syntax::visitor::StmtVisitor;
 
-use crate::error::SemanticError;
+use crate::error::AnalyzeError;
 use crate::module::Module;
 use crate::r#type::NType;
 
@@ -44,7 +44,7 @@ impl StmtVisitor for Module {
         // 检查是否是左值
         let is_valid_lvalue = self.is_lvalue_expr(&lhs);
         if !is_valid_lvalue {
-            self.new_error(SemanticError::NotALValue {
+            self.new_error(AnalyzeError::NotALValue {
                 range: utils::trim_node_text_range(&lhs),
             });
             return;
@@ -64,7 +64,7 @@ impl StmtVisitor for Module {
         };
 
         if !lhs_ty.assign_to_me_is_ok(rhs_ty) {
-            self.new_error(SemanticError::TypeMismatch {
+            self.new_error(AnalyzeError::TypeMismatch {
                 expected: lhs_ty.clone(),
                 found: rhs_ty.clone(),
                 range: utils::trim_node_text_range(&rhs),
@@ -74,7 +74,7 @@ impl StmtVisitor for Module {
 
     fn enter_break_stmt(&mut self, node: BreakStmt) {
         if self.analyzing.loop_depth == 0 {
-            self.new_error(SemanticError::BreakOutsideLoop {
+            self.new_error(AnalyzeError::BreakOutsideLoop {
                 range: utils::trim_node_text_range(&node),
             });
         }
@@ -82,7 +82,7 @@ impl StmtVisitor for Module {
 
     fn enter_continue_stmt(&mut self, node: ContinueStmt) {
         if self.analyzing.loop_depth == 0 {
-            self.new_error(SemanticError::ContinueOutsideLoop {
+            self.new_error(AnalyzeError::ContinueOutsideLoop {
                 range: utils::trim_node_text_range(&node),
             });
         }
@@ -107,7 +107,7 @@ impl StmtVisitor for Module {
 
         // 检查返回类型是否匹配
         if !expected_ret_type.assign_to_me_is_ok(actual_ret_type) {
-            self.new_error(SemanticError::ReturnTypeMismatch {
+            self.new_error(AnalyzeError::ReturnTypeMismatch {
                 expected: expected_ret_type.clone(),
                 found: actual_ret_type.clone(),
                 range: utils::trim_node_text_range(&node),

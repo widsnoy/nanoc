@@ -5,7 +5,7 @@ use syntax::ast::*;
 use syntax::visitor::ExprVisitor;
 
 use crate::array::ArrayTreeValue;
-use crate::error::SemanticError;
+use crate::error::AnalyzeError;
 use crate::module::{Module, ReferenceTag};
 use crate::r#type::NType;
 use crate::value::Value;
@@ -50,7 +50,7 @@ impl ExprVisitor for Module {
 
             // 检查参数数量（-1 表示可变参数，不检查）
             if *expected_args >= 0 && arg_count != *expected_args as usize {
-                self.new_error(SemanticError::ArgumentCountMismatch {
+                self.new_error(AnalyzeError::ArgumentCountMismatch {
                     function_name: func_name.clone(),
                     expected: *expected_args as usize,
                     found: arg_count,
@@ -62,7 +62,7 @@ impl ExprVisitor for Module {
 
         // 查找用户定义的函数
         let Some(func_id) = self.get_function_id_by_name(&func_name) else {
-            self.new_error(SemanticError::FunctionUndefined {
+            self.new_error(AnalyzeError::FunctionUndefined {
                 name: func_name,
                 range: func_range,
             });
@@ -142,7 +142,7 @@ impl ExprVisitor for Module {
         if let Some(inner_ty) = self.get_expr_type(expr.text_range()) {
             let result_ty = if op_kind == SyntaxKind::AMP {
                 if !self.is_lvalue_expr(&expr) {
-                    self.new_error(SemanticError::AddressOfRight {
+                    self.new_error(AnalyzeError::AddressOfRight {
                         range: utils::trim_node_text_range(&expr),
                     });
 
@@ -168,7 +168,7 @@ impl ExprVisitor for Module {
                 if let Some(pointee) = pointee {
                     pointee
                 } else {
-                    self.new_error(SemanticError::ApplyOpOnType {
+                    self.new_error(AnalyzeError::ApplyOpOnType {
                         ty: inner_ty.clone(),
                         op: "*".to_string(),
                         range: expr.text_range(),
@@ -216,7 +216,7 @@ impl ExprVisitor for Module {
 
         // 查找变量定义
         let Some(var_id) = self.find_variable_def(&var_name) else {
-            self.new_error(SemanticError::VariableUndefined {
+            self.new_error(AnalyzeError::VariableUndefined {
                 name: var_name.to_string(),
                 range: var_range,
             });
@@ -258,7 +258,7 @@ impl ExprVisitor for Module {
                     return;
                 };
                 let Value::Int(index) = v else {
-                    self.new_error(SemanticError::TypeMismatch {
+                    self.new_error(AnalyzeError::TypeMismatch {
                         expected: NType::Int,
                         found: NType::Float,
                         range: utils::trim_node_text_range(&indice),
@@ -270,7 +270,7 @@ impl ExprVisitor for Module {
             let leaf = match tree.get_leaf(&indices) {
                 Ok(s) => s,
                 Err(e) => {
-                    self.new_error(SemanticError::ArrayError {
+                    self.new_error(AnalyzeError::ArrayError {
                         message: Box::new(e),
                         range: utils::trim_node_text_range(&node),
                     });
@@ -337,7 +337,7 @@ impl ExprVisitor for Module {
                 if let Some(id) = base_ty.as_struct_id() {
                     id
                 } else {
-                    self.new_error(SemanticError::NotAStruct {
+                    self.new_error(AnalyzeError::NotAStruct {
                         ty: base_ty.clone(),
                         range: utils::trim_node_text_range(&base_expr),
                     });
@@ -349,7 +349,7 @@ impl ExprVisitor for Module {
                 if let Some(id) = base_ty.as_struct_pointer_id() {
                     id
                 } else {
-                    self.new_error(SemanticError::NotAStructPointer {
+                    self.new_error(AnalyzeError::NotAStructPointer {
                         ty: base_ty.clone(),
                         range: utils::trim_node_text_range(&base_expr),
                     });
@@ -357,7 +357,7 @@ impl ExprVisitor for Module {
                 }
             }
             _ => {
-                self.new_error(SemanticError::ApplyOpOnType {
+                self.new_error(AnalyzeError::ApplyOpOnType {
                     ty: base_ty.clone(),
                     op: op_node.op().text().to_string(),
                     range: utils::trim_node_text_range(&base_expr),
@@ -428,7 +428,7 @@ impl ExprVisitor for Module {
                 }
             }
         } else {
-            self.new_error(SemanticError::FieldNotFound {
+            self.new_error(AnalyzeError::FieldNotFound {
                 struct_name: struct_def.name.clone(),
                 field_name: member_name,
                 range: utils::trim_node_text_range(&node),

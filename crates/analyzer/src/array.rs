@@ -8,7 +8,7 @@ use thiserror::Error;
 use tools::TextRange;
 
 use crate::{
-    error::SemanticError,
+    error::AnalyzeError,
     module::{Module, StructID},
     r#type::NType,
     value::Value,
@@ -88,7 +88,7 @@ pub enum ArrayInitError {
 
     #[error("Struct initialization error: {0}")]
     #[diagnostic(code(array::initial_struct_value))]
-    InitialStructValue(#[from] SemanticError),
+    InitialStructValue(#[from] AnalyzeError),
 }
 
 impl ArrayTree {

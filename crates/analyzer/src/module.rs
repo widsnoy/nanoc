@@ -12,7 +12,7 @@ use tools::TextRange;
 use utils::{define_id_type, define_module_id_type};
 use vfs::FileID;
 
-use crate::{array::ArrayTree, error::SemanticError, r#type::NType, value::Value};
+use crate::{array::ArrayTree, error::AnalyzeError, r#type::NType, value::Value};
 
 #[derive(Debug)]
 pub struct Module {
@@ -51,7 +51,7 @@ pub struct Module {
     pub type_table: HashMap<TextRange, NType>,
 
     /// 错误
-    pub semantic_errors: Vec<SemanticError>,
+    pub semantic_errors: Vec<AnalyzeError>,
 
     /// 分析上下文，使用后清除
     pub(crate) analyzing: AnalyzeContext,
@@ -323,7 +323,7 @@ impl Module {
         scope.look_up_variable(self, var_name)
     }
 
-    pub(crate) fn new_error(&mut self, error: SemanticError) {
+    pub(crate) fn new_error(&mut self, error: AnalyzeError) {
         self.semantic_errors.push(error)
     }
 
