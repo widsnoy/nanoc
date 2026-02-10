@@ -108,7 +108,7 @@ impl DeclVisitor for Module {
                     self.new_error(AnalyzeError::InitializerMismatch {
                         expected: "list initializer".to_string(),
                         found: "expression".to_string(),
-                        range: utils::trim_node_text_range(&init_val_node),
+                        range: init_range_trimmed,
                     });
                     return;
                 }
@@ -156,17 +156,17 @@ impl DeclVisitor for Module {
             }
 
             // 对于标量类型（非数组、非结构体），需要检查表达式类型
-            if !var_type.is_array() && !var_type.is_struct() {
-                if let Some(expr_ty) = self.get_expr_type(expr_range) {
-                    if !var_type.assign_to_me_is_ok(expr_ty) {
-                        self.new_error(AnalyzeError::TypeMismatch {
-                            expected: var_type.clone(),
-                            found: expr_ty.clone(),
-                            range: init_range_trimmed,
-                        });
-                        return;
-                    }
-                }
+            if !var_type.is_array()
+                && !var_type.is_struct()
+                && let Some(expr_ty) = self.get_expr_type(expr_range)
+                && !var_type.assign_to_me_is_ok(expr_ty)
+            {
+                self.new_error(AnalyzeError::TypeMismatch {
+                    expected: var_type.clone(),
+                    found: expr_ty.clone(),
+                    range: init_range_trimmed,
+                });
+                return;
             }
 
             match self.value_table.get(&expr_range) {

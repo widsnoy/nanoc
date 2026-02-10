@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use syntax::SyntaxKind;
 use syntax::ast::{AstNode as _, Expr, IndexVal, InitVal, OpNode, PostfixExpr, Type, UnaryExpr};
 use tools::TextRange;
-use utils::trim_node_text_range;
 
 use crate::{
     array::ArrayTree,
@@ -46,12 +45,12 @@ pub fn parse_type_node(
                         return Err(AnalyzeError::TypeMismatch {
                             expected: NType::Const(Box::new(NType::Int)),
                             found: other_value.get_type(module),
-                            range: trim_node_text_range(&expr_node),
+                            range: utils::trim_node_text_range(&expr_node),
                         });
                     }
                     None => {
                         return Err(AnalyzeError::ConstantExprExpected {
-                            range: trim_node_text_range(&expr_node),
+                            range: utils::trim_node_text_range(&expr_node),
                         });
                     }
                 }
@@ -97,7 +96,7 @@ pub fn parse_type_node(
             let Some(sid) = module.get_struct_id_by_name(&name) else {
                 return Err(AnalyzeError::StructUndefined {
                     name,
-                    range: trim_node_text_range(ty_node),
+                    range: utils::trim_node_text_range(ty_node),
                 });
             };
 
@@ -230,18 +229,18 @@ impl Module {
                     });
                 };
                 let expr_range = expr.text_range();
-                
+
                 // 检查表达式类型是否与字段类型匹配
-                if let Some(expr_ty) = self.get_expr_type(expr_range) {
-                    if !field_ty.assign_to_me_is_ok(expr_ty) {
-                        return Err(AnalyzeError::TypeMismatch {
-                            expected: field_ty.clone(),
-                            found: expr_ty.clone(),
-                            range: utils::trim_node_text_range(&init_val_node),
-                        });
-                    }
+                if let Some(expr_ty) = self.get_expr_type(expr_range)
+                    && !field_ty.assign_to_me_is_ok(expr_ty)
+                {
+                    return Err(AnalyzeError::TypeMismatch {
+                        expected: field_ty.clone(),
+                        found: expr_ty.clone(),
+                        range: utils::trim_node_text_range(&init_val_node),
+                    });
                 }
-                
+
                 Ok(self.value_table.get(&expr_range).cloned())
             }
 

@@ -59,6 +59,7 @@ impl Parser<'_> {
             self.finish_node();
             success
         } else {
+            self.bump_trivia();
             let success = self.parse_exp();
             self.finish_node();
             success

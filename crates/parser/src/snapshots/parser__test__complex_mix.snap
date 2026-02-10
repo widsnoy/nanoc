@@ -20,8 +20,8 @@ COMP_UNIT@0..214
     WHITESPACE@23..24 " "
     EQ@24..25 "="
     INIT_VAL@25..29
-      LITERAL@25..29
-        WHITESPACE@25..26 " "
+      WHITESPACE@25..26 " "
+      LITERAL@26..29
         INT_LITERAL@26..29 "100"
     SEMI@29..30 ";"
   NEWLINE@30..31 "\n"
@@ -111,8 +111,8 @@ COMP_UNIT@0..214
         WHITESPACE@134..135 " "
         EQ@135..136 "="
         INIT_VAL@136..138
-          LITERAL@136..138
-            WHITESPACE@136..137 " "
+          WHITESPACE@136..137 " "
+          LITERAL@137..138
             INT_LITERAL@137..138 "1"
         SEMI@138..139 ";"
       VAR_DEF@139..171
@@ -135,9 +135,9 @@ COMP_UNIT@0..214
         WHITESPACE@165..166 " "
         EQ@166..167 "="
         INIT_VAL@167..170
-          UNARY_EXPR@167..170
-            UNARY_OP@167..169
-              WHITESPACE@167..168 " "
+          WHITESPACE@167..168 " "
+          UNARY_EXPR@168..170
+            UNARY_OP@168..169
               AMP@168..169 "&"
             INDEX_VAL@169..170
               NAME@169..170
@@ -160,8 +160,8 @@ COMP_UNIT@0..214
         WHITESPACE@196..197 " "
         EQ@197..198 "="
         INIT_VAL@198..202
-          INDEX_VAL@198..202
-            WHITESPACE@198..199 " "
+          WHITESPACE@198..199 " "
+          INDEX_VAL@199..202
             NAME@199..202
               IDENT@199..202 "MAX"
         SEMI@202..203 ";"

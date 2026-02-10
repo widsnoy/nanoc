@@ -1,4 +1,6 @@
+#![allow(unused_assignments)] // FIXME: https://github.com/zkat/miette/pull/459
 //! array 的初始化
+
 use std::collections::HashMap;
 
 use miette::Diagnostic;
@@ -90,7 +92,7 @@ pub enum ArrayInitError {
     #[diagnostic(code(array::initial_struct_value))]
     InitialStructValue(#[from] AnalyzeError),
 
-    #[error("type mismatch in array initialization: expected {expected}, found {found}")]
+    #[error("type mismatch in array initialization: expected {expected:?}, found {found}")]
     #[diagnostic(code(array::type_mismatch))]
     TypeMismatch {
         expected: NType,
@@ -131,14 +133,14 @@ impl ArrayTree {
                     let range = u.text_range();
 
                     // 检查表达式类型是否与数组元素类型匹配
-                    if let Some(expr_ty) = m.get_expr_type(range) {
-                        if !ty.assign_to_me_is_ok(expr_ty) {
-                            return Err(ArrayInitError::TypeMismatch {
-                                expected: ty.clone(),
-                                found: expr_ty.clone(),
-                                range,
-                            });
-                        }
+                    if let Some(expr_ty) = m.get_expr_type(range)
+                        && !ty.assign_to_me_is_ok(expr_ty)
+                    {
+                        return Err(ArrayInitError::TypeMismatch {
+                            expected: ty.clone(),
+                            found: expr_ty.clone(),
+                            range: utils::trim_node_text_range(u),
+                        });
                     }
 
                     *is_const &= m.value_table.contains_key(&range);

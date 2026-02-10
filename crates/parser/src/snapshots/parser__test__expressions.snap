@@ -18,9 +18,9 @@ COMP_UNIT@0..261
     WHITESPACE@15..16 " "
     EQ@16..17 "="
     INIT_VAL@17..27
-      BINARY_EXPR@17..27
-        INDEX_VAL@17..19
-          WHITESPACE@17..18 " "
+      WHITESPACE@17..18 " "
+      BINARY_EXPR@18..27
+        INDEX_VAL@18..19
           NAME@18..19
             IDENT@18..19 "a"
         BINARY_OP@19..21
@@ -54,9 +54,9 @@ COMP_UNIT@0..261
     WHITESPACE@43..44 " "
     EQ@44..45 "="
     INIT_VAL@45..57
-      BINARY_EXPR@45..57
-        PAREN_EXPR@45..53
-          WHITESPACE@45..46 " "
+      WHITESPACE@45..46 " "
+      BINARY_EXPR@46..57
+        PAREN_EXPR@46..53
           L_PAREN@46..47 "("
           BINARY_EXPR@47..52
             INDEX_VAL@47..48
@@ -93,9 +93,9 @@ COMP_UNIT@0..261
     WHITESPACE@73..74 " "
     EQ@74..75 "="
     INIT_VAL@75..87
-      BINARY_EXPR@75..87
-        INDEX_VAL@75..77
-          WHITESPACE@75..76 " "
+      WHITESPACE@75..76 " "
+      BINARY_EXPR@76..87
+        INDEX_VAL@76..77
           NAME@76..77
             IDENT@76..77 "a"
         BINARY_OP@77..80
@@ -129,9 +129,9 @@ COMP_UNIT@0..261
     WHITESPACE@103..104 " "
     EQ@104..105 "="
     INIT_VAL@105..112
-      BINARY_EXPR@105..112
-        INDEX_VAL@105..107
-          WHITESPACE@105..106 " "
+      WHITESPACE@105..106 " "
+      BINARY_EXPR@106..112
+        INDEX_VAL@106..107
           NAME@106..107
             IDENT@106..107 "a"
         BINARY_OP@107..110
@@ -157,9 +157,9 @@ COMP_UNIT@0..261
     WHITESPACE@130..131 " "
     EQ@131..132 "="
     INIT_VAL@132..138
-      BINARY_EXPR@132..138
-        INDEX_VAL@132..134
-          WHITESPACE@132..133 " "
+      WHITESPACE@132..133 " "
+      BINARY_EXPR@133..138
+        INDEX_VAL@133..134
           NAME@133..134
             IDENT@133..134 "a"
         BINARY_OP@134..136
@@ -185,10 +185,10 @@ COMP_UNIT@0..261
     WHITESPACE@158..159 " "
     EQ@159..160 "="
     INIT_VAL@160..168
-      BINARY_EXPR@160..168
-        UNARY_EXPR@160..163
-          UNARY_OP@160..162
-            WHITESPACE@160..161 " "
+      WHITESPACE@160..161 " "
+      BINARY_EXPR@161..168
+        UNARY_EXPR@161..163
+          UNARY_OP@161..162
             MINUS@161..162 "-"
           INDEX_VAL@162..163
             NAME@162..163
@@ -219,10 +219,10 @@ COMP_UNIT@0..261
     WHITESPACE@186..187 " "
     EQ@187..188 "="
     INIT_VAL@188..196
-      BINARY_EXPR@188..196
-        UNARY_EXPR@188..191
-          UNARY_OP@188..190
-            WHITESPACE@188..189 " "
+      WHITESPACE@188..189 " "
+      BINARY_EXPR@189..196
+        UNARY_EXPR@189..191
+          UNARY_OP@189..190
             STAR@189..190 "*"
           INDEX_VAL@190..191
             NAME@190..191
@@ -253,8 +253,8 @@ COMP_UNIT@0..261
     WHITESPACE@214..215 " "
     EQ@215..216 "="
     INIT_VAL@216..224
-      INDEX_VAL@216..224
-        WHITESPACE@216..217 " "
+      WHITESPACE@216..217 " "
+      INDEX_VAL@217..224
         NAME@217..218
           IDENT@217..218 "a"
         L_BRACK@218..219 "["
@@ -281,8 +281,8 @@ COMP_UNIT@0..261
     WHITESPACE@243..244 " "
     EQ@244..245 "="
     INIT_VAL@245..255
-      CALL_EXPR@245..255
-        WHITESPACE@245..246 " "
+      WHITESPACE@245..246 " "
+      CALL_EXPR@246..255
         NAME@246..249
           IDENT@246..249 "foo"
         L_PAREN@249..250 "("

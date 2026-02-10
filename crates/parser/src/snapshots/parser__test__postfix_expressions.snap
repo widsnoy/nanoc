@@ -18,9 +18,9 @@ COMP_UNIT@0..182
     WHITESPACE@15..16 " "
     EQ@16..17 "="
     INIT_VAL@17..25
-      POSTFIX_EXPR@17..25
-        INDEX_VAL@17..19
-          WHITESPACE@17..18 " "
+      WHITESPACE@17..18 " "
+      POSTFIX_EXPR@18..25
+        INDEX_VAL@18..19
           NAME@18..19
             IDENT@18..19 "s"
         POSTFIX_OP@19..20
@@ -44,9 +44,9 @@ COMP_UNIT@0..182
     WHITESPACE@41..42 " "
     EQ@42..43 "="
     INIT_VAL@43..53
-      POSTFIX_EXPR@43..53
-        INDEX_VAL@43..45
-          WHITESPACE@43..44 " "
+      WHITESPACE@43..44 " "
+      POSTFIX_EXPR@44..53
+        INDEX_VAL@44..45
           NAME@44..45
             IDENT@44..45 "p"
         POSTFIX_OP@45..47
@@ -70,10 +70,10 @@ COMP_UNIT@0..182
     WHITESPACE@69..70 " "
     EQ@70..71 "="
     INIT_VAL@71..77
-      POSTFIX_EXPR@71..77
-        POSTFIX_EXPR@71..75
-          INDEX_VAL@71..73
-            WHITESPACE@71..72 " "
+      WHITESPACE@71..72 " "
+      POSTFIX_EXPR@72..77
+        POSTFIX_EXPR@72..75
+          INDEX_VAL@72..73
             NAME@72..73
               IDENT@72..73 "s"
           POSTFIX_OP@73..74
@@ -102,10 +102,10 @@ COMP_UNIT@0..182
     WHITESPACE@93..94 " "
     EQ@94..95 "="
     INIT_VAL@95..103
-      POSTFIX_EXPR@95..103
-        POSTFIX_EXPR@95..100
-          INDEX_VAL@95..97
-            WHITESPACE@95..96 " "
+      WHITESPACE@95..96 " "
+      POSTFIX_EXPR@96..103
+        POSTFIX_EXPR@96..100
+          INDEX_VAL@96..97
             NAME@96..97
               IDENT@96..97 "p"
           POSTFIX_OP@97..99
@@ -134,9 +134,9 @@ COMP_UNIT@0..182
     WHITESPACE@123..124 " "
     EQ@124..125 "="
     INIT_VAL@125..138
-      POSTFIX_EXPR@125..138
-        INDEX_VAL@125..132
-          WHITESPACE@125..126 " "
+      WHITESPACE@125..126 " "
+      POSTFIX_EXPR@126..138
+        INDEX_VAL@126..132
           NAME@126..129
             IDENT@126..129 "arr"
           L_BRACK@129..130 "["
@@ -164,9 +164,9 @@ COMP_UNIT@0..182
     WHITESPACE@160..161 " "
     EQ@161..162 "="
     INIT_VAL@162..176
-      POSTFIX_EXPR@162..176
-        CALL_EXPR@162..169
-          WHITESPACE@162..163 " "
+      WHITESPACE@162..163 " "
+      POSTFIX_EXPR@163..176
+        CALL_EXPR@163..169
           NAME@163..167
             IDENT@163..167 "func"
           L_PAREN@167..168 "("

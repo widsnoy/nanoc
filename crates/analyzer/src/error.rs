@@ -1,4 +1,4 @@
-#![allow(unused_assignments)]
+#![allow(unused_assignments)] // FIXME: https://github.com/zkat/miette/pull/459
 
 use miette::Diagnostic;
 use parser::parse::ParserError;
@@ -96,14 +96,6 @@ pub enum AnalyzeError {
     #[error("struct '{name}' undefined")]
     #[diagnostic(code(semantic::struct_undefined))]
     StructUndefined {
-        name: String,
-        #[label("here")]
-        range: TextRange,
-    },
-
-    #[error("field '{name}' reference itself")]
-    #[diagnostic(code(semantic::struct_self_reference))]
-    StructSelfRef {
         name: String,
         #[label("here")]
         range: TextRange,
@@ -295,7 +287,6 @@ impl AnalyzeError {
             | Self::ArrayError { range, .. }
             | Self::StructDefined { range, .. }
             | Self::StructUndefined { range, .. }
-            | Self::StructSelfRef { range, .. }
             | Self::FieldNotFound { range, .. }
             | Self::NotAStruct { range, .. }
             | Self::NotAStructPointer { range, .. }

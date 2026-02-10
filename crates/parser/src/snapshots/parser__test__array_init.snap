@@ -32,13 +32,13 @@ COMP_UNIT@0..86
           INT_LITERAL@24..25 "1"
       COMMA@25..26 ","
       INIT_VAL@26..28
-        LITERAL@26..28
-          WHITESPACE@26..27 " "
+        WHITESPACE@26..27 " "
+        LITERAL@27..28
           INT_LITERAL@27..28 "2"
       COMMA@28..29 ","
       INIT_VAL@29..31
-        LITERAL@29..31
-          WHITESPACE@29..30 " "
+        WHITESPACE@29..30 " "
+        LITERAL@30..31
           INT_LITERAL@30..31 "3"
       R_BRACE@31..32 "}"
     SEMI@32..33 ";"
@@ -80,13 +80,13 @@ COMP_UNIT@0..86
             INT_LITERAL@63..64 "1"
         COMMA@64..65 ","
         INIT_VAL@65..67
-          LITERAL@65..67
-            WHITESPACE@65..66 " "
+          WHITESPACE@65..66 " "
+          LITERAL@66..67
             INT_LITERAL@66..67 "2"
         COMMA@67..68 ","
         INIT_VAL@68..70
-          LITERAL@68..70
-            WHITESPACE@68..69 " "
+          WHITESPACE@68..69 " "
+          LITERAL@69..70
             INT_LITERAL@69..70 "3"
         R_BRACE@70..71 "}"
       COMMA@71..72 ","
@@ -98,8 +98,8 @@ COMP_UNIT@0..86
             INT_LITERAL@74..75 "4"
         COMMA@75..76 ","
         INIT_VAL@76..78
-          LITERAL@76..78
-            WHITESPACE@76..77 " "
+          WHITESPACE@76..77 " "
+          LITERAL@77..78
             INT_LITERAL@77..78 "5"
         R_BRACE@78..79 "}"
       R_BRACE@79..80 "}"
