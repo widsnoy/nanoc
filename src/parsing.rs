@@ -6,7 +6,7 @@ use parser::parse::Parser;
 use rowan::GreenNode;
 use vfs::Vfs;
 
-use crate::error::{CompilerError, Result, SemanticErrors};
+use crate::error::{CompilerError, Result};
 
 /// 解析源代码为语法树
 pub fn parse(input_path: &Path, input: String) -> Result<GreenNode> {
@@ -28,10 +28,7 @@ pub fn parse(input_path: &Path, input: String) -> Result<GreenNode> {
         let mut errors_by_file = HashMap::new();
         errors_by_file.insert(file_id, semantic_errors);
 
-        return Err(CompilerError::Semantic(Box::new(SemanticErrors {
-            errors_by_file,
-            vfs,
-        })));
+        return Err(CompilerError::Semantic(errors_by_file));
     }
 
     Ok(green_node)

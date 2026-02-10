@@ -8,13 +8,6 @@ use vfs::{FileID, Vfs};
 
 pub type Result<T> = std::result::Result<T, CompilerError>;
 
-/// 语义错误集合（按文件分组）
-#[derive(Debug)]
-pub struct SemanticErrors {
-    pub errors_by_file: HashMap<FileID, Vec<SemanticError>>,
-    pub vfs: Vfs,
-}
-
 /// 编译器错误
 #[derive(Debug, Error)]
 pub enum CompilerError {
@@ -22,7 +15,7 @@ pub enum CompilerError {
     Io(#[from] std::io::Error),
 
     #[error("semantic errors occurred")]
-    Semantic(Box<SemanticErrors>),
+    Semantic(HashMap<FileID, Vec<SemanticError>>),
 
     #[error("codegen failed: {0}")]
     Codegen(#[from] CodegenError),
@@ -39,11 +32,11 @@ pub enum CompilerError {
 
 impl CompilerError {
     /// 报告编译错误
-    pub fn report(self) {
+    pub fn report(self, vfs: Vfs) {
         match self {
             Self::Semantic(semantic_errors) => {
-                for (file_id, errors) in semantic_errors.errors_by_file {
-                    if let Some(file) = semantic_errors.vfs.get_file_by_file_id(&file_id) {
+                for (file_id, errors) in semantic_errors {
+                    if let Some(file) = vfs.get_file_by_file_id(&file_id) {
                         let source =
                             NamedSource::new(file.path.to_string_lossy(), file.text.clone());
                         for error in errors {

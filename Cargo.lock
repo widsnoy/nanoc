@@ -33,6 +33,7 @@ dependencies = [
  "analyzer",
  "clap",
  "codegen",
+ "inkwell",
  "lexer",
  "miette",
  "parser",
@@ -234,6 +235,7 @@ dependencies = [
  "thunderdome",
  "tools",
  "utils",
+ "vfs",
 ]
 
 [[package]]

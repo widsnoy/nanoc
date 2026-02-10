@@ -9,6 +9,7 @@ analyzer.workspace = true
 utils.workspace = true
 syntax.workspace = true
 tools.workspace = true
+vfs.workspace = true
 
 inkwell.workspace = true
 rowan.workspace = true

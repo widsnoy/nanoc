@@ -1,4 +1,3 @@
-pub mod compiler;
 pub mod error;
 pub mod llvm_ir;
 pub mod utils;

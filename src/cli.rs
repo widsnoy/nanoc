@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
-use codegen::compiler::OptLevel;
 
 /// airyc 编译器命令行参数
 #[derive(Parser, Debug)]
@@ -24,8 +23,8 @@ pub struct Args {
     pub emit: EmitTarget,
 
     /// optimization level
-    #[arg(short = 'O', default_value = "o0")]
-    pub opt_level: CliOptLevel,
+    #[arg(short = 'O', default_value = "default")]
+    pub opt_level: OptLevel,
 }
 
 /// 编译输出目标
@@ -41,22 +40,21 @@ pub enum EmitTarget {
     Check,
 }
 
-/// CLI 优化级别（用于 clap 解析）
+/// 优化级别
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
-pub enum CliOptLevel {
-    O0,
-    O1,
-    O2,
-    O3,
+pub enum OptLevel {
+    None,
+    Less,
+    Default,
+    Aggressive,
 }
-
-impl From<CliOptLevel> for OptLevel {
-    fn from(level: CliOptLevel) -> Self {
+impl From<OptLevel> for inkwell::OptimizationLevel {
+    fn from(level: OptLevel) -> Self {
         match level {
-            CliOptLevel::O0 => OptLevel::O0,
-            CliOptLevel::O1 => OptLevel::O1,
-            CliOptLevel::O2 => OptLevel::O2,
-            CliOptLevel::O3 => OptLevel::O3,
+            OptLevel::None => inkwell::OptimizationLevel::None,
+            OptLevel::Less => inkwell::OptimizationLevel::Less,
+            OptLevel::Default => inkwell::OptimizationLevel::Default,
+            OptLevel::Aggressive => inkwell::OptimizationLevel::Aggressive,
         }
     }
 }

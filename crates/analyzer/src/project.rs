@@ -19,7 +19,6 @@ pub struct Project {
     pub modules: HashMap<FileID, Module>,
     pub line_indexes: HashMap<FileID, LineIndex>,
     pub metadata: Arc<HashMap<FileID, ThinModule>>,
-    pub vfs: Vfs,
 }
 
 impl Default for Project {
@@ -28,17 +27,15 @@ impl Default for Project {
             modules: HashMap::new(),
             line_indexes: HashMap::new(),
             metadata: Arc::new(HashMap::new()),
-            vfs: Vfs::default(),
         }
     }
 }
 
 impl Project {
     /// 全量初始化
-    pub fn full_initialize(&mut self, vfs: Vfs) {
-        self.vfs = vfs;
+    pub fn full_initialize(&mut self, vfs: &Vfs) {
         // 初始化所有 module，语法分析
-        self.vfs.for_each_file(|file_id, file| {
+        vfs.for_each_file(|file_id, file| {
             let parser = Parser::new(&file.text);
             let line_index = LineIndex::new(
                 parser
@@ -69,7 +66,7 @@ impl Project {
         let mut all_imports = Vec::with_capacity(self.modules.len());
         for (file_id, module) in &self.modules {
             let module_imports =
-                HeaderAnalyzer::collect_module_imports(module, *file_id, &self.vfs, &self.modules);
+                HeaderAnalyzer::collect_module_imports(module, *file_id, vfs, &self.modules);
             all_imports.push((*file_id, module_imports));
         }
         for (file_id, module_imports) in all_imports {

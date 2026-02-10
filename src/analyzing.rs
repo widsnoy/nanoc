@@ -4,19 +4,10 @@ use std::path::PathBuf;
 use analyzer::project::Project;
 use vfs::Vfs;
 
-use crate::error::{CompilerError, Result, SemanticErrors};
+use crate::error::{CompilerError, Result};
 
 /// 分析项目中的所有文件
-pub fn analyze_project(input_paths: &[PathBuf]) -> Result<Project> {
-    if input_paths.is_empty() {
-        return Err(CompilerError::Semantic(Box::new(SemanticErrors {
-            errors_by_file: HashMap::new(),
-            vfs: Vfs::default(),
-        })));
-    }
-
-    // 构建 VFS
-    let vfs = Vfs::default();
+pub fn analyze_project(input_paths: &[PathBuf], vfs: &Vfs) -> Result<Project> {
     for input_path in input_paths {
         let text = std::fs::read_to_string(input_path).map_err(CompilerError::Io)?;
         let absolute_path = input_path
@@ -38,10 +29,7 @@ pub fn analyze_project(input_paths: &[PathBuf]) -> Result<Project> {
     }
 
     if !errors_by_file.is_empty() {
-        return Err(CompilerError::Semantic(Box::new(SemanticErrors {
-            errors_by_file,
-            vfs: project.vfs,
-        })));
+        return Err(CompilerError::Semantic(errors_by_file));
     }
 
     Ok(project)

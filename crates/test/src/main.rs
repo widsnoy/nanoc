@@ -176,8 +176,6 @@ fn run_test(case: &TestCase, args: &Args, tmp_dir: &Path) -> Result<TestResult> 
         .arg(tmp_dir)
         .arg("-r")
         .arg(runtime_lib)
-        .arg("-O")
-        .arg("o2")
         .output()
         .context("airyc-compiler compile failed")?;
 

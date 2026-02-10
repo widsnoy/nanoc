@@ -2,9 +2,9 @@ use core::default::Default;
 use std::path::PathBuf;
 
 use parser::parse::Parser;
+use vfs::Vfs;
 
 use crate::error::SemanticError;
-use crate::header::HeaderAnalyzer;
 use crate::module::Module;
 use crate::project::Project;
 
@@ -16,23 +16,14 @@ fn analyze(source: &str) -> Module {
         panic!("Parser errors: {:?}", errors);
     }
 
-    let project = Project::default();
+    let vfs = Vfs::default();
 
-    let file_id = project
-        .vfs
-        .new_file(PathBuf::from("test.airy"), source.to_string());
+    let file_id = vfs.new_file(PathBuf::from("test.airy"), source.to_string());
 
     let mut module = Module::new(tree);
     module.file_id = file_id;
 
     Project::allocate_module_symbols(&mut module);
-
-    let module_imports =
-        HeaderAnalyzer::collect_module_imports(&module, file_id, &project.vfs, &project.modules);
-
-    HeaderAnalyzer::apply_module_imports(&mut module, module_imports);
-
-    Project::fill_definitions(&mut module);
 
     module.analyze();
 

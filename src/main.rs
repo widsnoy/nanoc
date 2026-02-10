@@ -4,6 +4,7 @@ use clap::Parser;
 
 mod analyzing;
 mod cli;
+mod compiling;
 mod error;
 mod linking;
 mod parsing;
@@ -11,9 +12,13 @@ mod parsing;
 use syntax::SyntaxNode;
 
 use cli::{Args, EmitTarget};
+use vfs::Vfs;
+
+use crate::compiling::{compile_project_to_object_bytes, compile_to_ir_file};
 
 fn main() {
     let args = Args::parse();
+    let vfs = Vfs::default();
 
     // 检查是否有输入文件
     if args.input_path.is_empty() {
@@ -40,7 +45,7 @@ fn main() {
         let green_node = match parsing::parse(input_path, input) {
             Ok(result) => result,
             Err(e) => {
-                e.report();
+                e.report(vfs);
                 std::process::exit(1);
             }
         };
@@ -50,10 +55,10 @@ fn main() {
     }
 
     // 语义分析
-    let project = match analyzing::analyze_project(&args.input_path) {
+    let project = match analyzing::analyze_project(&args.input_path, &vfs) {
         Ok(project) => project,
         Err(e) => {
-            e.report();
+            e.report(vfs);
             std::process::exit(1);
         }
     };
@@ -67,7 +72,7 @@ fn main() {
         return;
     }
 
-    let opt_level = args.opt_level.into();
+    let opt_level = args.opt_level;
 
     // 代码生成
     match args.emit {
@@ -75,8 +80,7 @@ fn main() {
             // 为每个模块生成 IR 文件
             for (file_id, module) in project.modules {
                 // 获取模块名称
-                let module_name = project
-                    .vfs
+                let module_name = vfs
                     .get_file_by_file_id(&file_id)
                     .and_then(|file| {
                         std::path::Path::new(&file.path)
@@ -87,7 +91,7 @@ fn main() {
                     .unwrap_or_else(|| "unknown".to_string());
 
                 let output_path = args.output_dir.join(format!("{}.ll", module_name));
-                if let Err(e) = codegen::compiler::compile_to_ir_file(
+                if let Err(e) = compile_to_ir_file(
                     &module_name,
                     module.green_tree.clone(),
                     &module,
@@ -101,14 +105,13 @@ fn main() {
         }
         EmitTarget::Exe => {
             // 生成所有模块的目标文件
-            let object_files =
-                match codegen::compiler::compile_project_to_object_bytes(&project, opt_level) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        eprintln!("Error: {}", e);
-                        std::process::exit(1);
-                    }
-                };
+            let object_files = match compile_project_to_object_bytes(&project, &vfs, opt_level) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                }
+            };
 
             // 确定输出文件名（使用第一个文件的名称）
             let output_name = args.input_path[0]

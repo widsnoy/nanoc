@@ -66,6 +66,7 @@ clap.workspace = true
 miette.workspace = true
 thiserror.workspace = true
 rowan.workspace = true
+inkwell.workspace = true
 
 [profile.release]
 lto = true
