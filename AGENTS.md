@@ -8,16 +8,18 @@ Airyc is a toy programming language. The compiler compiles to LLVM IR and native
 
 ### Crate Structure
 
-- `compiler` (root) - Main compiler binary with CLI
+- `bin/cli` - Main compiler binary (airyc-cli)
+- `bin/language_server` - LSP server for IDE support
+- `bin/test` - Integration test runner
 - `crates/syntax` - SyntaxKind definitions and AST node types
 - `crates/lexer` - Lexer using logos
 - `crates/parser` - Parser using rowan for lossless syntax trees
 - `crates/analyzer` - Semantic analysis, type checking, symbol resolution
 - `crates/codegen` - LLVM IR code generation using inkwell
 - `crates/runtime` - Runtime library (C code compiled to static lib)
-- `crates/language_server` - LSP server for IDE support
+- `crates/vfs` - Virtual file system for managing source files
+- `crates/tools` - Compiler tooling utilities
 - `crates/utils` - Shared utility functions
-- `crates/test` - Integration test runner
 
 ## Language Syntax
 
@@ -57,12 +59,15 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings  # Clippy (
 # Unit tests
 cargo test --workspace                     # Run all unit tests
 cargo test -p parser                       # Run tests for specific crate
-cargo test -p parser test_declarations     # Run single test by name
+cargo test -p analyzer test_variable_declaration  # Run single test by name
 cargo test --workspace -- --nocapture      # Run with output
+cargo test -p codegen -- --nocapture       # Run tests for specific crate with output
 
 # Snapshot testing (insta)
-cargo insta test --review                  # Update snapshots
-cargo insta accept                         # Accept all snapshots
+cargo insta test                           # Run tests and show snapshot diffs
+cargo insta test --review                  # Review and update snapshots interactively
+cargo insta accept                         # Accept all pending snapshots
+cargo insta reject                         # Reject all pending snapshots
 
 # Integration tests (requires cargo-make)
 cargo make test                            # All integration tests
