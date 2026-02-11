@@ -7,7 +7,7 @@ use syntax::visitor::ExprVisitor;
 use crate::array::ArrayTreeValue;
 use crate::error::AnalyzeError;
 use crate::module::{Module, ReferenceTag};
-use crate::r#type::NType;
+use crate::r#type::Ty;
 use crate::value::Value;
 
 impl ExprVisitor for Module {
@@ -19,21 +19,21 @@ impl ExprVisitor for Module {
         };
 
         let builtin_functions = [
-            ("getint", 0, NType::Int),
-            ("getch", 0, NType::Int),
-            ("getfloat", 0, NType::Float),
-            ("getarray", 1, NType::Int),
-            ("getfarray", 1, NType::Int),
-            ("putint", 1, NType::Void),
-            ("putch", 1, NType::Void),
-            ("putfloat", 1, NType::Void),
-            ("putarray", 2, NType::Void),
-            ("putfarray", 2, NType::Void),
-            ("putf", -1, NType::Void), // 可变参数
-            ("starttime", 0, NType::Void),
-            ("stoptime", 0, NType::Void),
-            ("_sysy_starttime", 1, NType::Void),
-            ("_sysy_stoptime", 1, NType::Void),
+            ("getint", 0, Ty::I32),
+            ("getch", 0, Ty::I32),
+            ("getfloat", 0, Ty::F32),
+            ("getarray", 1, Ty::I32),
+            ("getfarray", 1, Ty::I32),
+            ("putint", 1, Ty::Void),
+            ("putch", 1, Ty::Void),
+            ("putfloat", 1, Ty::Void),
+            ("putarray", 2, Ty::Void),
+            ("putfarray", 2, Ty::Void),
+            ("putf", -1, Ty::Void), // 可变参数
+            ("starttime", 0, Ty::Void),
+            ("stoptime", 0, Ty::Void),
+            ("_sysy_starttime", 1, Ty::Void),
+            ("_sysy_stoptime", 1, Ty::Void),
         ];
 
         // 获取实际参数数量
@@ -97,7 +97,7 @@ impl ExprVisitor for Module {
         let rhs_ty = self.get_expr_type(rhs.text_range()).cloned();
 
         if let (Some(l), Some(r)) = (&lhs_ty, &rhs_ty) {
-            match NType::compute_binary_result_type(l, r, op_kind) {
+            match Ty::compute_binary_result_type(l, r, op_kind) {
                 Some(result_ty) => {
                     self.set_expr_type(node.text_range(), result_ty);
                 }
@@ -236,8 +236,8 @@ impl ExprVisitor for Module {
                 };
                 let Value::Int(index) = v else {
                     self.new_error(AnalyzeError::TypeMismatch {
-                        expected: NType::Int,
-                        found: NType::Float,
+                        expected: Ty::I32,
+                        found: Ty::F32,
                         range: utils::trim_node_text_range(&indice),
                     });
                     return;
@@ -369,7 +369,7 @@ impl ExprVisitor for Module {
             };
             // 如果 base_ty 是 const，需要继承
             let result_ty = if base_ty.is_const() && !result_ty.is_const() {
-                NType::Const(Box::new(result_ty))
+                Ty::Const(Box::new(result_ty))
             } else {
                 result_ty
             };
@@ -416,15 +416,15 @@ impl ExprVisitor for Module {
         let range = node.text_range();
         let v = if let Some(n) = node.float_token() {
             let s = n.text();
-            self.set_expr_type(range, NType::Float);
+            self.set_expr_type(range, Ty::F32);
             Value::Float(s.parse::<f32>().unwrap())
         } else if node.null_token().is_some() {
             // null 是多态的，类型将在赋值时确定
             // 这里暂时设置为 void 指针类型
             self.set_expr_type(
                 range,
-                NType::Pointer {
-                    pointee: Box::new(NType::Void),
+                Ty::Pointer {
+                    pointee: Box::new(Ty::Void),
                     is_const: false,
                 },
             );
@@ -442,7 +442,7 @@ impl ExprVisitor for Module {
                 },
                 _ => (s, 10),
             };
-            self.set_expr_type(range, NType::Int);
+            self.set_expr_type(range, Ty::I32);
             Value::Int(match i32::from_str_radix(num_str, radix) {
                 Ok(v) => v,
                 Err(_) => return,

@@ -3,43 +3,43 @@ use std::fmt;
 use syntax::SyntaxKind;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NType {
-    Int,
-    Float,
+pub enum Ty {
+    I32,
+    F32,
     Void,
-    Array(Box<NType>, Option<i32>),
-    Pointer { pointee: Box<NType>, is_const: bool },
+    Array(Box<Ty>, Option<i32>),
+    Pointer { pointee: Box<Ty>, is_const: bool },
     Struct { id: StructID, name: String },
-    Const(Box<NType>),
+    Const(Box<Ty>),
 }
 
-impl fmt::Display for NType {
+impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NType::Int => write!(f, "i32"),
-            NType::Float => write!(f, "f32"),
-            NType::Void => write!(f, "void"),
-            NType::Array(inner, size) => {
+            Ty::I32 => write!(f, "i32"),
+            Ty::F32 => write!(f, "f32"),
+            Ty::Void => write!(f, "void"),
+            Ty::Array(inner, size) => {
                 if let Some(s) = size {
                     write!(f, "[{}; {}]", inner, s)
                 } else {
                     write!(f, "[{}; ?]", inner)
                 }
             }
-            NType::Pointer { pointee, is_const } => {
+            Ty::Pointer { pointee, is_const } => {
                 if *is_const {
                     write!(f, "*const {}", pointee)
                 } else {
                     write!(f, "*mut {}", pointee)
                 }
             }
-            NType::Struct { name, .. } => write!(f, "struct {}", name),
-            NType::Const(inner) => write!(f, "const {}", inner),
+            Ty::Struct { name, .. } => write!(f, "struct {}", name),
+            Ty::Const(inner) => write!(f, "const {}", inner),
         }
     }
 }
 
-impl NType {
+impl Ty {
     /// 检查是否为数组类型（包括 Const(Array(...))）
     pub fn is_array(&self) -> bool {
         match self {
@@ -60,7 +60,7 @@ impl NType {
     }
 
     /// 提取指针类型的内部类型，处理 Pointer {...} 和 Const(Pointer {...}) 两种情况
-    pub fn pointer_inner(&self) -> Option<&NType> {
+    pub fn pointer_inner(&self) -> Option<&Ty> {
         match self {
             Self::Pointer { pointee, .. } => Some(pointee.as_ref()),
             Self::Const(inner) => {
@@ -84,7 +84,7 @@ impl NType {
     }
 
     /// 去掉 Const 包装，返回内部类型
-    pub fn unwrap_const(&self) -> NType {
+    pub fn unwrap_const(&self) -> Ty {
         match self {
             Self::Const(inner) => inner.as_ref().clone(),
             _ => self.clone(),
@@ -112,27 +112,27 @@ impl NType {
     /// 返回标量零值（int / float）
     pub fn const_zero(&self) -> Value {
         match self {
-            NType::Int => Value::Int(0),
-            NType::Float => Value::Float(0.0),
-            NType::Void => Value::Int(0),
-            NType::Array(ntype, _) => ntype.const_zero(),
-            NType::Pointer { .. } => Value::Null,
-            NType::Struct { id, .. } => Value::StructZero(*id),
-            NType::Const(ntype) => ntype.const_zero(),
+            Ty::I32 => Value::Int(0),
+            Ty::F32 => Value::Float(0.0),
+            Ty::Void => Value::Int(0),
+            Ty::Array(ntype, _) => ntype.const_zero(),
+            Ty::Pointer { .. } => Value::Null,
+            Ty::Struct { id, .. } => Value::StructZero(*id),
+            Ty::Const(ntype) => ntype.const_zero(),
         }
     }
 
     /// 判断两种类型是否兼容
     pub fn assign_to_me_is_ok(&self, other: &Self) -> bool {
         match (self, other) {
-            (NType::Void, NType::Void) => true,
-            (NType::Int, NType::Int) => true,
-            (NType::Float, NType::Float) => true,
-            (NType::Pointer { .. }, NType::Pointer { .. }) => true,
-            (NType::Struct { id: id1, .. }, NType::Struct { id: id2, .. }) => id1 == id2,
-            (NType::Const(inner), NType::Const(r_inner)) => inner.assign_to_me_is_ok(r_inner),
-            (NType::Const(inner), _) => inner.assign_to_me_is_ok(other),
-            (_, NType::Const(inner)) => self.assign_to_me_is_ok(inner),
+            (Ty::Void, Ty::Void) => true,
+            (Ty::I32, Ty::I32) => true,
+            (Ty::F32, Ty::F32) => true,
+            (Ty::Pointer { .. }, Ty::Pointer { .. }) => true,
+            (Ty::Struct { id: id1, .. }, Ty::Struct { id: id2, .. }) => id1 == id2,
+            (Ty::Const(inner), Ty::Const(r_inner)) => inner.assign_to_me_is_ok(r_inner),
+            (Ty::Const(inner), _) => inner.assign_to_me_is_ok(other),
+            (_, Ty::Const(inner)) => self.assign_to_me_is_ok(inner),
             _ => false,
         }
     }
@@ -141,7 +141,7 @@ impl NType {
     /// 指针算术不检查 pointee 类型（指针透明）
     /// 不允许隐式类型转换
     /// 结果总是非 const
-    pub fn compute_binary_result_type(lhs: &NType, rhs: &NType, op: SyntaxKind) -> Option<NType> {
+    pub fn compute_binary_result_type(lhs: &Ty, rhs: &Ty, op: SyntaxKind) -> Option<Ty> {
         use SyntaxKind::*;
 
         // 先去掉 const 包装，统一处理
@@ -152,17 +152,17 @@ impl NType {
             // 算术运算符: +, -, *, /, %
             PLUS | MINUS | STAR | SLASH | PERCENT => match (&lhs_unwrapped, &rhs_unwrapped) {
                 // 整数运算
-                (NType::Int, NType::Int) => Some(NType::Int),
+                (Ty::I32, Ty::I32) => Some(Ty::I32),
                 // 浮点运算
-                (NType::Float, NType::Float) => Some(NType::Float),
+                (Ty::F32, Ty::F32) => Some(Ty::F32),
 
                 // 指针算术: ptr + int, ptr - int
                 // 不检查 pointee 类型，只要是指针就行
-                (l, NType::Int) if l.is_pointer() && matches!(op, PLUS | MINUS) => Some(l.clone()),
+                (l, Ty::I32) if l.is_pointer() && matches!(op, PLUS | MINUS) => Some(l.clone()),
                 // int + ptr
-                (NType::Int, r) if r.is_pointer() && op == PLUS => Some(r.clone()),
+                (Ty::I32, r) if r.is_pointer() && op == PLUS => Some(r.clone()),
                 // ptr - ptr (不检查 pointee 类型)
-                (l, r) if l.is_pointer() && r.is_pointer() && op == MINUS => Some(NType::Int),
+                (l, r) if l.is_pointer() && r.is_pointer() && op == MINUS => Some(Ty::I32),
 
                 // 其他情况不合法
                 _ => None,
@@ -171,17 +171,17 @@ impl NType {
             // 比较运算符: <, >, <=, >=, ==, !=
             LT | GT | LTEQ | GTEQ | EQEQ | NEQ => match (&lhs_unwrapped, &rhs_unwrapped) {
                 // 数值比较
-                (NType::Int, NType::Int) => Some(NType::Int),
-                (NType::Float, NType::Float) => Some(NType::Int),
+                (Ty::I32, Ty::I32) => Some(Ty::I32),
+                (Ty::F32, Ty::F32) => Some(Ty::I32),
                 // 指针比较（不检查 pointee 类型）
-                (l, r) if l.is_pointer() && r.is_pointer() => Some(NType::Int),
+                (l, r) if l.is_pointer() && r.is_pointer() => Some(Ty::I32),
                 _ => None,
             },
 
             // 逻辑运算符: &&, ||
             AMPAMP | PIPEPIPE => match (&lhs_unwrapped, &rhs_unwrapped) {
                 // 只允许整数类型
-                (NType::Int, NType::Int) => Some(NType::Int),
+                (Ty::I32, Ty::I32) => Some(Ty::I32),
                 _ => None,
             },
 
@@ -193,7 +193,7 @@ impl NType {
 
     /// 验证一元操作符并计算结果类型        
     /// 结果总是非 const
-    pub fn validate_unary_op(&self, op: SyntaxKind) -> Option<NType> {
+    pub fn validate_unary_op(&self, op: SyntaxKind) -> Option<Ty> {
         use SyntaxKind::*;
 
         // 先去掉 const 包装
@@ -201,22 +201,22 @@ impl NType {
 
         match (&unwrapped, op) {
             // 算术运算符: +, -
-            (NType::Int, PLUS | MINUS) => Some(NType::Int),
-            (NType::Float, PLUS | MINUS) => Some(NType::Float),
+            (Ty::I32, PLUS | MINUS) => Some(Ty::I32),
+            (Ty::F32, PLUS | MINUS) => Some(Ty::F32),
 
             // 逻辑非: !
-            (NType::Int, BANG) => Some(NType::Int),
+            (Ty::I32, BANG) => Some(Ty::I32),
 
             // 取地址: &
             // 注意：这里生成的指针类型是 *mut，不继承 const
-            (ty, AMP) => Some(NType::Pointer {
+            (ty, AMP) => Some(Ty::Pointer {
                 pointee: Box::new(ty.clone()),
                 is_const: false,
             }),
 
             // 解引用: *
             // 不检查指针的 const/mut 修饰符
-            (NType::Pointer { pointee, .. }, STAR) => Some((**pointee).clone()),
+            (Ty::Pointer { pointee, .. }, STAR) => Some((**pointee).clone()),
 
             // 其他情况不合法
             _ => None,

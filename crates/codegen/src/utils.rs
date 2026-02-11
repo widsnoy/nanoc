@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use analyzer::array::ArrayTree;
-use analyzer::r#type::NType;
+use analyzer::r#type::Ty;
 use analyzer::value::Value;
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicType, BasicTypeEnum};
@@ -33,7 +33,7 @@ impl<'a, 'ctx> SymbolTable<'a, 'ctx> {
     }
 
     /// 插入局部变量
-    pub(crate) fn insert_var(&mut self, name: String, ptr: PointerValue<'ctx>, ty: &'a NType) {
+    pub(crate) fn insert_var(&mut self, name: String, ptr: PointerValue<'ctx>, ty: &'a Ty) {
         if let Some(scope) = self.scopes.last_mut() {
             scope.insert(name, Symbol::new(ptr, ty));
         }
@@ -100,20 +100,20 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     /// Convert `NType` to `BasicTypeEnum`
-    pub(crate) fn convert_ntype_to_type(&self, ntype: &NType) -> Result<BasicTypeEnum<'ctx>> {
+    pub(crate) fn convert_ntype_to_type(&self, ntype: &Ty) -> Result<BasicTypeEnum<'ctx>> {
         match ntype {
-            NType::Int => Ok(self.context.i32_type().into()),
-            NType::Float => Ok(self.context.f32_type().into()),
-            NType::Void => Ok(self.context.i8_type().into()),
-            NType::Array(ntype, count) => {
+            Ty::I32 => Ok(self.context.i32_type().into()),
+            Ty::F32 => Ok(self.context.f32_type().into()),
+            Ty::Void => Ok(self.context.i8_type().into()),
+            Ty::Array(ntype, count) => {
                 let inner = self.convert_ntype_to_type(ntype)?;
                 let size = count.ok_or_else(|| {
                     CodegenError::NotImplemented("array with runtime size not supported")
                 })?;
                 Ok(inner.array_type(size as u32).into())
             }
-            NType::Pointer { .. } => Ok(self.context.ptr_type(AddressSpace::default()).into()),
-            NType::Struct {
+            Ty::Pointer { .. } => Ok(self.context.ptr_type(AddressSpace::default()).into()),
+            Ty::Struct {
                 id: struct_id,
                 name,
             } => {
@@ -150,7 +150,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     Ok(struct_type.into())
                 }
             }
-            NType::Const(ntype) => self.convert_ntype_to_type(ntype),
+            Ty::Const(ntype) => self.convert_ntype_to_type(ntype),
         }
     }
 
@@ -223,7 +223,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
     pub(crate) fn calculate_index_op(
         &self,
-        mut cur_ntype: NType,
+        mut cur_ntype: Ty,
         mut cur_llvm_type: BasicTypeEnum<'ctx>,
         mut ptr: PointerValue<'ctx>,
         indices: Vec<IntValue<'ctx>>,
@@ -233,14 +233,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         while idx_iter.peek().is_some() {
             match &cur_ntype {
-                NType::Array(_, _) => {
+                Ty::Array(_, _) => {
                     // 收集连续的数组维度索引
                     let zero = self.context.i32_type().const_zero();
                     let mut indices = vec![zero];
                     let mut depth = 0;
                     let mut inner = &cur_ntype;
 
-                    while let NType::Array(next_inner, _) = inner {
+                    while let Ty::Array(next_inner, _) = inner {
                         if let Some(idx) = idx_iter.next() {
                             indices.push(idx);
                             depth += 1;
@@ -259,12 +259,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     // 更新类型：剥掉 depth 层数组
                     for _ in 0..depth {
                         cur_llvm_type = cur_llvm_type.into_array_type().get_element_type();
-                        if let NType::Array(inner, _) = cur_ntype {
+                        if let Ty::Array(inner, _) = cur_ntype {
                             cur_ntype = *inner;
                         }
                     }
                 }
-                NType::Pointer { pointee, .. } => {
+                Ty::Pointer { pointee, .. } => {
                     // 指针：load 后 GEP 一个索引
                     let pointee_ty = self.convert_ntype_to_type(pointee)?;
                     let loaded_ptr = self
@@ -283,7 +283,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     cur_ntype = *pointee.clone();
                     cur_llvm_type = pointee_ty;
                 }
-                NType::Const(inner) => {
+                Ty::Const(inner) => {
                     cur_ntype = *inner.clone();
                 }
                 _ => {
@@ -390,7 +390,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .get_struct_by_id(*struct_id)
                     .map(|s| s.name)
                     .unwrap_or_default();
-                let struct_ntype = NType::Struct {
+                let struct_ntype = Ty::Struct {
                     id: *struct_id,
                     name: struct_name,
                 };
@@ -423,7 +423,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .ok_or(CodegenError::NotImplemented("undefined struct"))?;
 
                 // 获取 struct 的 LLVM 类型
-                let struct_ntype = NType::Struct {
+                let struct_ntype = Ty::Struct {
                     id: *struct_id,
                     name: struct_def.name.clone(),
                 };
@@ -508,18 +508,18 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     /// Get size of type in bytes
-    pub(crate) fn get_type_size(&self, ty: &NType) -> Result<u64> {
+    pub(crate) fn get_type_size(&self, ty: &Ty) -> Result<u64> {
         match ty {
-            NType::Int => Ok(4),
-            NType::Float => Ok(4),
-            NType::Pointer { .. } => Ok(8),
-            NType::Array(inner, count) => {
+            Ty::I32 => Ok(4),
+            Ty::F32 => Ok(4),
+            Ty::Pointer { .. } => Ok(8),
+            Ty::Array(inner, count) => {
                 let size = count.ok_or_else(|| {
                     CodegenError::NotImplemented("array with runtime size not supported")
                 })?;
                 Ok(self.get_type_size(inner)? * (size as u64))
             }
-            NType::Const(inner) => self.get_type_size(inner),
+            Ty::Const(inner) => self.get_type_size(inner),
             _ => Err(CodegenError::Unsupported("unknown type size".into())),
         }
     }

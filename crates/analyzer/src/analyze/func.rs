@@ -6,7 +6,7 @@ use syntax::ast::*;
 
 use crate::error::AnalyzeError;
 use crate::module::Module;
-use crate::r#type::NType;
+use crate::r#type::Ty;
 
 impl FuncVisitor for Module {
     fn enter_func_def(&mut self, node: FuncDef) {
@@ -66,7 +66,7 @@ impl FuncVisitor for Module {
                 }
             }
         } else {
-            NType::Void
+            Ty::Void
         };
 
         let Some(name) = node.name().and_then(|n| n.var_name()) else {

@@ -11,7 +11,7 @@ use crate::{
     checker::ProjectChecker,
     header::HeaderAnalyzer,
     module::{CiterInfo, Field, FieldID, Module, ModuleIndex, ThinModule},
-    r#type::NType,
+    r#type::Ty,
 };
 
 #[derive(Default, Debug)]
@@ -161,14 +161,8 @@ impl Project {
                         continue;
                     }
 
-                    let func_id = module.new_function(
-                        name.clone(),
-                        vec![],
-                        vec![],
-                        NType::Void,
-                        false,
-                        range,
-                    );
+                    let func_id =
+                        module.new_function(name.clone(), vec![], vec![], Ty::Void, false, range);
                     module.function_map.insert(name, func_id);
                 }
             } else if let Some(struct_def) = StructDef::cast(ele)
@@ -249,11 +243,11 @@ impl Project {
                         }
                         Err(e) => {
                             module.semantic_errors.push(e);
-                            NType::Void
+                            Ty::Void
                         }
                     }
                 } else {
-                    NType::Void
+                    Ty::Void
                 };
 
                 if let Some(func_data) = module.get_function_mut_by_id(func_id) {

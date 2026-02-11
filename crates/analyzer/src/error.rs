@@ -5,7 +5,7 @@ use parser::parse::ParserError;
 use thiserror::Error;
 use tools::TextRange;
 
-use crate::{array::ArrayInitError, r#type::NType};
+use crate::{array::ArrayInitError, r#type::Ty};
 
 #[derive(Debug, Clone, Error, Diagnostic)]
 pub enum AnalyzeError {
@@ -16,8 +16,8 @@ pub enum AnalyzeError {
     #[error("type mismatch: expected {expected}, found {found}")]
     #[diagnostic(code(semantic::type_mismatch))]
     TypeMismatch {
-        expected: NType,
-        found: NType,
+        expected: Ty,
+        found: Ty,
         #[label("here")]
         range: TextRange,
     },
@@ -113,7 +113,7 @@ pub enum AnalyzeError {
     #[error("type {ty} is not a struct")]
     #[diagnostic(code(semantic::not_a_struct))]
     NotAStruct {
-        ty: NType,
+        ty: Ty,
         #[label("here")]
         range: TextRange,
     },
@@ -121,7 +121,7 @@ pub enum AnalyzeError {
     #[error("type {ty} is not a struct pointer")]
     #[diagnostic(code(semantic::not_a_struct_pointer))]
     NotAStructPointer {
-        ty: NType,
+        ty: Ty,
         #[label("here")]
         range: TextRange,
     },
@@ -138,7 +138,7 @@ pub enum AnalyzeError {
     #[error("can't apply operator '{op}' to type {ty}")]
     #[diagnostic(code(semantic::apply_op_on_type))]
     ApplyOpOnType {
-        ty: NType,
+        ty: Ty,
         op: String,
         #[label("here")]
         range: TextRange,
@@ -189,8 +189,8 @@ pub enum AnalyzeError {
     #[error("return type mismatch: expected {expected}, found {found}")]
     #[diagnostic(code(semantic::return_type_mismatch))]
     ReturnTypeMismatch {
-        expected: NType,
-        found: NType,
+        expected: Ty,
+        found: Ty,
         #[label("here")]
         range: TextRange,
     },
@@ -266,8 +266,8 @@ pub enum AnalyzeError {
     #[diagnostic(code(semantic::binary_op_type_mismatch))]
     BinaryOpTypeMismatch {
         op: String,
-        lhs: NType,
-        rhs: NType,
+        lhs: Ty,
+        rhs: Ty,
         #[label("here")]
         range: TextRange,
     },

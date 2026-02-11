@@ -12,7 +12,7 @@ use tools::TextRange;
 use crate::{
     error::AnalyzeError,
     module::{Module, StructID},
-    r#type::NType,
+    r#type::Ty,
     value::Value,
 };
 
@@ -95,8 +95,8 @@ pub enum ArrayInitError {
     #[error("expected {expected}, found {found}")]
     #[diagnostic(code(array::type_mismatch))]
     TypeMismatch {
-        expected: NType,
-        found: NType,
+        expected: Ty,
+        found: Ty,
         #[label("here")]
         range: TextRange,
     },
@@ -106,7 +106,7 @@ impl ArrayTree {
     /// 由调用方处理常量表
     pub fn new(
         m: &mut Module,
-        ty: &NType,
+        ty: &Ty,
         init_val: InitVal,
     ) -> Result<(ArrayTree, bool), ArrayInitError> {
         let Some(first_child) = init_val.first_child() else {
@@ -122,12 +122,12 @@ impl ArrayTree {
 
     fn build(
         m: &mut Module,
-        ty: &NType,
+        ty: &Ty,
         cursor: &mut Option<InitVal>,
         is_const: &mut bool,
     ) -> Result<ArrayTree, ArrayInitError> {
         match ty {
-            NType::Int | NType::Float | NType::Pointer { .. } => {
+            Ty::I32 | Ty::F32 | Ty::Pointer { .. } => {
                 let Some(u) = cursor else { unreachable!() };
                 if let Some(expr) = u.try_expr() {
                     let range = u.text_range();
@@ -149,7 +149,7 @@ impl ArrayTree {
                 }
                 Err(ArrayInitError::AssignArrayToNumber)
             }
-            NType::Struct { id: struct_id, .. } => {
+            Ty::Struct { id: struct_id, .. } => {
                 let Some(u) = cursor else {
                     return Err(ArrayInitError::MisMatchIndexAndType);
                 };
@@ -166,7 +166,7 @@ impl ArrayTree {
                     struct_id: *struct_id,
                 }))
             }
-            NType::Array(inner, count) => {
+            Ty::Array(inner, count) => {
                 // 如果 count 为 None，说明还没有常量折叠，暂时返回错误
                 let count_val = count.ok_or(ArrayInitError::MisMatchIndexAndType)?;
                 let mut children_vec = Vec::with_capacity(count_val as usize);
@@ -201,8 +201,8 @@ impl ArrayTree {
                 }
                 Ok(ArrayTree::Children(children_vec))
             }
-            NType::Const(inner) => Self::build(m, inner, cursor, is_const),
-            NType::Void => unreachable!(),
+            Ty::Const(inner) => Self::build(m, inner, cursor, is_const),
+            Ty::Void => unreachable!(),
         }
     }
 

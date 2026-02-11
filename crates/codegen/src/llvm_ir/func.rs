@@ -1,5 +1,5 @@
 use analyzer::module::Function;
-use analyzer::r#type::NType;
+use analyzer::r#type::Ty;
 use inkwell::types::BasicType;
 use syntax::ast::*;
 
@@ -37,7 +37,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     pub(super) fn declare_function(&mut self, func_info: &Function) -> Result<()> {
         let name = &func_info.name;
         let ret_ty = &func_info.ret_type;
-        let is_void = matches!(ret_ty, NType::Void);
+        let is_void = matches!(ret_ty, Ty::Void);
 
         let basic_params = func_info
             .meta_types
@@ -89,10 +89,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .ok_or_else(|| CodegenError::UndefinedFunc(name.clone()))?;
 
         let ret_ty = &func_info.ret_type;
-        let is_void = matches!(ret_ty, NType::Void);
+        let is_void = matches!(ret_ty, Ty::Void);
 
         // 从 func_info.params 获取参数信息
-        let params: Vec<(String, &'a NType)> = func_info
+        let params: Vec<(String, &'a Ty)> = func_info
             .params
             .iter()
             .map(|var_id| {

@@ -5,7 +5,7 @@ use syntax::visitor::StmtVisitor;
 
 use crate::error::AnalyzeError;
 use crate::module::Module;
-use crate::r#type::NType;
+use crate::r#type::Ty;
 
 impl StmtVisitor for Module {
     fn enter_block(&mut self, node: Block) {
@@ -102,7 +102,7 @@ impl StmtVisitor for Module {
                 None => return,
             }
         } else {
-            &NType::Void
+            &Ty::Void
         };
 
         // 检查返回类型是否匹配

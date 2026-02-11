@@ -12,7 +12,7 @@ use tools::TextRange;
 use utils::{define_id_type, define_module_id_type};
 use vfs::FileID;
 
-use crate::{array::ArrayTree, error::AnalyzeError, r#type::NType, value::Value};
+use crate::{array::ArrayTree, error::AnalyzeError, r#type::Ty, value::Value};
 
 #[derive(Debug)]
 pub struct Module {
@@ -48,7 +48,7 @@ pub struct Module {
     pub function_map: HashMap<String, FunctionID>,
 
     /// 表达式类型表：TextRange -> NType
-    pub type_table: HashMap<TextRange, NType>,
+    pub type_table: HashMap<TextRange, Ty>,
 
     /// 错误
     pub semantic_errors: Vec<AnalyzeError>,
@@ -83,7 +83,7 @@ impl ThinModule {
 #[derive(Debug, Default)]
 pub(crate) struct AnalyzeContext {
     pub(crate) current_scope: ScopeID,
-    pub(crate) current_function_ret_type: Option<NType>,
+    pub(crate) current_function_ret_type: Option<Ty>,
     pub(crate) loop_depth: usize,
 }
 
@@ -148,11 +148,11 @@ impl Module {
         self.value_table.get(&range)
     }
 
-    pub fn set_expr_type(&mut self, range: TextRange, ty: NType) {
+    pub fn set_expr_type(&mut self, range: TextRange, ty: Ty) {
         self.type_table.insert(range, ty);
     }
 
-    pub fn get_expr_type(&self, range: TextRange) -> Option<&NType> {
+    pub fn get_expr_type(&self, range: TextRange) -> Option<&Ty> {
         self.type_table.get(&range)
     }
 
@@ -175,8 +175,8 @@ impl Module {
         &mut self,
         name: String,
         params: Vec<VariableID>,
-        meta_types: Vec<(String, NType)>,
-        ret_type: NType,
+        meta_types: Vec<(String, Ty)>,
+        ret_type: Ty,
         have_impl: bool,
         range: TextRange,
     ) -> FunctionID {
@@ -283,7 +283,7 @@ impl Module {
         StructID::new(self.file_id, id)
     }
 
-    pub fn new_field(&mut self, name: String, ty: NType, range: TextRange) -> FieldID {
+    pub fn new_field(&mut self, name: String, ty: Ty, range: TextRange) -> FieldID {
         let field = Field { name, ty, range };
         let id = self.fields.insert(field);
         FieldID::new(self.file_id, id)
@@ -349,7 +349,7 @@ impl Default for ScopeID {
 #[derive(Debug, Clone)]
 pub struct Variable {
     pub name: String,
-    pub ty: NType,
+    pub ty: Ty,
     pub range: TextRange,
 }
 
@@ -376,8 +376,8 @@ pub enum ReferenceTag {
 pub struct Function {
     pub name: String,
     pub params: Vec<VariableID>,
-    pub meta_types: Vec<(String, NType)>,
-    pub ret_type: NType,
+    pub meta_types: Vec<(String, Ty)>,
+    pub ret_type: Ty,
     pub have_impl: bool,
     pub range: TextRange,
 }
@@ -392,7 +392,7 @@ pub struct Struct {
 #[derive(Debug, Clone)]
 pub struct Field {
     pub name: String,
-    pub ty: NType,
+    pub ty: Ty,
     pub range: TextRange,
 }
 
@@ -444,7 +444,7 @@ impl Scope {
         variables: &mut Arena<Variable>,
         variable_map: &mut BTreeMap<TextRange, VariableID>,
         name: String,
-        ty: NType,
+        ty: Ty,
         range: TextRange,
     ) -> VariableID {
         let idx = variables.insert(Variable {

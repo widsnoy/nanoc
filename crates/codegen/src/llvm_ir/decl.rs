@@ -1,5 +1,5 @@
 use analyzer::array::{ArrayTree, ArrayTreeValue};
-use analyzer::r#type::NType;
+use analyzer::r#type::Ty;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::{BasicValueEnum, IntValue, PointerValue};
 use syntax::ast::*;
@@ -119,7 +119,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     /// 处理非常量 struct 初始化，逐个字段 store
     fn store_struct_init(
         &mut self,
-        struct_ty: &NType,
+        struct_ty: &Ty,
         init_node: InitVal,
         ptr: PointerValue<'ctx>,
         llvm_ty: BasicTypeEnum<'ctx>,
@@ -235,7 +235,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .get_struct_by_id(*id)
                     .map(|s| s.name)
                     .unwrap_or_else(|| format!("struct#{:?}", id.index));
-                let struct_ty = NType::Struct {
+                let struct_ty = Ty::Struct {
                     id: *id,
                     name: struct_name,
                 };

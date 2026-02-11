@@ -8,7 +8,7 @@ use crate::{
     array::ArrayTree,
     error::AnalyzeError,
     module::{Module, StructID},
-    r#type::NType,
+    r#type::Ty,
     value::Value,
 };
 
@@ -24,7 +24,7 @@ pub fn parse_type_node(
     module: &Module,
     ty_node: &Type,
     value_table: Option<&HashMap<TextRange, Value>>,
-) -> Result<Option<NType>, AnalyzeError> {
+) -> Result<Option<Ty>, AnalyzeError> {
     if ty_node.l_brack_token().is_some() {
         // 数组类型: [Type; Expr]
         let Some(inner_node) = ty_node.inner_type() else {
@@ -43,7 +43,7 @@ pub fn parse_type_node(
                     Some(Value::Int(n)) => Some(*n),
                     Some(other_value) => {
                         return Err(AnalyzeError::TypeMismatch {
-                            expected: NType::Const(Box::new(NType::Int)),
+                            expected: Ty::Const(Box::new(Ty::I32)),
                             found: other_value.get_type(module),
                             range: utils::trim_node_text_range(&expr_node),
                         });
@@ -61,7 +61,7 @@ pub fn parse_type_node(
             None
         };
 
-        Ok(Some(NType::Array(Box::new(inner), size)))
+        Ok(Some(Ty::Array(Box::new(inner), size)))
     } else if let Some(pointer) = ty_node.pointer() {
         // 指针类型: Pointer BaseType
         let Some(inner_node) = ty_node.inner_type() else {
@@ -72,7 +72,7 @@ pub fn parse_type_node(
             return Ok(None);
         };
 
-        Ok(Some(NType::Pointer {
+        Ok(Some(Ty::Pointer {
             pointee: Box::new(inner),
             is_const: pointer.is_const(),
         }))
@@ -83,11 +83,11 @@ pub fn parse_type_node(
         };
 
         let ntype = if pt_node.int_token().is_some() {
-            NType::Int
+            Ty::I32
         } else if pt_node.float_token().is_some() {
-            NType::Float
+            Ty::F32
         } else if pt_node.void_token().is_some() {
-            NType::Void
+            Ty::Void
         } else if pt_node.struct_token().is_some() {
             let Some(name) = pt_node.name().and_then(|n| n.var_name()) else {
                 return Ok(None);
@@ -100,7 +100,7 @@ pub fn parse_type_node(
                 });
             };
 
-            NType::Struct {
+            Ty::Struct {
                 id: sid,
                 name: name.clone(),
             }
@@ -109,7 +109,7 @@ pub fn parse_type_node(
         };
 
         if ty_node.const_token().is_some() {
-            Ok(Some(NType::Const(Box::new(ntype))))
+            Ok(Some(Ty::Const(Box::new(ntype))))
         } else {
             Ok(Some(ntype))
         }
@@ -120,16 +120,16 @@ impl Module {
     /// 计算索引后的类型：去掉 index_count 层数组/指针
     /// 如果结果是数组类型，自动 decay 成指向元素的指针
     pub(crate) fn compute_indexed_type(
-        ty: &NType,
+        ty: &Ty,
         index_count: usize,
         range: TextRange,
-    ) -> Result<NType, AnalyzeError> {
+    ) -> Result<Ty, AnalyzeError> {
         let mut current = ty.clone();
         for _ in 0..index_count {
             current = match current {
-                NType::Array(inner, _) => *inner,
-                NType::Pointer { pointee, .. } => *pointee,
-                NType::Const(inner) => Self::compute_indexed_type(&inner, 1, range)?,
+                Ty::Array(inner, _) => *inner,
+                Ty::Pointer { pointee, .. } => *pointee,
+                Ty::Const(inner) => Self::compute_indexed_type(&inner, 1, range)?,
                 _ => {
                     return Err(AnalyzeError::ApplyOpOnType {
                         ty: current,
@@ -140,8 +140,8 @@ impl Module {
             };
         }
         // 如果结果是数组类型，decay 成指向元素的指针
-        if let NType::Array(inner, _) = current {
-            Ok(NType::Pointer {
+        if let Ty::Array(inner, _) = current {
+            Ok(Ty::Pointer {
                 pointee: inner,
                 is_const: true,
             })
@@ -184,7 +184,7 @@ impl Module {
         let field_ids: *const [crate::module::FieldID] = &struct_def.fields[..];
 
         // 先收集所有字段类型（避免借用冲突）
-        let field_types: Vec<NType> = unsafe { &*field_ids }
+        let field_types: Vec<Ty> = unsafe { &*field_ids }
             .iter()
             .map(|field_id| self.get_field_by_id(*field_id).unwrap().ty.clone())
             .collect();
@@ -212,7 +212,7 @@ impl Module {
     /// 根据字段类型决定如何解析初始化值
     fn process_field_init_value(
         &mut self,
-        field_ty: &NType,
+        field_ty: &Ty,
         init_val_node: InitVal,
     ) -> Result<Option<Value>, AnalyzeError> {
         let range = init_val_node.text_range();
@@ -221,7 +221,7 @@ impl Module {
 
         match &inner_ty {
             // 标量类型：期望一个表达式
-            NType::Int | NType::Float | NType::Pointer { .. } => {
+            Ty::I32 | Ty::F32 | Ty::Pointer { .. } => {
                 let Some(expr) = init_val_node.expr() else {
                     // 期望表达式，但得到了初始化列表
                     return Err(AnalyzeError::ConstantExprExpected {
@@ -245,7 +245,7 @@ impl Module {
             }
 
             // 数组类型：使用 ArrayTree 解析
-            NType::Array(_, _) => {
+            Ty::Array(_, _) => {
                 let range = init_val_node.text_range();
                 let (array_tree, is_const) = ArrayTree::new(self, field_ty, init_val_node)
                     .map_err(|e| AnalyzeError::ArrayError {
@@ -265,7 +265,7 @@ impl Module {
             }
 
             // Struct 类型：递归解析
-            NType::Struct {
+            Ty::Struct {
                 id: nested_struct_id,
                 ..
             } => {
@@ -276,7 +276,7 @@ impl Module {
                 result
             }
 
-            NType::Void | NType::Const(_) => unreachable!(),
+            Ty::Void | Ty::Const(_) => unreachable!(),
         }
     }
 

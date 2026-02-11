@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::{checker::ProjectChecker, error::AnalyzeError, module::StructID, r#type::NType};
+use crate::{checker::ProjectChecker, error::AnalyzeError, module::StructID, r#type::Ty};
 
 #[derive(Debug, Default)]
 pub struct RecursiveTypeChecker {
@@ -46,10 +46,10 @@ impl RecursiveTypeChecker {
                     let mut ty = &field.ty;
                     let to = loop {
                         match ty {
-                            NType::Const(inner) => ty = inner,
-                            NType::Pointer { .. } => break None,
-                            NType::Struct { id, .. } => break Some(id),
-                            NType::Array(inner, _) => ty = inner,
+                            Ty::Const(inner) => ty = inner,
+                            Ty::Pointer { .. } => break None,
+                            Ty::Struct { id, .. } => break Some(id),
+                            Ty::Array(inner, _) => ty = inner,
                             _ => break None,
                         }
                     };

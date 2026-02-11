@@ -1,4 +1,4 @@
-use analyzer::r#type::NType;
+use analyzer::r#type::Ty;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, PointerValue};
 use syntax::ast::*;
@@ -489,10 +489,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     fn get_struct_field_ptr(
         &mut self,
         base_ptr: PointerValue<'ctx>,
-        base_ty: &NType,
+        base_ty: &Ty,
         member_name: &str,
         is_pointer_access: bool,
-    ) -> Result<(PointerValue<'ctx>, BasicTypeEnum<'ctx>, NType)> {
+    ) -> Result<(PointerValue<'ctx>, BasicTypeEnum<'ctx>, Ty)> {
         // 根据访问方式提取 struct ID
         let struct_id = if is_pointer_access {
             base_ty
@@ -517,7 +517,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let field = self.analyzer.fields.get(field_id.index).unwrap();
         let field_ty = field.ty.clone();
 
-        let struct_ntype = NType::Struct {
+        let struct_ntype = Ty::Struct {
             id: struct_id,
             name: struct_def.name.clone(),
         };

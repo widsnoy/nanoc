@@ -1,7 +1,7 @@
 use crate::{
     array::ArrayTree,
     module::{Module, StructID},
-    r#type::NType,
+    r#type::Ty,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -23,17 +23,17 @@ pub enum EvalError {
 }
 
 impl Value {
-    pub fn get_type(&self, module: &Module) -> NType {
+    pub fn get_type(&self, module: &Module) -> Ty {
         match self {
-            Value::Int(_) => NType::Int,
-            Value::Float(_) => NType::Float,
-            Value::Array(_) => NType::Array(Box::new(NType::Void), None),
+            Value::Int(_) => Ty::I32,
+            Value::Float(_) => Ty::F32,
+            Value::Array(_) => Ty::Array(Box::new(Ty::Void), None),
             Value::Struct(struct_id, _) => {
                 let name = module
                     .get_struct_by_id(*struct_id)
                     .map(|s| s.name)
                     .unwrap_or_else(|| format!("struct#{:?}", struct_id.index));
-                NType::Struct {
+                Ty::Struct {
                     id: *struct_id,
                     name,
                 }
@@ -43,17 +43,17 @@ impl Value {
                     .get_struct_by_id(*struct_id)
                     .map(|s| s.name)
                     .unwrap_or_else(|| format!("struct#{:?}", struct_id.index));
-                NType::Struct {
+                Ty::Struct {
                     id: *struct_id,
                     name,
                 }
             }
-            Value::Pointee(_, _) => NType::Pointer {
-                pointee: Box::new(NType::Void),
+            Value::Pointee(_, _) => Ty::Pointer {
+                pointee: Box::new(Ty::Void),
                 is_const: false,
             },
-            Value::Null => NType::Pointer {
-                pointee: Box::new(NType::Void),
+            Value::Null => Ty::Pointer {
+                pointee: Box::new(Ty::Void),
                 is_const: true,
             },
         }

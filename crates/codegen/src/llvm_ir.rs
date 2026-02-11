@@ -33,11 +33,11 @@ pub struct Program<'a, 'ctx> {
 #[derive(Clone, Copy)]
 pub struct Symbol<'a, 'ctx> {
     pub ptr: PointerValue<'ctx>,
-    pub ty: &'a analyzer::r#type::NType,
+    pub ty: &'a analyzer::r#type::Ty,
 }
 
 impl<'a, 'ctx> Symbol<'a, 'ctx> {
-    pub fn new(ptr: PointerValue<'ctx>, ty: &'a analyzer::r#type::NType) -> Self {
+    pub fn new(ptr: PointerValue<'ctx>, ty: &'a analyzer::r#type::Ty) -> Self {
         Self { ptr, ty }
     }
 }
