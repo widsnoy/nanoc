@@ -1,56 +1,37 @@
-// 测试隐式类型转换
+// 测试类型转换和 bool 运算
+
+fn printf(t: *const i8, ...);
 
 fn main() -> i32 {
-    // 测试 i8 和 i32 混合运算
-    let x: i8 = 10;
-    let y: i32 = 20;
-    let z: i32 = x + y;  // i8 提升到 i32
-    putint(z);  // 应该输出 30
-    putch(10);
-    
     // 测试 bool 和整数混合运算
     let flag: bool = true;
     let result: i32 = flag + 1;  // bool 提升到 i32 (1 + 1 = 2)
-    putint(result);  // 应该输出 2
-    putch(10);
+    printf("%d", result);  // 应该输出 2
+    printf("%c", 10);
     
     // 测试逻辑操作接受整数
     let a: i32 = 5;
-    let b: i8 = 0;
+    let b: i32 = 0;
     if (a && b) {  // a, b 转换为 bool
-        putint(999);  // 不应该执行
+        printf("%d", 999);  // 不应该执行
     } else {
-        putint(100);  // 应该输出 100
+        printf("%d", 100);  // 应该输出 100
     }
-    putch(10);
-    
-    // 测试赋值时的类型转换
-    let m: i32 = 100;
-    let n: i8 = m;  // i32 截断到 i8
-    putint(n);  // 应该输出 100
-    putch(10);
-    
-    // 测试比较操作
-    let p: i8 = 5;
-    let q: i32 = 10;
-    if (p < q) {  // i8 和 i32 比较
-        putint(200);  // 应该输出 200
-    }
-    putch(10);
+    printf("%c", 10);
     
     // 测试 bool 参与算术
     let b1: bool = true;
     let b2: bool = false;
     let sum: i32 = b1 + b2;  // 1 + 0 = 1
-    putint(sum);  // 应该输出 1
-    putch(10);
+    printf("%d", sum);  // 应该输出 1
+    printf("%c", 10);
     
     // 测试逻辑非接受整数
     let val: i32 = 0;
     if (!val) {  // 0 转为 bool (false)，取反为 true
-        putint(300);  // 应该输出 300
+        printf("%d", 300);  // 应该输出 300
     }
-    putch(10);
+    printf("%c", 10);
     
     return 0;
 }

@@ -1,3 +1,5 @@
+fn printf(t: *const i8, ...);
+
 let a: i32 = 10;
 
 fn inc() -> i32 {
@@ -6,8 +8,8 @@ fn inc() -> i32 {
 }
 
 fn print_a() {
-  putint(a);
-  putch(10);
+  printf("%d", a);
+  printf("%c", 10);
 }
 
 fn main() -> i32 {
@@ -16,8 +18,8 @@ fn main() -> i32 {
     inc();
     let a: i32 = 1;
     a = a + 2;
-    putint(a);
-    putch(10);
+    printf("%d", a);
+    printf("%c", 10);
     print_a();
     i = i + 1;
   }

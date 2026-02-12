@@ -1,6 +1,31 @@
+fn scanf(format: *const i8, ...);
+fn printf(t: *const i8, ...);
+
+fn __airyc_getarray(arr: *mut i32) -> i32 {
+    let n: i32 = 0;
+    scanf("%d", &n);
+    let i: i32 = 0;
+    while (i < n) {
+        scanf("%d", &arr[i]);
+        i = i + 1;
+    }
+    return n;
+}
+
+fn __airyc_putarray(n: i32, arr: *const i32) -> i32 {
+    printf("%d:", n);
+    let i: i32 = 0;
+    while (i < n) {
+        printf(" %d", arr[i]);
+        i = i + 1;
+    }
+    printf("\n");
+    return 0;
+}
+
 fn main() -> i32 {
   let arr: [i32; 10];
-  let n: i32 = getarray(arr);
+  let n: i32 = __airyc_getarray(arr);
   let i: i32 = 0;
   while (i < 10) {
     if (i < n) {
@@ -10,6 +35,6 @@ fn main() -> i32 {
     }
     i = i + 1;
   }
-  putarray(n, arr);
+  __airyc_putarray(n, arr);
   return 0;
 }

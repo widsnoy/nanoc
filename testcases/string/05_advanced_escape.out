@@ -1,0 +1,7 @@
+=== Advanced Escape Sequences ===
+Newline: \n, Tab: \t, Quote: \"
+Backslash: \\
+Line 1
+Line 2
+Line 3
+return: 0

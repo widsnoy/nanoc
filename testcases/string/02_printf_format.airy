@@ -1,5 +1,7 @@
+fn printf(t: *const i8, ...);
+
 fn main() -> i32 {
-    let msg: *const i32 = "Hello from airyc!";
+    let msg: *const i8 = "Hello from airyc!";
     printf("Message: %s\n", msg);
     
     let x: i32 = 42;

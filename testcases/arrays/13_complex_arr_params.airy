@@ -1,3 +1,5 @@
+fn printf(t: *const i8, ...);
+
 let init: i32 = 0;
 
 fn init1d(n: i32, arr: *mut i32) {
@@ -61,7 +63,7 @@ fn main() -> i32 {
   let sum: i32 = sum3d(10, arr);
   sum = sum + sum2d(10, arr[1]);
   sum = sum + sum1d(10, arr[2][3]);
-  putint(sum);
-  putch(10);
+  printf("%d", sum);
+  printf("%c", 10);
   return sum;
 }

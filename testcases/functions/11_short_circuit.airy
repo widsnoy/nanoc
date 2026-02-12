@@ -1,3 +1,5 @@
+fn printf(t: *const i8, ...);
+
 let x: i32;
 let y: i32;
 
@@ -27,9 +29,9 @@ fn main() -> i32 {
   t() && t() || t();
   f() && t() || t();
   f() && f() || f();
-  putint(x);
-  putch(32);
-  putint(y);
-  putch(10);
+  printf("%d", x);
+  printf("%c", 32);
+  printf("%d", y);
+  printf("%c", 10);
   return sum;
 }

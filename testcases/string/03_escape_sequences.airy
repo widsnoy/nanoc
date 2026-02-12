@@ -1,3 +1,5 @@
+fn printf(t: *const i8, ...);
+
 fn main() -> i32 {
     printf("Escape sequences:\n");
     printf("Tab:\tNewline:\nQuote:\"\n");

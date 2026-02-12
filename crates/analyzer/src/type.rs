@@ -120,7 +120,7 @@ impl Ty {
         }
     }
 
-    /// 返回标量零值（int / float）
+    /// 返回标量零值（int / float）1
     pub fn const_zero(&self) -> Value {
         match self {
             Ty::I32 => Value::I32(0),
@@ -131,6 +131,17 @@ impl Ty {
             Ty::Pointer { .. } => Value::Null,
             Ty::Struct { id, .. } => Value::StructZero(*id),
             Ty::Const(ntype) => ntype.const_zero(),
+        }
+    }
+
+    /// *mut *const i8 == *const *mut const i8
+    // FIXME: inner 是数组可能出错
+    pub fn is_same_pointer_without_const(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Pointer { pointee: p0, .. }, Self::Pointer { pointee: p1, .. }) => {
+                p0.is_same_pointer_without_const(p1)
+            }
+            _ => self.unwrap_const() == other.unwrap_const(),
         }
     }
 
@@ -150,7 +161,7 @@ impl Ty {
             (Ty::Pointer { pointee: p1, .. }, Ty::Pointer { pointee: p2, .. }) => {
                 matches!(p1.as_ref(), Ty::Void)
                     || matches!(p2.as_ref(), Ty::Void)
-                    || p1.unwrap_const() == p2.unwrap_const()
+                    || p1.is_same_pointer_without_const(p2)
             }
 
             (Ty::Struct { id: id1, .. }, Ty::Struct { id: id2, .. }) => id1 == id2,

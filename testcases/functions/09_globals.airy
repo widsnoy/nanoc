@@ -1,16 +1,18 @@
+fn printf(t: *const i8, ...);
+
 let x: i32;
 let y: const i32 = 10;
 let z: const i32 = y + 1;
 let init: i32 = 1;
 
 fn main() -> i32 {
-  putint(x);
-  putch(32);
-  putint(y);
-  putch(32);
-  putint(z);
-  putch(32);
-  putint(init);
-  putch(10);
+  printf("%d", x);
+  printf("%c", 32);
+  printf("%d", y);
+  printf("%c", 32);
+  printf("%d", z);
+  printf("%c", 32);
+  printf("%d", init);
+  printf("%c", 10);
   return 0;
 }

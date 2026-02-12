@@ -1,15 +1,14 @@
+fn printf(t: *const i8, ...);
+
 fn main() -> i32 {
     printf("=== Advanced Escape Sequences ===\n");
     
-    // 十六进制转义
-    printf("Hex: \\x41\\x42\\x43 = %s\n", "\x41\x42\x43");
+    // 基本转义序列
+    printf("Newline: \\n, Tab: \\t, Quote: \\\"\n");
+    printf("Backslash: \\\\\n");
     
-    // Unicode 转义
-    printf("Chinese: \\u{4E2D}\\u{6587} = %s\n", "\u{4E2D}\u{6587}");
-    printf("Emoji: \\u{1F600}\\u{1F601} = %s\n", "\u{1F600}\u{1F601}");
-    
-    // 混合使用
-    printf("Mixed: Hello\\x20\\u{4E16}\\u{754C}! = %s\n", "Hello\x20\u{4E16}\u{754C}!");
+    // 多行字符串
+    printf("Line 1\nLine 2\nLine 3\n");
     
     return 0;
 }

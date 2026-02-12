@@ -1,3 +1,5 @@
+fn printf(t: *const i8, ...);
+
 fn init(arr: *mut [[i32; 10]; 10]) {
   let i: i32 = 0;
   while (i < 10) {
@@ -28,7 +30,7 @@ fn main() -> i32 {
   init(arr);
   sum = sum + f1(arr[0][0], arr[1][1], arr[2][2], arr[3][3], arr[4][4], arr[5][5], arr[6][6], arr[7][7], arr[8][8], arr[9][9]);
   sum = sum + f2(arr[0], arr[1][1], arr[2][2][2], arr[3][3], arr[4][4], arr, arr[6][6], arr[7][7], arr[8][8][8], arr[9]);
-  putint(sum);
-  putch(10);
+  printf("%d", sum);
+  printf("%c", 10);
   return 0;
 }
