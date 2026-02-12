@@ -14,7 +14,7 @@ COMP_UNIT@0..261
     WHITESPACE@11..12 " "
     TYPE@12..15
       PRIMIT_TYPE@12..15
-        INT_KW@12..15 "i32"
+        I32_KW@12..15 "i32"
     WHITESPACE@15..16 " "
     EQ@16..17 "="
     INIT_VAL@17..27
@@ -50,7 +50,7 @@ COMP_UNIT@0..261
     WHITESPACE@39..40 " "
     TYPE@40..43
       PRIMIT_TYPE@40..43
-        INT_KW@40..43 "i32"
+        I32_KW@40..43 "i32"
     WHITESPACE@43..44 " "
     EQ@44..45 "="
     INIT_VAL@45..57
@@ -89,7 +89,7 @@ COMP_UNIT@0..261
     WHITESPACE@69..70 " "
     TYPE@70..73
       PRIMIT_TYPE@70..73
-        INT_KW@70..73 "i32"
+        I32_KW@70..73 "i32"
     WHITESPACE@73..74 " "
     EQ@74..75 "="
     INIT_VAL@75..87
@@ -125,7 +125,7 @@ COMP_UNIT@0..261
     WHITESPACE@99..100 " "
     TYPE@100..103
       PRIMIT_TYPE@100..103
-        INT_KW@100..103 "i32"
+        I32_KW@100..103 "i32"
     WHITESPACE@103..104 " "
     EQ@104..105 "="
     INIT_VAL@105..112
@@ -153,7 +153,7 @@ COMP_UNIT@0..261
     WHITESPACE@126..127 " "
     TYPE@127..130
       PRIMIT_TYPE@127..130
-        INT_KW@127..130 "i32"
+        I32_KW@127..130 "i32"
     WHITESPACE@130..131 " "
     EQ@131..132 "="
     INIT_VAL@132..138
@@ -181,7 +181,7 @@ COMP_UNIT@0..261
     WHITESPACE@154..155 " "
     TYPE@155..158
       PRIMIT_TYPE@155..158
-        INT_KW@155..158 "i32"
+        I32_KW@155..158 "i32"
     WHITESPACE@158..159 " "
     EQ@159..160 "="
     INIT_VAL@160..168
@@ -215,7 +215,7 @@ COMP_UNIT@0..261
     WHITESPACE@182..183 " "
     TYPE@183..186
       PRIMIT_TYPE@183..186
-        INT_KW@183..186 "i32"
+        I32_KW@183..186 "i32"
     WHITESPACE@186..187 " "
     EQ@187..188 "="
     INIT_VAL@188..196
@@ -249,7 +249,7 @@ COMP_UNIT@0..261
     WHITESPACE@210..211 " "
     TYPE@211..214
       PRIMIT_TYPE@211..214
-        INT_KW@211..214 "i32"
+        I32_KW@211..214 "i32"
     WHITESPACE@214..215 " "
     EQ@215..216 "="
     INIT_VAL@216..224
@@ -277,7 +277,7 @@ COMP_UNIT@0..261
     WHITESPACE@239..240 " "
     TYPE@240..243
       PRIMIT_TYPE@240..243
-        INT_KW@240..243 "i32"
+        I32_KW@240..243 "i32"
     WHITESPACE@243..244 " "
     EQ@244..245 "="
     INIT_VAL@245..255

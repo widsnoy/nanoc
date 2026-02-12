@@ -189,7 +189,17 @@ impl DeclVisitor for Module {
                 Some(v) => {
                     // 如果是 const ，给变量设置一下初值
                     if is_const {
-                        self.value_table.insert(var_range, v.clone());
+                        // 隐式类型转换
+                        match v.convert_to(&var_type, self) {
+                            Ok(converted_value) => {
+                                self.value_table.insert(var_range, converted_value);
+                            }
+                            Err(e) => {
+                                unreachable!(
+                                    "转换失败，但类型检查已经在前面完成，这里不应该失败: {e:?}"
+                                );
+                            }
+                        }
                     }
                 }
                 None => {

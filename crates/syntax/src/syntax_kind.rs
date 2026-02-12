@@ -12,8 +12,10 @@ pub enum SyntaxKind {
     EOF,
     IMPORT_KW,   // "import"
     CONST_KW,    // "const"
-    INT_KW,      // "int"
-    FLOAT_KW,    // "float"
+    I32_KW,      // "i32"
+    I8_KW,       // "i8"
+    F32_KW,      // "f32"
+    BOOL_KW,     // "bool"
     VOID_KW,     // "void"
     IF_KW,       // "if"
     ELSE_KW,     // "else"
@@ -27,6 +29,8 @@ pub enum SyntaxKind {
     MUT_KW,      // "mut"
     ATTACH_KW,   // "attach"
     NULL_KW,     // "null"
+    TRUE_KW,     // "true"
+    FALSE_KW,    // "false"
 
     IDENT,          // my_var
     STRING_LITERAL, // "string"
@@ -128,8 +132,10 @@ impl SyntaxKind {
         matches!(
             self,
             SyntaxKind::CONST_KW
-                | SyntaxKind::INT_KW
-                | SyntaxKind::FLOAT_KW
+                | SyntaxKind::I32_KW
+                | SyntaxKind::I8_KW
+                | SyntaxKind::F32_KW
+                | SyntaxKind::BOOL_KW
                 | SyntaxKind::VOID_KW
                 | SyntaxKind::IF_KW
                 | SyntaxKind::ELSE_KW
@@ -141,6 +147,8 @@ impl SyntaxKind {
                 | SyntaxKind::LET_KW
                 | SyntaxKind::FN_KW
                 | SyntaxKind::MUT_KW
+                | SyntaxKind::TRUE_KW
+                | SyntaxKind::FALSE_KW
         )
     }
 

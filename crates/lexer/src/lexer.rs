@@ -27,8 +27,12 @@ pub enum Token {
     CONST_KW,
     #[token("i32")]
     INT_KW,
+    #[token("i8")]
+    I8_KW,
     #[token("f32")]
     FLOAT_KW,
+    #[token("bool")]
+    BOOL_KW,
     #[token("void")]
     VOID_KW,
     #[token("if")]
@@ -55,6 +59,10 @@ pub enum Token {
     ATTACH_KW,
     #[token("null")]
     NULL_KW,
+    #[token("true")]
+    TRUE_KW,
+    #[token("false")]
+    FALSE_KW,
 
     // 运算符和标点符号
     #[token("=")]
@@ -145,8 +153,10 @@ impl From<Token> for SyntaxKind {
             Token::COMMENT_BLOCK => SyntaxKind::COMMENT_BLOCK,
             Token::IMPORT_KW => SyntaxKind::IMPORT_KW,
             Token::CONST_KW => SyntaxKind::CONST_KW,
-            Token::INT_KW => SyntaxKind::INT_KW,
-            Token::FLOAT_KW => SyntaxKind::FLOAT_KW,
+            Token::INT_KW => SyntaxKind::I32_KW,
+            Token::I8_KW => SyntaxKind::I8_KW,
+            Token::FLOAT_KW => SyntaxKind::F32_KW,
+            Token::BOOL_KW => SyntaxKind::BOOL_KW,
             Token::VOID_KW => SyntaxKind::VOID_KW,
             Token::IF_KW => SyntaxKind::IF_KW,
             Token::ELSE_KW => SyntaxKind::ELSE_KW,
@@ -157,6 +167,8 @@ impl From<Token> for SyntaxKind {
             Token::STRUCT_KW => SyntaxKind::STRUCT_KW,
             Token::ATTACH_KW => SyntaxKind::ATTACH_KW,
             Token::NULL_KW => SyntaxKind::NULL_KW,
+            Token::TRUE_KW => SyntaxKind::TRUE_KW,
+            Token::FALSE_KW => SyntaxKind::FALSE_KW,
             Token::FN_KW => SyntaxKind::FN_KW,
             Token::MUT_KW => SyntaxKind::MUT_KW,
             Token::LET_KW => SyntaxKind::LET_KW,
@@ -345,7 +357,7 @@ mod tests {
                 (WHITESPACE, " "),
                 (CONST_KW, "const"),
                 (WHITESPACE, " "),
-                (INT_KW, "i32"),
+                (I32_KW, "i32"),
                 (WHITESPACE, " "),
                 (EQ, "="),
                 (WHITESPACE, " "),
@@ -366,7 +378,7 @@ mod tests {
                 (COLON, ":"),
                 (WHITESPACE, " "),
                 (STAR, "*"),
-                (INT_KW, "i32"),
+                (I32_KW, "i32"),
                 (SEMI, ";"),
             ],
         );

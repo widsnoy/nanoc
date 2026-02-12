@@ -10,22 +10,6 @@ source_filename = "main"
 @d = global [2 x float] [float 0x3FF1C28F60000000, float 0.000000e+00]
 @g = global [2 x i32] [i32 1, i32 2]
 
-declare i32 @getint()
-
-declare i32 @getch()
-
-declare i32 @getarray(ptr)
-
-declare void @putint(i32)
-
-declare void @putch(i32)
-
-declare void @putarray(i32, ptr)
-
-declare void @starttime()
-
-declare void @stoptime()
-
 define i32 @main() {
 entry:
   %b1 = alloca [2 x i32], align 4

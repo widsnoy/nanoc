@@ -187,14 +187,14 @@ impl Parser<'_> {
             let success = self.expect(SyntaxKind::R_PAREN);
             self.finish_node();
             success
-        } else if self.peek().is_number() {
+        } else if self.peek().is_number()
+            || matches!(
+                self.peek(),
+                SyntaxKind::NULL_KW | SyntaxKind::TRUE_KW | SyntaxKind::FALSE_KW
+            )
+        {
             self.start_node(SyntaxKind::LITERAL);
-            self.bump(); // number
-            self.finish_node();
-            true
-        } else if self.at(SyntaxKind::NULL_KW) {
-            self.start_node(SyntaxKind::LITERAL);
-            self.bump(); // null
+            self.bump();
             self.finish_node();
             true
         } else {

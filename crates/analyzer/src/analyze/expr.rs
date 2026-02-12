@@ -18,48 +18,11 @@ impl ExprVisitor for Module {
             return;
         };
 
-        let builtin_functions = [
-            ("getint", 0, Ty::I32),
-            ("getch", 0, Ty::I32),
-            ("getfloat", 0, Ty::F32),
-            ("getarray", 1, Ty::I32),
-            ("getfarray", 1, Ty::I32),
-            ("putint", 1, Ty::Void),
-            ("putch", 1, Ty::Void),
-            ("putfloat", 1, Ty::Void),
-            ("putarray", 2, Ty::Void),
-            ("putfarray", 2, Ty::Void),
-            ("putf", -1, Ty::Void), // 可变参数
-            ("starttime", 0, Ty::Void),
-            ("stoptime", 0, Ty::Void),
-            ("_sysy_starttime", 1, Ty::Void),
-            ("_sysy_stoptime", 1, Ty::Void),
-        ];
-
         // 获取实际参数数量
-        let arg_count = node.args().map(|args| args.args().count()).unwrap_or(0);
+        // FIXME: 做参数和类型检查
+        // let arg_count = node.args().map(|args| args.args().count()).unwrap_or(0);
 
-        // 检查是否为内置函数
-        if let Some((_, expected_args, ret_type)) = builtin_functions
-            .iter()
-            .find(|(name, _, _)| *name == func_name)
-        {
-            // 设置返回类型
-            self.set_expr_type(node.text_range(), ret_type.clone());
-
-            // 检查参数数量（-1 表示可变参数，不检查）
-            if *expected_args >= 0 && arg_count != *expected_args as usize {
-                self.new_error(AnalyzeError::ArgumentCountMismatch {
-                    function_name: func_name.clone(),
-                    expected: *expected_args as usize,
-                    found: arg_count,
-                    range: func_range,
-                });
-            }
-            return;
-        }
-
-        // 查找用户定义的函数
+        // 检查函数是否已定义
         let Some(func_id) = self.get_function_id_by_name(&func_name) else {
             self.new_error(AnalyzeError::FunctionUndefined {
                 name: func_name,
@@ -119,7 +82,7 @@ impl ExprVisitor for Module {
             let lhs_val = self.value_table.get(&lhs.text_range()).unwrap();
             let rhs_val = self.value_table.get(&rhs.text_range()).unwrap();
 
-            if let Ok(val) = Value::eval(lhs_val, rhs_val, &op.op_str()) {
+            if let Ok(val) = Value::eval(lhs_val, rhs_val, op.op().kind()) {
                 self.value_table.insert(node.text_range(), val);
             }
         }
@@ -164,7 +127,7 @@ impl ExprVisitor for Module {
 
         if self.is_compile_time_constant(expr.text_range()) {
             let val = self.value_table.get(&expr.text_range()).unwrap().clone();
-            if let Ok(res) = Value::eval_unary(val, &op.op_str()) {
+            if let Ok(res) = Value::eval_unary(val, op.op().kind()) {
                 self.value_table.insert(node.text_range(), res);
             }
         }
@@ -234,15 +197,19 @@ impl ExprVisitor for Module {
                 let Some(v) = self.get_value_by_range(range) else {
                     return;
                 };
-                let Value::Int(index) = v else {
-                    self.new_error(AnalyzeError::TypeMismatch {
-                        expected: Ty::I32,
-                        found: Ty::F32,
-                        range: utils::trim_node_text_range(&indice),
-                    });
-                    return;
+                let index = match v {
+                    Value::I32(v) => v.to_owned(),
+                    Value::I8(v) => *v as i32,
+                    _ => {
+                        self.new_error(AnalyzeError::TypeMismatch {
+                            expected: Ty::I32,
+                            found: Ty::F32,
+                            range: utils::trim_node_text_range(&indice),
+                        });
+                        return;
+                    }
                 };
-                indices.push(*index);
+                indices.push(index);
             }
             let leaf = match tree.get_leaf(&indices) {
                 Ok(s) => s,
@@ -390,11 +357,12 @@ impl ExprVisitor for Module {
                     let mut idx_values = Vec::new();
                     for idx_expr in field_access_node.indices() {
                         let idx_range = idx_expr.text_range();
-                        if let Some(Value::Int(idx)) = self.get_value_by_range(idx_range) {
-                            idx_values.push(*idx);
-                        } else {
-                            return; // 索引不是常量
-                        }
+                        let idx = match self.get_value_by_range(idx_range) {
+                            Some(Value::I32(i)) => *i,
+                            Some(Value::I8(i)) => *i as i32,
+                            _ => return,
+                        };
+                        idx_values.push(idx);
                     }
                     if let Ok(leaf) = tree.get_leaf(&idx_values)
                         && let Some(v) = leaf.get_const_value(&self.value_table)
@@ -417,10 +385,8 @@ impl ExprVisitor for Module {
         let v = if let Some(n) = node.float_token() {
             let s = n.text();
             self.set_expr_type(range, Ty::F32);
-            Value::Float(s.parse::<f32>().unwrap())
+            Value::F32(s.parse::<f32>().unwrap())
         } else if node.null_token().is_some() {
-            // null 是多态的，类型将在赋值时确定
-            // 这里暂时设置为 void 指针类型
             self.set_expr_type(
                 range,
                 Ty::Pointer {
@@ -429,6 +395,12 @@ impl ExprVisitor for Module {
                 },
             );
             Value::Null
+        } else if node.true_token().is_some() {
+            self.set_expr_type(range, Ty::Bool);
+            Value::Bool(true)
+        } else if node.false_token().is_some() {
+            self.set_expr_type(range, Ty::Bool);
+            Value::Bool(false)
         } else {
             let Some(n) = node.int_token() else {
                 return;
@@ -443,7 +415,7 @@ impl ExprVisitor for Module {
                 _ => (s, 10),
             };
             self.set_expr_type(range, Ty::I32);
-            Value::Int(match i32::from_str_radix(num_str, radix) {
+            Value::I32(match i32::from_str_radix(num_str, radix) {
                 Ok(v) => v,
                 Err(_) => return,
             })

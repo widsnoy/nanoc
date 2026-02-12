@@ -1,5 +1,5 @@
 use analyzer::r#type::Ty;
-use inkwell::types::BasicTypeEnum;
+use inkwell::types::{BasicType, BasicTypeEnum};
 use inkwell::values::{BasicMetadataValueEnum, BasicValueEnum, PointerValue};
 use syntax::ast::*;
 use syntax::syntax_kind::SyntaxKind;
@@ -58,7 +58,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         if let Some(func) = self.symbols.current_function
             && matches!(op_token.kind(), SyntaxKind::AMPAMP | SyntaxKind::PIPEPIPE)
         {
-            let i32_zero = self.context.i32_type().const_zero();
+            let bool_false = self.context.bool_type().const_zero();
             let rhs_bb = self.context.append_basic_block(func, "land.rhs");
             let merge_bb = self.context.append_basic_block(func, "land.phi");
 
@@ -72,25 +72,29 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .ok_or(CodegenError::LlvmBuild("no current basic block"))?;
             let eq_zero = self
                 .builder
-                .build_int_compare(IntPredicate::EQ, lhs, i32_zero, "land.i32_eq_0")
+                .build_int_compare(
+                    IntPredicate::EQ,
+                    lhs,
+                    lhs.get_type().const_zero(),
+                    "land.eq_0",
+                )
                 .map_err(|_| CodegenError::LlvmBuild("int compare failed"))?;
             let short_circuit_val = if op_token.kind() == SyntaxKind::AMPAMP {
                 let _ = self
                     .builder
                     .build_conditional_branch(eq_zero, merge_bb, rhs_bb);
-                i32_zero
+                bool_false
             } else {
                 let _ = self
                     .builder
                     .build_conditional_branch(eq_zero, rhs_bb, merge_bb);
-                self.context.i32_type().const_int(1, false)
+                self.context.bool_type().const_all_ones()
             };
 
             self.builder.position_at_end(rhs_bb);
             let rhs =
                 self.compile_expr(expr.rhs().ok_or(CodegenError::Missing("right operand"))?)?;
             let rhs_val = self.as_bool(rhs)?;
-            let rhs_val = self.bool_to_i32(rhs_val)?;
             let rhs_end_bb = self
                 .builder
                 .get_insert_block()
@@ -100,7 +104,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             self.builder.position_at_end(merge_bb);
             let merge = self
                 .builder
-                .build_phi(self.context.i32_type(), "land.phi")
+                .build_phi(self.context.bool_type(), "land.phi")
                 .map_err(|_| CodegenError::LlvmBuild("phi build failed"))?;
 
             merge.add_incoming(&[(&short_circuit_val, lhs_bb), (&rhs_val, rhs_end_bb)]);
@@ -179,7 +183,13 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         let pointee = lhs_ty
                             .pointer_inner()
                             .ok_or_else(|| CodegenError::TypeMismatch("expected pointer".into()))?;
-                        let elem_size = self.get_type_size(pointee)?;
+
+                        // 使用 inkwell 的 size_of 获取元素大小
+                        let llvm_ty = self.convert_ntype_to_type(pointee)?;
+                        let size_val = llvm_ty
+                            .size_of()
+                            .ok_or(CodegenError::LlvmBuild("failed to get type size"))?;
+
                         let i64_ty = self.context.i64_type();
                         let i1 = self
                             .builder
@@ -193,12 +203,22 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .builder
                             .build_int_sub(i1, i2, "diff")
                             .map_err(|_| CodegenError::LlvmBuild("sub"))?;
-                        let size_val = i64_ty.const_int(elem_size, false);
+
+                        // size_of 返回的是 IntValue，可能需要扩展到 i64
+                        let size_val_i64 = if size_val.get_type() == i64_ty {
+                            size_val
+                        } else {
+                            self.builder
+                                .build_int_z_extend(size_val, i64_ty, "size.ext")
+                                .map_err(|_| CodegenError::LlvmBuild("zext"))?
+                        };
+
                         let result = self
                             .builder
-                            .build_int_signed_div(diff, size_val, "ptr.diff")
+                            .build_int_signed_div(diff, size_val_i64, "ptr.diff")
                             .map_err(|_| CodegenError::LlvmBuild("div"))?;
                         let i32_ty = self.context.i32_type();
+                        // FIXME:
                         let truncated = self
                             .builder
                             .build_int_truncate(result, i32_ty, "diff.i32")
@@ -220,7 +240,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .builder
                             .build_int_compare(inkwell::IntPredicate::EQ, i1, i2, "ptr.eq")
                             .map_err(|_| CodegenError::LlvmBuild("ptr compare"))?;
-                        Ok(self.bool_to_i32(cmp)?.into())
+                        Ok(cmp.into())
                     }
                     SyntaxKind::NEQ => {
                         // 指针不等比较：转换为整数后比较
@@ -237,7 +257,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .builder
                             .build_int_compare(inkwell::IntPredicate::NE, i1, i2, "ptr.ne")
                             .map_err(|_| CodegenError::LlvmBuild("ptr compare"))?;
-                        Ok(self.bool_to_i32(cmp)?.into())
+                        Ok(cmp.into())
                     }
                     _ => Err(CodegenError::Unsupported(format!(
                         "unsupported pointer operation: {:?}",
@@ -246,59 +266,17 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 }
             }
             (BasicValueEnum::IntValue(l), BasicValueEnum::IntValue(r)) => {
-                let res = match op_token.kind() {
-                    SyntaxKind::PLUS => self
-                        .builder
-                        .build_int_add(l, r, "add")
-                        .map_err(|_| CodegenError::LlvmBuild("int add"))?,
-                    SyntaxKind::MINUS => self
-                        .builder
-                        .build_int_sub(l, r, "sub")
-                        .map_err(|_| CodegenError::LlvmBuild("int sub"))?,
-                    SyntaxKind::STAR => self
-                        .builder
-                        .build_int_mul(l, r, "mul")
-                        .map_err(|_| CodegenError::LlvmBuild("int mul"))?,
-                    SyntaxKind::SLASH => self
-                        .builder
-                        .build_int_signed_div(l, r, "div")
-                        .map_err(|_| CodegenError::LlvmBuild("int div"))?,
-                    SyntaxKind::PERCENT => self
-                        .builder
-                        .build_int_signed_rem(l, r, "rem")
-                        .map_err(|_| CodegenError::LlvmBuild("int rem"))?,
-                    SyntaxKind::LT => self.build_int_cmp(IntPredicate::SLT, l, r, "lt")?,
-                    SyntaxKind::GT => self.build_int_cmp(IntPredicate::SGT, l, r, "gt")?,
-                    SyntaxKind::LTEQ => self.build_int_cmp(IntPredicate::SLE, l, r, "le")?,
-                    SyntaxKind::GTEQ => self.build_int_cmp(IntPredicate::SGE, l, r, "ge")?,
-                    SyntaxKind::EQEQ => self.build_int_cmp(IntPredicate::EQ, l, r, "eq")?,
-                    SyntaxKind::NEQ => self.build_int_cmp(IntPredicate::NE, l, r, "ne")?,
-                    SyntaxKind::AMPAMP => {
-                        let lb = self.as_bool(l.into())?;
-                        let rb = self.as_bool(r.into())?;
-                        self.bool_to_i32(
-                            self.builder
-                                .build_and(lb, rb, "and")
-                                .map_err(|_| CodegenError::LlvmBuild("and"))?,
-                        )?
-                    }
-                    SyntaxKind::PIPEPIPE => {
-                        let lb = self.as_bool(l.into())?;
-                        let rb = self.as_bool(r.into())?;
-                        self.bool_to_i32(
-                            self.builder
-                                .build_or(lb, rb, "or")
-                                .map_err(|_| CodegenError::LlvmBuild("or"))?,
-                        )?
-                    }
-                    _ => {
-                        return Err(CodegenError::Unsupported(format!(
-                            "int binary op {:?}",
-                            op_token
-                        )));
-                    }
-                };
-                Ok(res.into())
+                // 获取操作数的语义类型
+                let lhs_ty = self
+                    .analyzer
+                    .get_expr_type(lhs_node.text_range())
+                    .ok_or(CodegenError::Missing("lhs type"))?;
+                let rhs_ty = self
+                    .analyzer
+                    .get_expr_type(rhs_node.text_range())
+                    .ok_or(CodegenError::Missing("rhs type"))?;
+
+                self.compile_int_binary_op(op_token.kind(), l, r, lhs_ty, rhs_ty)
             }
             (BasicValueEnum::FloatValue(l), BasicValueEnum::FloatValue(r)) => {
                 let res: BasicValueEnum = match op_token.kind() {
@@ -408,15 +386,37 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .or_else(|| self.symbols.functions.get(&name).copied())
             .ok_or_else(|| CodegenError::UndefinedFunc(name.clone()))?;
 
-        let args: Vec<BasicMetadataValueEnum<'ctx>> = expr
-            .args()
-            .map(|rps| {
-                rps.args()
-                    .map(|a| self.compile_expr(a).map(|v| v.into()))
-                    .collect::<Result<Vec<_>>>()
-            })
-            .transpose()?
-            .unwrap_or_default();
+        // 获取函数参数类型
+        let param_types: Vec<Ty> = if let Some(fid) = self.analyzer.get_function_id_by_name(&name)
+            && let Some(func_info) = self.analyzer.get_function_by_id(fid)
+        {
+            func_info.meta_types.into_iter().map(|(_, ty)| ty).collect()
+        } else {
+            return Err(CodegenError::Missing("function info"));
+        };
+
+        let args: Vec<BasicMetadataValueEnum<'ctx>> = if let Some(rps) = expr.args() {
+            rps.args()
+                .enumerate()
+                .map(|(i, arg_expr)| {
+                    let val = self.compile_expr(arg_expr.clone())?;
+
+                    // 如果有参数类型信息，进行类型转换
+                    if i < param_types.len() {
+                        let arg_ty = self
+                            .analyzer
+                            .get_expr_type(arg_expr.text_range())
+                            .ok_or(CodegenError::Missing("arg type"))?;
+                        let casted = self.cast_value(val, arg_ty, &param_types[i])?;
+                        Ok(casted.into())
+                    } else {
+                        Ok(val.into())
+                    }
+                })
+                .collect::<Result<Vec<_>>>()?
+        } else {
+            vec![]
+        };
 
         let call = self
             .builder
@@ -646,5 +646,187 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         }
         (cur_llvm_type, ptr) = self.calculate_index_op(cur_ntype, cur_llvm_type, ptr, indices)?;
         Ok((cur_llvm_type, ptr, name))
+    }
+
+    /// 编译整数二元运算（算术、比较、逻辑）
+    /// 统一处理类型提升和运算逻辑
+    fn compile_int_binary_op(
+        &mut self,
+        op: SyntaxKind,
+        l: inkwell::values::IntValue<'ctx>,
+        r: inkwell::values::IntValue<'ctx>,
+        lhs_ty: &Ty,
+        rhs_ty: &Ty,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let lhs_unwrapped = lhs_ty.unwrap_const();
+        let rhs_unwrapped = rhs_ty.unwrap_const();
+
+        // 算术运算：根据类型提升规则
+        if matches!(
+            op,
+            SyntaxKind::PLUS
+                | SyntaxKind::MINUS
+                | SyntaxKind::STAR
+                | SyntaxKind::SLASH
+                | SyntaxKind::PERCENT
+        ) {
+            return self.compile_int_arithmetic(op, l, r, &lhs_unwrapped, &rhs_unwrapped);
+        }
+
+        // 比较运算：返回 bool (i1)
+        if matches!(
+            op,
+            SyntaxKind::LT
+                | SyntaxKind::GT
+                | SyntaxKind::LTEQ
+                | SyntaxKind::GTEQ
+                | SyntaxKind::EQEQ
+                | SyntaxKind::NEQ
+        ) {
+            return self.compile_int_comparison(op, l, r, &lhs_unwrapped, &rhs_unwrapped);
+        }
+
+        // 逻辑运算：返回 bool (i1)
+        if matches!(op, SyntaxKind::AMPAMP | SyntaxKind::PIPEPIPE) {
+            let lb = self.cast_int_to_bool(l, lhs_ty)?;
+            let rb = self.cast_int_to_bool(r, rhs_ty)?;
+            let res = match op {
+                SyntaxKind::AMPAMP => self
+                    .builder
+                    .build_and(lb, rb, "and")
+                    .map_err(|_| CodegenError::LlvmBuild("and"))?,
+                SyntaxKind::PIPEPIPE => self
+                    .builder
+                    .build_or(lb, rb, "or")
+                    .map_err(|_| CodegenError::LlvmBuild("or"))?,
+                _ => unreachable!(),
+            };
+            return Ok(res.into());
+        }
+
+        Err(CodegenError::Unsupported(format!("int binary op {:?}", op)))
+    }
+
+    /// 编译整数算术运算
+    fn compile_int_arithmetic(
+        &mut self,
+        op: SyntaxKind,
+        l: inkwell::values::IntValue<'ctx>,
+        r: inkwell::values::IntValue<'ctx>,
+        lhs_ty_unwrapped: &Ty,
+        rhs_ty_unwrapped: &Ty,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        match (lhs_ty_unwrapped, rhs_ty_unwrapped) {
+            // 相同类型保持不变
+            (Ty::I32, Ty::I32) | (Ty::I8, Ty::I8) => self.build_int_arithmetic_op(op, l, r),
+            // i32 混合类型：提升到 i32
+            (Ty::I32, Ty::I8 | Ty::Bool) | (Ty::I8 | Ty::Bool, Ty::I32) => {
+                let l_i32 = self.cast_int_to_i32(l, lhs_ty_unwrapped)?;
+                let r_i32 = self.cast_int_to_i32(r, rhs_ty_unwrapped)?;
+                self.build_int_arithmetic_op(op, l_i32, r_i32)
+            }
+            // i8 + bool：提升到 i8
+            (Ty::I8, Ty::Bool) | (Ty::Bool, Ty::I8) => {
+                let l_i8 = self.cast_int_to_i8(l, lhs_ty_unwrapped)?;
+                let r_i8 = self.cast_int_to_i8(r, rhs_ty_unwrapped)?;
+                self.build_int_arithmetic_op(op, l_i8, r_i8)
+            }
+            // bool + bool：提升到 i32
+            (Ty::Bool, Ty::Bool) => {
+                let l_i32 = self.cast_int_to_i32(l, lhs_ty_unwrapped)?;
+                let r_i32 = self.cast_int_to_i32(r, rhs_ty_unwrapped)?;
+                self.build_int_arithmetic_op(op, l_i32, r_i32)
+            }
+            _ => Err(CodegenError::TypeMismatch(
+                "invalid arithmetic types".into(),
+            )),
+        }
+    }
+
+    /// 编译整数比较运算
+    fn compile_int_comparison(
+        &mut self,
+        op: SyntaxKind,
+        l: inkwell::values::IntValue<'ctx>,
+        r: inkwell::values::IntValue<'ctx>,
+        lhs_ty_unwrapped: &Ty,
+        rhs_ty_unwrapped: &Ty,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        match (lhs_ty_unwrapped, rhs_ty_unwrapped) {
+            // 相同类型直接比较
+            (Ty::I32, Ty::I32) | (Ty::I8, Ty::I8) | (Ty::Bool, Ty::Bool) => {
+                let cmp = self.build_int_comparison_op(op, l, r)?;
+                Ok(cmp.into())
+            }
+            // i32 混合类型：提升到 i32
+            (Ty::I32, Ty::I8 | Ty::Bool) | (Ty::I8 | Ty::Bool, Ty::I32) => {
+                let l_i32 = self.cast_int_to_i32(l, lhs_ty_unwrapped)?;
+                let r_i32 = self.cast_int_to_i32(r, rhs_ty_unwrapped)?;
+                let cmp = self.build_int_comparison_op(op, l_i32, r_i32)?;
+                Ok(cmp.into())
+            }
+            // i8 + bool：提升到 i8
+            (Ty::I8, Ty::Bool) | (Ty::Bool, Ty::I8) => {
+                let l_i8 = self.cast_int_to_i8(l, lhs_ty_unwrapped)?;
+                let r_i8 = self.cast_int_to_i8(r, rhs_ty_unwrapped)?;
+                let cmp = self.build_int_comparison_op(op, l_i8, r_i8)?;
+                Ok(cmp.into())
+            }
+            _ => Err(CodegenError::TypeMismatch(
+                "invalid comparison types".into(),
+            )),
+        }
+    }
+
+    /// 构建整数算术运算指令
+    fn build_int_arithmetic_op(
+        &self,
+        op: SyntaxKind,
+        l: inkwell::values::IntValue<'ctx>,
+        r: inkwell::values::IntValue<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let res = match op {
+            SyntaxKind::PLUS => self
+                .builder
+                .build_int_add(l, r, "add")
+                .map_err(|_| CodegenError::LlvmBuild("int add"))?,
+            SyntaxKind::MINUS => self
+                .builder
+                .build_int_sub(l, r, "sub")
+                .map_err(|_| CodegenError::LlvmBuild("int sub"))?,
+            SyntaxKind::STAR => self
+                .builder
+                .build_int_mul(l, r, "mul")
+                .map_err(|_| CodegenError::LlvmBuild("int mul"))?,
+            SyntaxKind::SLASH => self
+                .builder
+                .build_int_signed_div(l, r, "div")
+                .map_err(|_| CodegenError::LlvmBuild("int div"))?,
+            SyntaxKind::PERCENT => self
+                .builder
+                .build_int_signed_rem(l, r, "rem")
+                .map_err(|_| CodegenError::LlvmBuild("int rem"))?,
+            _ => unreachable!(),
+        };
+        Ok(res.into())
+    }
+
+    /// 构建整数比较运算指令
+    fn build_int_comparison_op(
+        &self,
+        op: SyntaxKind,
+        l: inkwell::values::IntValue<'ctx>,
+        r: inkwell::values::IntValue<'ctx>,
+    ) -> Result<inkwell::values::IntValue<'ctx>> {
+        use inkwell::IntPredicate;
+        match op {
+            SyntaxKind::LT => self.build_int_cmp(IntPredicate::SLT, l, r, "lt"),
+            SyntaxKind::GT => self.build_int_cmp(IntPredicate::SGT, l, r, "gt"),
+            SyntaxKind::LTEQ => self.build_int_cmp(IntPredicate::SLE, l, r, "le"),
+            SyntaxKind::GTEQ => self.build_int_cmp(IntPredicate::SGE, l, r, "ge"),
+            SyntaxKind::EQEQ => self.build_int_cmp(IntPredicate::EQ, l, r, "eq"),
+            SyntaxKind::NEQ => self.build_int_cmp(IntPredicate::NE, l, r, "ne"),
+            _ => unreachable!(),
+        }
     }
 }

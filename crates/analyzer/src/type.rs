@@ -1,11 +1,13 @@
 use crate::{module::StructID, value::Value};
-use std::fmt;
+use std::fmt::{self};
 use syntax::SyntaxKind;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ty {
     I32,
+    I8,
     F32,
+    Bool,
     Void,
     Array(Box<Ty>, Option<i32>),
     Pointer { pointee: Box<Ty>, is_const: bool },
@@ -17,7 +19,9 @@ impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Ty::I32 => write!(f, "i32"),
+            Ty::I8 => write!(f, "i8"),
             Ty::F32 => write!(f, "f32"),
+            Ty::Bool => write!(f, "bool"),
             Ty::Void => write!(f, "void"),
             Ty::Array(inner, size) => {
                 if let Some(s) = size {
@@ -112,9 +116,11 @@ impl Ty {
     /// 返回标量零值（int / float）
     pub fn const_zero(&self) -> Value {
         match self {
-            Ty::I32 => Value::Int(0),
-            Ty::F32 => Value::Float(0.0),
-            Ty::Void => Value::Int(0),
+            Ty::I32 => Value::I32(0),
+            Ty::I8 => Value::I8(0),
+            Ty::F32 => Value::F32(0.0),
+            Ty::Bool => Value::Bool(false),
+            Ty::Void => Value::I32(0),
             Ty::Array(ntype, _) => ntype.const_zero(),
             Ty::Pointer { .. } => Value::Null,
             Ty::Struct { id, .. } => Value::StructZero(*id),
@@ -127,8 +133,19 @@ impl Ty {
         match (self, other) {
             (Ty::Void, Ty::Void) => true,
             (Ty::I32, Ty::I32) => true,
+            (Ty::I8, Ty::I8) => true,
             (Ty::F32, Ty::F32) => true,
-            (Ty::Pointer { .. }, Ty::Pointer { .. }) => true,
+            (Ty::Bool, Ty::Bool) => true,
+
+            // 整数类型隐式转
+            (Ty::I32, Ty::I8 | Ty::Bool) => true,
+            (Ty::I8, Ty::Bool) => true,
+
+            // 指针类型：*void 可以与任何指针互转
+            (Ty::Pointer { pointee: p1, .. }, Ty::Pointer { pointee: p2, .. }) => {
+                matches!(p1.as_ref(), Ty::Void) || matches!(p2.as_ref(), Ty::Void) || p1 == p2
+            }
+
             (Ty::Struct { id: id1, .. }, Ty::Struct { id: id2, .. }) => id1 == id2,
             (Ty::Const(inner), Ty::Const(r_inner)) => inner.assign_to_me_is_ok(r_inner),
             (Ty::Const(inner), _) => inner.assign_to_me_is_ok(other),
@@ -138,8 +155,7 @@ impl Ty {
     }
 
     /// 计算二元表达式的结果类型  
-    /// 指针算术不检查 pointee 类型（指针透明）
-    /// 不允许隐式类型转换
+    /// 支持 i8/i32/bool 之间的隐式类型转换
     /// 结果总是非 const
     pub fn compute_binary_result_type(lhs: &Ty, rhs: &Ty, op: SyntaxKind) -> Option<Ty> {
         use SyntaxKind::*;
@@ -151,18 +167,24 @@ impl Ty {
         match op {
             // 算术运算符: +, -, *, /, %
             PLUS | MINUS | STAR | SLASH | PERCENT => match (&lhs_unwrapped, &rhs_unwrapped) {
-                // 整数运算
+                // 指针算术：支持 i8 和 i32
+                (l, Ty::I32 | Ty::I8) if l.is_pointer() && matches!(op, PLUS | MINUS) => {
+                    Some(l.clone())
+                }
+                (Ty::I32 | Ty::I8, r) if r.is_pointer() && op == PLUS => Some(r.clone()),
+                (l, r) if l.is_pointer() && r.is_pointer() && op == MINUS => Some(Ty::I32),
+
+                // 相同类型保持不变
                 (Ty::I32, Ty::I32) => Some(Ty::I32),
-                // 浮点运算
+                (Ty::I8, Ty::I8) => Some(Ty::I8),
                 (Ty::F32, Ty::F32) => Some(Ty::F32),
 
-                // 指针算术: ptr + int, ptr - int
-                // 不检查 pointee 类型，只要是指针就行
-                (l, Ty::I32) if l.is_pointer() && matches!(op, PLUS | MINUS) => Some(l.clone()),
-                // int + ptr
-                (Ty::I32, r) if r.is_pointer() && op == PLUS => Some(r.clone()),
-                // ptr - ptr (不检查 pointee 类型)
-                (l, r) if l.is_pointer() && r.is_pointer() && op == MINUS => Some(Ty::I32),
+                // 混合类型提升规则
+                (Ty::I32, Ty::I8 | Ty::Bool) | (Ty::I8 | Ty::Bool, Ty::I32) => Some(Ty::I32),
+                (Ty::I8, Ty::Bool) | (Ty::Bool, Ty::I8) => Some(Ty::I8),
+
+                // bool 算术运算提升到 i32
+                (Ty::Bool, Ty::Bool) => Some(Ty::I32),
 
                 // 其他情况不合法
                 _ => None,
@@ -170,18 +192,22 @@ impl Ty {
 
             // 比较运算符: <, >, <=, >=, ==, !=
             LT | GT | LTEQ | GTEQ | EQEQ | NEQ => match (&lhs_unwrapped, &rhs_unwrapped) {
-                // 数值比较
-                (Ty::I32, Ty::I32) => Some(Ty::I32),
-                (Ty::F32, Ty::F32) => Some(Ty::I32),
-                // 指针比较（不检查 pointee 类型）
-                (l, r) if l.is_pointer() && r.is_pointer() => Some(Ty::I32),
+                // 整数/bool 比较：允许混合
+                (Ty::I32 | Ty::I8 | Ty::Bool, Ty::I32 | Ty::I8 | Ty::Bool) => Some(Ty::Bool),
+
+                // 浮点比较
+                (Ty::F32, Ty::F32) => Some(Ty::Bool),
+
+                // 指针比较
+                (l, r) if l.is_pointer() && r.is_pointer() => Some(Ty::Bool),
+
                 _ => None,
             },
 
             // 逻辑运算符: &&, ||
             AMPAMP | PIPEPIPE => match (&lhs_unwrapped, &rhs_unwrapped) {
-                // 只允许整数类型
-                (Ty::I32, Ty::I32) => Some(Ty::I32),
+                // 接受整数类型，返回 bool
+                (Ty::I32 | Ty::I8 | Ty::Bool, Ty::I32 | Ty::I8 | Ty::Bool) => Some(Ty::Bool),
                 _ => None,
             },
 
@@ -202,10 +228,12 @@ impl Ty {
         match (&unwrapped, op) {
             // 算术运算符: +, -
             (Ty::I32, PLUS | MINUS) => Some(Ty::I32),
+            (Ty::I8, PLUS | MINUS) => Some(Ty::I8),
+            (Ty::Bool, PLUS | MINUS) => Some(Ty::I32), // bool 提升到 i32
             (Ty::F32, PLUS | MINUS) => Some(Ty::F32),
 
-            // 逻辑非: !
-            (Ty::I32, BANG) => Some(Ty::I32),
+            // 逻辑非: ! - 接受整数类型
+            (Ty::Bool | Ty::I32 | Ty::I8, BANG) => Some(Ty::Bool),
 
             // 取地址: &
             // 注意：这里生成的指针类型是 *mut，不继承 const

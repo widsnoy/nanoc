@@ -75,35 +75,13 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .map_err(|_| CodegenError::LlvmBuild("alloca failed"))
     }
 
-    pub(crate) fn declare_sysy_runtime(&self) {
-        let i32_type = self.context.i32_type();
-        let void_type = self.context.void_type();
-        let i32_ptr_type = self.context.ptr_type(inkwell::AddressSpace::default());
-
-        let fn_type = i32_type.fn_type(&[], false);
-        self.module.add_function("getint", fn_type, None);
-        self.module.add_function("getch", fn_type, None);
-
-        let fn_type = i32_type.fn_type(&[i32_ptr_type.into()], false);
-        self.module.add_function("getarray", fn_type, None);
-
-        let fn_type = void_type.fn_type(&[i32_type.into()], false);
-        self.module.add_function("putint", fn_type, None);
-        self.module.add_function("putch", fn_type, None);
-
-        let fn_type = void_type.fn_type(&[i32_type.into(), i32_ptr_type.into()], false);
-        self.module.add_function("putarray", fn_type, None);
-
-        let fn_type = void_type.fn_type(&[], false);
-        self.module.add_function("starttime", fn_type, None);
-        self.module.add_function("stoptime", fn_type, None);
-    }
-
     /// Convert `NType` to `BasicTypeEnum`
     pub(crate) fn convert_ntype_to_type(&self, ntype: &Ty) -> Result<BasicTypeEnum<'ctx>> {
         match ntype {
             Ty::I32 => Ok(self.context.i32_type().into()),
+            Ty::I8 => Ok(self.context.i8_type().into()),
             Ty::F32 => Ok(self.context.f32_type().into()),
+            Ty::Bool => Ok(self.context.bool_type().into()),
             Ty::Void => Ok(self.context.i8_type().into()),
             Ty::Array(ntype, count) => {
                 let inner = self.convert_ntype_to_type(ntype)?;
@@ -379,8 +357,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         ty: Option<BasicTypeEnum<'ctx>>,
     ) -> Result<BasicValueEnum<'ctx>> {
         match value {
-            Value::Int(x) => Ok(self.context.i32_type().const_int(*x as u64, false).into()),
-            Value::Float(x) => Ok(self.context.f32_type().const_float(*x as f64).into()),
+            Value::I32(x) => Ok(self.context.i32_type().const_int(*x as u64, false).into()),
+            Value::I8(x) => Ok(self.context.i8_type().const_int(*x as u64, false).into()),
+            Value::Bool(x) => Ok(self.context.bool_type().const_int(*x as u64, false).into()),
+            Value::F32(x) => Ok(self.context.f32_type().const_float(*x as f64).into()),
             Value::Array(tree) => self.convert_array_tree_to_global_init(tree, ty.unwrap()),
             Value::Struct(struct_id, fields) => {
                 // 生成 struct 常量
@@ -444,7 +424,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
                 Ok(struct_llvm_ty.const_named_struct(&field_values).into())
             }
-            Value::Pointee(_, _) => Err(CodegenError::NotImplemented("pointer constant")),
             Value::Null => {
                 // 生成 LLVM null 指针
                 // 如果提供了类型，使用该类型；否则使用 void*
@@ -471,11 +450,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         r: IntValue<'ctx>,
         name: &str,
     ) -> Result<IntValue<'ctx>> {
-        let cmp = self
-            .builder
+        self.builder
             .build_int_compare(pred, l, r, name)
-            .map_err(|_| CodegenError::LlvmBuild("cmp"))?;
-        self.bool_to_i32(cmp)
+            .map_err(|_| CodegenError::LlvmBuild("cmp"))
     }
 
     /// Build float compare
@@ -507,20 +484,110 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         Ok(())
     }
 
-    /// Get size of type in bytes
-    pub(crate) fn get_type_size(&self, ty: &Ty) -> Result<u64> {
-        match ty {
-            Ty::I32 => Ok(4),
-            Ty::F32 => Ok(4),
-            Ty::Pointer { .. } => Ok(8),
-            Ty::Array(inner, count) => {
-                let size = count.ok_or_else(|| {
-                    CodegenError::NotImplemented("array with runtime size not supported")
-                })?;
-                Ok(self.get_type_size(inner)? * (size as u64))
+    /// 将整数值统一转换为 i32（用于二元运算）
+    pub(crate) fn cast_int_to_i32(&self, val: IntValue<'ctx>, ty: &Ty) -> Result<IntValue<'ctx>> {
+        match ty.unwrap_const() {
+            Ty::I32 => Ok(val), // 已经是 i32
+            Ty::I8 => {
+                // i8 → i32: sext
+                let i32_ty = self.context.i32_type();
+                self.builder
+                    .build_int_s_extend(val, i32_ty, "i8_to_i32")
+                    .map_err(|_| CodegenError::LlvmBuild("sext"))
             }
-            Ty::Const(inner) => self.get_type_size(inner),
-            _ => Err(CodegenError::Unsupported("unknown type size".into())),
+            Ty::Bool => {
+                // bool (i1) → i32: zext
+                let i32_ty = self.context.i32_type();
+                self.builder
+                    .build_int_z_extend(val, i32_ty, "bool_to_i32")
+                    .map_err(|_| CodegenError::LlvmBuild("zext"))
+            }
+            _ => Ok(val),
+        }
+    }
+
+    /// 将整数值转换为 i8（用于二元运算）
+    pub(crate) fn cast_int_to_i8(&self, val: IntValue<'ctx>, ty: &Ty) -> Result<IntValue<'ctx>> {
+        match ty.unwrap_const() {
+            Ty::I8 => Ok(val), // 已经是 i8
+            Ty::I32 => {
+                // i32 → i8: trunc
+                let i8_ty = self.context.i8_type();
+                self.builder
+                    .build_int_truncate(val, i8_ty, "i32_to_i8")
+                    .map_err(|_| CodegenError::LlvmBuild("trunc"))
+            }
+            Ty::Bool => {
+                // bool (i1) → i8: zext
+                let i8_ty = self.context.i8_type();
+                self.builder
+                    .build_int_z_extend(val, i8_ty, "bool_to_i8")
+                    .map_err(|_| CodegenError::LlvmBuild("zext"))
+            }
+            _ => Ok(val),
+        }
+    }
+
+    /// 将整数值转换为 bool（用于逻辑运算和条件）
+    pub(crate) fn cast_int_to_bool(&self, val: IntValue<'ctx>, ty: &Ty) -> Result<IntValue<'ctx>> {
+        match ty.unwrap_const() {
+            Ty::Bool => Ok(val), // 已经是 bool
+            Ty::I32 => {
+                // i32 → bool: icmp ne 0
+                let zero = self.context.i32_type().const_zero();
+                self.builder
+                    .build_int_compare(IntPredicate::NE, val, zero, "i32_to_bool")
+                    .map_err(|_| CodegenError::LlvmBuild("icmp"))
+            }
+            Ty::I8 => {
+                // i8 → bool: icmp ne 0
+                let zero = self.context.i8_type().const_zero();
+                self.builder
+                    .build_int_compare(IntPredicate::NE, val, zero, "i8_to_bool")
+                    .map_err(|_| CodegenError::LlvmBuild("icmp"))
+            }
+            _ => Ok(val),
+        }
+    }
+
+    /// 通用类型转换
+    /// 整数向上转换
+    pub(crate) fn cast_value(
+        &self,
+        val: BasicValueEnum<'ctx>,
+        from_ty: &Ty,
+        to_ty: &Ty,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let from = from_ty.unwrap_const();
+        let to = to_ty.unwrap_const();
+
+        // 相同类型，无需转换
+        if from == to {
+            return Ok(val);
+        }
+
+        let int_val = val.into_int_value();
+
+        match (from, to) {
+            // i8 → i32: sext
+            (Ty::I8, Ty::I32) => Ok(self
+                .builder
+                .build_int_s_extend(int_val, self.context.i32_type(), "cast")
+                .map_err(|_| CodegenError::LlvmBuild("sext"))?
+                .into()),
+            // bool → i32: zext
+            (Ty::Bool, Ty::I32) => Ok(self
+                .builder
+                .build_int_z_extend(int_val, self.context.i32_type(), "cast")
+                .map_err(|_| CodegenError::LlvmBuild("zext"))?
+                .into()),
+            // bool → i8: zext
+            (Ty::Bool, Ty::I8) => Ok(self
+                .builder
+                .build_int_z_extend(int_val, self.context.i8_type(), "cast")
+                .map_err(|_| CodegenError::LlvmBuild("zext"))?
+                .into()),
+            _ => Ok(val),
         }
     }
 }

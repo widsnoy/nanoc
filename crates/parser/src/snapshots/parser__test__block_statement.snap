@@ -31,7 +31,7 @@ COMP_UNIT@0..76
           WHITESPACE@50..51 " "
           TYPE@51..54
             PRIMIT_TYPE@51..54
-              INT_KW@51..54 "i32"
+              I32_KW@51..54 "i32"
           SEMI@54..55 ";"
         NEWLINE@55..56 "\n"
         WHITESPACE@56..64 "        "

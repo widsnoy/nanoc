@@ -63,9 +63,17 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
                 if let Some(expr) = init_node.expr() {
                     // 单值初始化
-                    let init_val = self.compile_expr(expr)?;
+                    let init_val = self.compile_expr(expr.clone())?;
+
+                    // 获取表达式类型和变量类型，进行类型转换
+                    let expr_ty = self
+                        .analyzer
+                        .get_expr_type(expr.text_range())
+                        .ok_or(CodegenError::Missing("expr type"))?;
+                    let init_val_casted = self.cast_value(init_val, expr_ty, var_ty)?;
+
                     self.builder
-                        .build_store(alloca, init_val)
+                        .build_store(alloca, init_val_casted)
                         .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
                 } else if ty.is_array() {
                     // 数组初始化列表
@@ -87,7 +95,22 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .build_store(alloca, llvm_ty.const_zero())
                             .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
                         let mut indices = vec![self.context.i32_type().const_zero()];
-                        self.store_on_array_tree(array_tree, &mut indices, alloca, llvm_ty)?;
+                        // 提取数组元素类型
+                        let element_ty = match &ty {
+                            Ty::Array(inner, _) => inner.as_ref(),
+                            _ => {
+                                return Err(CodegenError::TypeMismatch(
+                                    "expected array type".into(),
+                                ));
+                            }
+                        };
+                        self.store_on_array_tree(
+                            array_tree,
+                            &mut indices,
+                            alloca,
+                            llvm_ty,
+                            element_ty,
+                        )?;
                     }
                 } else if ty.is_struct() {
                     // Struct 初始化列表
@@ -161,10 +184,18 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let value = if let Ok(const_val) = self.get_const_var_value(&expr, None) {
                     const_val
                 } else {
-                    self.compile_expr(expr)?
+                    self.compile_expr(expr.clone())?
                 };
+
+                // 获取表达式类型并进行隐式类型转换
+                let expr_ty = self
+                    .analyzer
+                    .get_expr_type(expr.text_range())
+                    .ok_or(CodegenError::Missing("expr type"))?;
+                let value_casted = self.cast_value(value, expr_ty, &field.ty)?;
+
                 self.builder
-                    .build_store(field_ptr, value)
+                    .build_store(field_ptr, value_casted)
                     .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
             } else if inner_field_ty.is_array() {
                 // 数组字段：使用 ArrayTree 解析
@@ -180,7 +211,26 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
                     let mut indices = vec![self.context.i32_type().const_zero()];
                     let array_tree = self.analyzer.expand_array.get(&init.text_range()).unwrap();
-                    self.store_on_array_tree(array_tree, &mut indices, field_ptr, field_llvm_ty)?;
+                    // 提取数组元素类型
+                    let element_ty = match &field.ty {
+                        Ty::Array(inner, _) => inner.as_ref(),
+                        Ty::Const(inner) => match inner.as_ref() {
+                            Ty::Array(inner, _) => inner.as_ref(),
+                            _ => {
+                                return Err(CodegenError::TypeMismatch(
+                                    "expected array type".into(),
+                                ));
+                            }
+                        },
+                        _ => return Err(CodegenError::TypeMismatch("expected array type".into())),
+                    };
+                    self.store_on_array_tree(
+                        array_tree,
+                        &mut indices,
+                        field_ptr,
+                        field_llvm_ty,
+                        element_ty,
+                    )?;
                 }
             } else if inner_field_ty.is_struct() {
                 // 嵌套 struct 字段：递归处理（不需要 zero init）
@@ -209,13 +259,21 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         indices: &mut Vec<IntValue<'ctx>>,
         ptr: PointerValue<'ctx>,
         llvm_ty: BasicTypeEnum<'ctx>,
+        element_ty: &Ty,
     ) -> Result<()> {
         match array_tree {
             ArrayTree::Val(ArrayTreeValue::Expr(expr_range)) => {
                 let syntax_tree = SyntaxNode::new_root(self.analyzer.get_green_tree());
                 let expr = find_node_by_range::<Expr>(&syntax_tree, *expr_range)
                     .ok_or(CodegenError::Missing("expr node not found"))?;
-                let value = self.compile_expr(expr)?;
+                let value = self.compile_expr(expr.clone())?;
+
+                // 获取表达式类型并进行隐式类型转换
+                let expr_ty = self
+                    .analyzer
+                    .get_expr_type(expr.text_range())
+                    .ok_or(CodegenError::Missing("expr type"))?;
+                let value_casted = self.cast_value(value, expr_ty, element_ty)?;
 
                 let gep = unsafe {
                     self.builder
@@ -223,7 +281,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         .map_err(|_| CodegenError::LlvmBuild("gep failed"))?
                 };
                 self.builder
-                    .build_store(gep, value)
+                    .build_store(gep, value_casted)
                     .map_err(|_| CodegenError::LlvmBuild("store failed"))?;
             }
             ArrayTree::Val(ArrayTreeValue::Struct {
@@ -259,9 +317,19 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             }
             ArrayTree::Children(children) => {
                 let i32_type = self.context.i32_type();
+                // 对于多维数组，element_ty 本身也是数组类型
+                // 需要提取下一层的元素类型
                 for (i, child) in children.iter().enumerate() {
                     indices.push(i32_type.const_int(i as u64, false));
-                    self.store_on_array_tree(child, indices, ptr, llvm_ty)?;
+                    // 根据当前 element_ty 确定下一层的类型
+                    match element_ty {
+                        Ty::Array(inner, _) => {
+                            self.store_on_array_tree(child, indices, ptr, llvm_ty, inner.as_ref())?;
+                        }
+                        _ => {
+                            self.store_on_array_tree(child, indices, ptr, llvm_ty, element_ty)?;
+                        }
+                    }
                     indices.pop();
                 }
             }

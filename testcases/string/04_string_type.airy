@@ -1,0 +1,14 @@
+fn main() -> i32 {
+    // 字符串字面量的类型是 *const i8 (在 airyc 中用 *const i32 表示)
+    // 注意：目前指针类型检查不严格，所以 *const i32 也能工作
+    let msg: *const i32 = "Hello, airyc!";
+    printf("String variable: %s\n", msg);
+    
+    // 直接使用字符串字面量
+    printf("Direct string: %s\n", "This is a test");
+    
+    // 字符串可以作为函数参数
+    puts("Using puts function");
+    
+    return 0;
+}

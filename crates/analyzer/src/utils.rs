@@ -40,7 +40,8 @@ pub fn parse_type_node(
             if let Some(vt) = value_table {
                 let expr_range = expr_node.text_range();
                 match vt.get(&expr_range) {
-                    Some(Value::Int(n)) => Some(*n),
+                    Some(Value::I32(n)) => Some(*n),
+                    Some(Value::I8(n)) => Some(*n as i32),
                     Some(other_value) => {
                         return Err(AnalyzeError::TypeMismatch {
                             expected: Ty::Const(Box::new(Ty::I32)),
@@ -82,10 +83,14 @@ pub fn parse_type_node(
             return Ok(None);
         };
 
-        let ntype = if pt_node.int_token().is_some() {
+        let ntype = if pt_node.i32_token().is_some() {
             Ty::I32
-        } else if pt_node.float_token().is_some() {
+        } else if pt_node.i8_token().is_some() {
+            Ty::I8
+        } else if pt_node.f32_token().is_some() {
             Ty::F32
+        } else if pt_node.bool_token().is_some() {
+            Ty::Bool
         } else if pt_node.void_token().is_some() {
             Ty::Void
         } else if pt_node.struct_token().is_some() {
@@ -221,7 +226,7 @@ impl Module {
 
         match &inner_ty {
             // 标量类型：期望一个表达式
-            Ty::I32 | Ty::F32 | Ty::Pointer { .. } => {
+            Ty::I32 | Ty::I8 | Ty::F32 | Ty::Bool | Ty::Pointer { .. } => {
                 let Some(expr) = init_val_node.expr() else {
                     // 期望表达式，但得到了初始化列表
                     return Err(AnalyzeError::ConstantExprExpected {

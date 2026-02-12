@@ -16,7 +16,7 @@ COMP_UNIT@0..227
       CONST_KW@12..17 "const"
       WHITESPACE@17..18 " "
       PRIMIT_TYPE@18..21
-        INT_KW@18..21 "i32"
+        I32_KW@18..21 "i32"
     WHITESPACE@21..22 " "
     EQ@22..23 "="
     INIT_VAL@23..25
@@ -37,7 +37,7 @@ COMP_UNIT@0..227
       CONST_KW@38..43 "const"
       WHITESPACE@43..44 " "
       PRIMIT_TYPE@44..47
-        FLOAT_KW@44..47 "f32"
+        F32_KW@44..47 "f32"
     WHITESPACE@47..48 " "
     EQ@48..49 "="
     INIT_VAL@49..53
@@ -58,7 +58,7 @@ COMP_UNIT@0..227
       CONST_KW@66..71 "const"
       WHITESPACE@71..72 " "
       PRIMIT_TYPE@72..75
-        FLOAT_KW@72..75 "f32"
+        F32_KW@72..75 "f32"
     WHITESPACE@75..76 " "
     EQ@76..77 "="
     INIT_VAL@77..81
@@ -77,7 +77,7 @@ COMP_UNIT@0..227
     WHITESPACE@93..94 " "
     TYPE@94..97
       PRIMIT_TYPE@94..97
-        INT_KW@94..97 "i32"
+        I32_KW@94..97 "i32"
     SEMI@97..98 ";"
   NEWLINE@98..99 "\n"
   WHITESPACE@99..103 "    "
@@ -90,7 +90,7 @@ COMP_UNIT@0..227
     WHITESPACE@109..110 " "
     TYPE@110..113
       PRIMIT_TYPE@110..113
-        FLOAT_KW@110..113 "f32"
+        F32_KW@110..113 "f32"
     WHITESPACE@113..114 " "
     EQ@114..115 "="
     INIT_VAL@115..119
@@ -130,7 +130,7 @@ COMP_UNIT@0..227
       WHITESPACE@164..165 " "
       TYPE@165..168
         PRIMIT_TYPE@165..168
-          INT_KW@165..168 "i32"
+          I32_KW@165..168 "i32"
     SEMI@168..169 ";"
   NEWLINE@169..170 "\n"
   WHITESPACE@170..174 "    "
@@ -145,7 +145,7 @@ COMP_UNIT@0..227
       L_BRACK@183..184 "["
       TYPE@184..187
         PRIMIT_TYPE@184..187
-          INT_KW@184..187 "i32"
+          I32_KW@184..187 "i32"
       SEMI@187..188 ";"
       LITERAL@188..191
         WHITESPACE@188..189 " "
@@ -167,7 +167,7 @@ COMP_UNIT@0..227
         L_BRACK@209..210 "["
         TYPE@210..213
           PRIMIT_TYPE@210..213
-            INT_KW@210..213 "i32"
+            I32_KW@210..213 "i32"
         SEMI@213..214 ";"
         LITERAL@214..216
           WHITESPACE@214..215 " "

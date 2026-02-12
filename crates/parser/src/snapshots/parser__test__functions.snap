@@ -34,14 +34,14 @@ COMP_UNIT@0..155
           WHITESPACE@34..35 " "
           TYPE@35..38
             PRIMIT_TYPE@35..38
-              INT_KW@35..38 "i32"
+              I32_KW@35..38 "i32"
       R_PAREN@38..39 ")"
       WHITESPACE@39..40 " "
       ARROW@40..42 "->"
       WHITESPACE@42..43 " "
       TYPE@43..46
         PRIMIT_TYPE@43..46
-          INT_KW@43..46 "i32"
+          I32_KW@43..46 "i32"
     BLOCK@46..49
       WHITESPACE@46..47 " "
       L_BRACE@47..48 "{"
@@ -63,7 +63,7 @@ COMP_UNIT@0..155
           WHITESPACE@65..66 " "
           TYPE@66..69
             PRIMIT_TYPE@66..69
-              INT_KW@66..69 "i32"
+              I32_KW@66..69 "i32"
         COMMA@69..70 ","
         FUNC_F_PARAM@70..77
           WHITESPACE@70..71 " "
@@ -73,14 +73,14 @@ COMP_UNIT@0..155
           WHITESPACE@73..74 " "
           TYPE@74..77
             PRIMIT_TYPE@74..77
-              FLOAT_KW@74..77 "f32"
+              F32_KW@74..77 "f32"
       R_PAREN@77..78 ")"
       WHITESPACE@78..79 " "
       ARROW@79..81 "->"
       WHITESPACE@81..82 " "
       TYPE@82..85
         PRIMIT_TYPE@82..85
-          INT_KW@82..85 "i32"
+          I32_KW@82..85 "i32"
     BLOCK@85..88
       WHITESPACE@85..86 " "
       L_BRACE@86..87 "{"
@@ -107,7 +107,7 @@ COMP_UNIT@0..155
             WHITESPACE@109..110 " "
             TYPE@110..113
               PRIMIT_TYPE@110..113
-                INT_KW@110..113 "i32"
+                I32_KW@110..113 "i32"
         COMMA@113..114 ","
         FUNC_F_PARAM@114..134
           WHITESPACE@114..115 " "
@@ -124,7 +124,7 @@ COMP_UNIT@0..155
               L_BRACK@125..126 "["
               TYPE@126..129
                 PRIMIT_TYPE@126..129
-                  INT_KW@126..129 "i32"
+                  I32_KW@126..129 "i32"
               SEMI@129..130 ";"
               LITERAL@130..133
                 WHITESPACE@130..131 " "
@@ -141,7 +141,7 @@ COMP_UNIT@0..155
         WHITESPACE@143..144 " "
         TYPE@144..147
           PRIMIT_TYPE@144..147
-            INT_KW@144..147 "i32"
+            I32_KW@144..147 "i32"
     BLOCK@147..150
       WHITESPACE@147..148 " "
       L_BRACE@148..149 "{"

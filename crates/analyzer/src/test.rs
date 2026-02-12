@@ -78,9 +78,9 @@ fn test_const_binary_operations() {
 fn test_const_comparison_operations() {
     let source = r#"
     fn main() -> i32 {
-        let a: const i32 = 5 > 3;
-        let b: const i32 = 10 == 10;
-        let c: const i32 = 2 < 8;
+        let a: const bool = 5 > 3;
+        let b: const bool = 10 == 10;
+        let c: const bool = 2 < 8;
     }
     "#;
     let module = analyze(source);
@@ -91,8 +91,8 @@ fn test_const_comparison_operations() {
 fn test_const_logical_operations() {
     let source = r#"
     fn main() -> i32 {
-        let a: const i32 = 1 && 1;
-        let b: const i32 = 0 || 1;
+        let a: const bool = true && true;
+        let b: const bool = false || true;
     }
     "#;
     let module = analyze(source);
@@ -104,11 +104,10 @@ fn test_const_unary_operations() {
     let source = r#"
     fn main() -> i32 {
         let a: const i32 = -5;
-        let b: const i32 = !0;
+        let b: const bool = !false;
     }
     "#;
     let module = analyze(source);
-    dbg!(&module.semantic_errors);
     assert!(module.semantic_errors.is_empty());
 }
 
@@ -442,20 +441,6 @@ fn test_function_undefined_error() {
 //         _ => panic!("Expected ArgumentCountMismatch error"),
 //     }
 // }
-
-#[test]
-fn test_builtin_function_call() {
-    let source = r#"
-    fn main() -> i32 {
-        let x: i32 = getint();
-        putint(x);
-        return 0;
-    }
-    "#;
-    let module = analyze(source);
-    assert!(module.semantic_errors.is_empty());
-}
-
 #[test]
 fn test_assign_to_const_error() {
     let source = r#"

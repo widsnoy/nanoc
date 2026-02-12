@@ -35,7 +35,7 @@ COMP_UNIT@0..178
     WHITESPACE@164..165 " "
     TYPE@165..168
       PRIMIT_TYPE@165..168
-        INT_KW@165..168 "i32"
+        I32_KW@165..168 "i32"
     WHITESPACE@168..169 " "
     EQ@169..170 "="
     INIT_VAL@170..172

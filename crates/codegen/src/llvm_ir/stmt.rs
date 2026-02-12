@@ -44,12 +44,27 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     fn compile_assign_stmt(&mut self, stmt: AssignStmt) -> Result<()> {
-        let rhs = self.compile_expr(stmt.rhs().ok_or(CodegenError::Missing("assign rhs"))?)?;
+        let rhs_node = stmt.rhs().ok_or(CodegenError::Missing("assign rhs"))?;
         let lhs_node = stmt.lhs().ok_or(CodegenError::Missing("assign lhs"))?;
-        let lhs_ptr = self.get_expr_ptr(lhs_node)?;
+
+        let rhs = self.compile_expr(rhs_node.clone())?;
+        let lhs_ptr = self.get_expr_ptr(lhs_node.clone())?;
+
+        // 获取左右值类型
+        let lhs_ty = self
+            .analyzer
+            .get_expr_type(lhs_node.text_range())
+            .ok_or(CodegenError::Missing("lhs type"))?;
+        let rhs_ty = self
+            .analyzer
+            .get_expr_type(rhs_node.text_range())
+            .ok_or(CodegenError::Missing("rhs type"))?;
+
+        // 如果类型不同，插入转换
+        let rhs_casted = self.cast_value(rhs, rhs_ty, lhs_ty)?;
 
         self.builder
-            .build_store(lhs_ptr, rhs)
+            .build_store(lhs_ptr, rhs_casted)
             .map_err(|_| CodegenError::LlvmBuild("assign store failed"))?;
         Ok(())
     }
@@ -158,9 +173,35 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     fn compile_return_stmt(&mut self, stmt: ReturnStmt) -> Result<()> {
-        if let Some(expr) = stmt.expr() {
-            let val = self.compile_expr(expr)?;
-            self.builder.build_return(Some(&val)).ok();
+        if let Some(expr_node) = stmt.expr() {
+            let val = self.compile_expr(expr_node.clone())?;
+
+            // 获取当前函数的返回类型
+            let func = self
+                .symbols
+                .current_function
+                .ok_or(CodegenError::Missing("current function"))?;
+            let func_name = func.get_name().to_str().unwrap();
+            let func_id = self
+                .analyzer
+                .get_function_id_by_name(func_name)
+                .ok_or(CodegenError::Missing("function id"))?;
+            let func_info = self
+                .analyzer
+                .get_function_by_id(func_id)
+                .ok_or(CodegenError::Missing("function info"))?;
+            let func_ret_ty = &func_info.ret_type;
+
+            // 获取表达式类型
+            let expr_ty = self
+                .analyzer
+                .get_expr_type(expr_node.text_range())
+                .ok_or(CodegenError::Missing("expr type"))?;
+
+            // 如果类型不同，插入转换
+            let val_casted = self.cast_value(val, expr_ty, func_ret_ty)?;
+
+            self.builder.build_return(Some(&val_casted)).ok();
         } else {
             self.builder.build_return(None).ok();
         }

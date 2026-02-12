@@ -133,8 +133,10 @@ fn format_variable_signature(
     value: Option<&analyzer::value::Value>,
 ) -> String {
     let v = match value {
-        Some(analyzer::value::Value::Int(x)) => x.to_string(),
-        Some(analyzer::value::Value::Float(x)) => x.to_string(),
+        Some(analyzer::value::Value::I32(x)) => x.to_string(),
+        Some(analyzer::value::Value::I8(x)) => x.to_string(),
+        Some(analyzer::value::Value::Bool(x)) => x.to_string(),
+        Some(analyzer::value::Value::F32(x)) => x.to_string(),
         _ => variable.ty.to_string(),
     };
     format!("{}: {}", variable.name, v)

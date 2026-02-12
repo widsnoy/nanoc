@@ -1,0 +1,6 @@
+fn main() -> i32 {
+    printf("Escape sequences:\n");
+    printf("Tab:\tNewline:\nQuote:\"\n");
+    printf("Backslash:\\\n");
+    return 0;
+}

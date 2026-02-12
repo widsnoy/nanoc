@@ -16,7 +16,7 @@ COMP_UNIT@0..86
       L_BRACK@12..13 "["
       TYPE@13..16
         PRIMIT_TYPE@13..16
-          INT_KW@13..16 "i32"
+          I32_KW@13..16 "i32"
       SEMI@16..17 ";"
       LITERAL@17..19
         WHITESPACE@17..18 " "
@@ -57,7 +57,7 @@ COMP_UNIT@0..86
         L_BRACK@46..47 "["
         TYPE@47..50
           PRIMIT_TYPE@47..50
-            INT_KW@47..50 "i32"
+            I32_KW@47..50 "i32"
         SEMI@50..51 ";"
         LITERAL@51..53
           WHITESPACE@51..52 " "

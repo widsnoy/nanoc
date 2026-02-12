@@ -49,8 +49,6 @@ pub struct LoopContext<'ctx> {
 
 impl<'a, 'ctx> Program<'a, 'ctx> {
     pub fn compile_comp_unit(&mut self, node: CompUnit) -> Result<()> {
-        self.declare_sysy_runtime();
-
         if let Some(ref metadata) = self.analyzer.metadata {
             for func_id in self.analyzer.function_map.values() {
                 if func_id.module != self.analyzer.file_id

@@ -1,0 +1,11 @@
+fn main() -> i32 {
+    let msg: *const i32 = "Hello from airyc!";
+    printf("Message: %s\n", msg);
+    
+    let x: i32 = 42;
+    let y: i32 = 100;
+    printf("x = %d, y = %d\n", x, y);
+    printf("Sum: %d\n", x + y);
+    
+    return 0;
+}

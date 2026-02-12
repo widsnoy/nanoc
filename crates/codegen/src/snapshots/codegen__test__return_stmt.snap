@@ -5,22 +5,6 @@ expression: try_it(code)
 ; ModuleID = 'main'
 source_filename = "main"
 
-declare i32 @getint()
-
-declare i32 @getch()
-
-declare i32 @getarray(ptr)
-
-declare void @putint(i32)
-
-declare void @putch(i32)
-
-declare void @putarray(i32, ptr)
-
-declare void @starttime()
-
-declare void @stoptime()
-
 define i32 @main() {
 entry:
   %y = alloca i32, align 4
