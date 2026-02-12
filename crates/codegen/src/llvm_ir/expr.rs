@@ -688,7 +688,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         &self,
         p1: PointerValue<'ctx>,
         p2: PointerValue<'ctx>,
-    ) -> Result<(inkwell::values::IntValue<'ctx>, inkwell::values::IntValue<'ctx>)> {
+    ) -> Result<(
+        inkwell::values::IntValue<'ctx>,
+        inkwell::values::IntValue<'ctx>,
+    )> {
         let i64_ty = self.context.i64_type();
         let i1 = self
             .builder
@@ -747,8 +750,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 Ok(truncated.into())
             }
             // 指针比较运算
-            SyntaxKind::EQEQ | SyntaxKind::NEQ | SyntaxKind::LT | SyntaxKind::GT
-            | SyntaxKind::LTEQ | SyntaxKind::GTEQ => {
+            SyntaxKind::EQEQ
+            | SyntaxKind::NEQ
+            | SyntaxKind::LT
+            | SyntaxKind::GT
+            | SyntaxKind::LTEQ
+            | SyntaxKind::GTEQ => {
                 let (i1, i2) = self.ptr_to_int_pair(p1, p2)?;
                 let predicate = match op {
                     SyntaxKind::EQEQ => IntPredicate::EQ,
