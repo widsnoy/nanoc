@@ -166,7 +166,6 @@ fn run_test(case: &TestCase, args: &Args, tmp_dir: &Path) -> Result<TestResult> 
     let timeout = Duration::from_secs(args.timeout);
 
     let compile_cmd = Command::new(compiler)
-        .arg("-i")
         .arg(&case.path)
         .arg("-o")
         .arg(tmp_dir)
