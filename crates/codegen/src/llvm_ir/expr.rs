@@ -171,89 +171,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     Err(CodegenError::Unsupported("int - ptr".into()))
                 }
             }
-            // 指针 - 指针
+            // 指针 - 指针 / 指针比较
             (BasicValueEnum::PointerValue(p1), BasicValueEnum::PointerValue(p2)) => {
-                match op_token.kind() {
-                    SyntaxKind::MINUS => {
-                        let lhs_ty = self
-                            .analyzer
-                            .get_expr_type(lhs_node.text_range())
-                            .ok_or(CodegenError::Missing("lhs type"))?;
-                        let pointee = lhs_ty
-                            .pointer_inner()
-                            .ok_or_else(|| CodegenError::TypeMismatch("expected pointer".into()))?;
-
-                        // 使用 inkwell 的 size_of 获取元素大小
-                        let llvm_ty = self.convert_ntype_to_type(pointee)?;
-                        let size_val = llvm_ty
-                            .size_of()
-                            .ok_or(CodegenError::LlvmBuild("failed to get type size"))?;
-
-                        let i64_ty = self.context.i64_type();
-                        let i1 = self
-                            .builder
-                            .build_ptr_to_int(p1, i64_ty, "p1")
-                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
-                        let i2 = self
-                            .builder
-                            .build_ptr_to_int(p2, i64_ty, "p2")
-                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
-                        let diff = self
-                            .builder
-                            .build_int_sub(i1, i2, "diff")
-                            .map_err(|_| CodegenError::LlvmBuild("sub"))?;
-
-                        let result = self
-                            .builder
-                            .build_int_signed_div(diff, size_val, "ptr.diff")
-                            .map_err(|_| CodegenError::LlvmBuild("div"))?;
-                        let i32_ty = self.context.i32_type();
-                        // FIXME:
-                        let truncated = self
-                            .builder
-                            .build_int_truncate(result, i32_ty, "diff.i32")
-                            .map_err(|_| CodegenError::LlvmBuild("trunc"))?;
-                        Ok(truncated.into())
-                    }
-                    SyntaxKind::EQEQ => {
-                        // 指针相等比较：转换为整数后比较
-                        let i64_ty = self.context.i64_type();
-                        let i1 = self
-                            .builder
-                            .build_ptr_to_int(p1, i64_ty, "p1")
-                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
-                        let i2 = self
-                            .builder
-                            .build_ptr_to_int(p2, i64_ty, "p2")
-                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
-                        let cmp = self
-                            .builder
-                            .build_int_compare(inkwell::IntPredicate::EQ, i1, i2, "ptr.eq")
-                            .map_err(|_| CodegenError::LlvmBuild("ptr compare"))?;
-                        Ok(cmp.into())
-                    }
-                    SyntaxKind::NEQ => {
-                        // 指针不等比较：转换为整数后比较
-                        let i64_ty = self.context.i64_type();
-                        let i1 = self
-                            .builder
-                            .build_ptr_to_int(p1, i64_ty, "p1")
-                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
-                        let i2 = self
-                            .builder
-                            .build_ptr_to_int(p2, i64_ty, "p2")
-                            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
-                        let cmp = self
-                            .builder
-                            .build_int_compare(inkwell::IntPredicate::NE, i1, i2, "ptr.ne")
-                            .map_err(|_| CodegenError::LlvmBuild("ptr compare"))?;
-                        Ok(cmp.into())
-                    }
-                    _ => Err(CodegenError::Unsupported(format!(
-                        "unsupported pointer operation: {:?}",
-                        op_token.kind()
-                    ))),
-                }
+                self.compile_ptr_binary_op(op_token.kind(), p1, p2, lhs_node, rhs_node)
             }
             (BasicValueEnum::IntValue(l), BasicValueEnum::IntValue(r)) => {
                 // 获取操作数的语义类型
@@ -759,6 +679,96 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             SyntaxKind::EQEQ => self.build_int_cmp(IntPredicate::EQ, l, r, "eq"),
             SyntaxKind::NEQ => self.build_int_cmp(IntPredicate::NE, l, r, "ne"),
             _ => unreachable!(),
+        }
+    }
+
+    /// 将两个指针转换为 i64 整数
+    /// 返回 (i1, i2)
+    fn ptr_to_int_pair(
+        &self,
+        p1: PointerValue<'ctx>,
+        p2: PointerValue<'ctx>,
+    ) -> Result<(inkwell::values::IntValue<'ctx>, inkwell::values::IntValue<'ctx>)> {
+        let i64_ty = self.context.i64_type();
+        let i1 = self
+            .builder
+            .build_ptr_to_int(p1, i64_ty, "p1")
+            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
+        let i2 = self
+            .builder
+            .build_ptr_to_int(p2, i64_ty, "p2")
+            .map_err(|_| CodegenError::LlvmBuild("ptr_to_int"))?;
+        Ok((i1, i2))
+    }
+
+    /// 编译指针二元运算（减法和比较）
+    fn compile_ptr_binary_op(
+        &mut self,
+        op: SyntaxKind,
+        p1: PointerValue<'ctx>,
+        p2: PointerValue<'ctx>,
+        lhs_node: Expr,
+        _rhs_node: Expr,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        use inkwell::IntPredicate;
+
+        match op {
+            // 指针减法：(p1 - p2) / sizeof(pointee)
+            SyntaxKind::MINUS => {
+                let lhs_ty = self
+                    .analyzer
+                    .get_expr_type(lhs_node.text_range())
+                    .ok_or(CodegenError::Missing("lhs type"))?;
+                let pointee = lhs_ty
+                    .pointer_inner()
+                    .ok_or_else(|| CodegenError::TypeMismatch("expected pointer".into()))?;
+
+                // 获取元素大小
+                let llvm_ty = self.convert_ntype_to_type(pointee)?;
+                let size_val = llvm_ty
+                    .size_of()
+                    .ok_or(CodegenError::LlvmBuild("failed to get type size"))?;
+
+                let (i1, i2) = self.ptr_to_int_pair(p1, p2)?;
+                let diff = self
+                    .builder
+                    .build_int_sub(i1, i2, "diff")
+                    .map_err(|_| CodegenError::LlvmBuild("sub"))?;
+
+                let result = self
+                    .builder
+                    .build_int_signed_div(diff, size_val, "ptr.diff")
+                    .map_err(|_| CodegenError::LlvmBuild("div"))?;
+                let i32_ty = self.context.i32_type();
+                let truncated = self
+                    .builder
+                    .build_int_truncate(result, i32_ty, "diff.i32")
+                    .map_err(|_| CodegenError::LlvmBuild("trunc"))?;
+                Ok(truncated.into())
+            }
+            // 指针比较运算
+            SyntaxKind::EQEQ | SyntaxKind::NEQ | SyntaxKind::LT | SyntaxKind::GT
+            | SyntaxKind::LTEQ | SyntaxKind::GTEQ => {
+                let (i1, i2) = self.ptr_to_int_pair(p1, p2)?;
+                let predicate = match op {
+                    SyntaxKind::EQEQ => IntPredicate::EQ,
+                    SyntaxKind::NEQ => IntPredicate::NE,
+                    SyntaxKind::LT => IntPredicate::ULT,
+                    SyntaxKind::GT => IntPredicate::UGT,
+                    SyntaxKind::LTEQ => IntPredicate::ULE,
+                    SyntaxKind::GTEQ => IntPredicate::UGE,
+                    _ => unreachable!(),
+                };
+                let cmp = self
+                    .builder
+                    .build_int_compare(predicate, i1, i2, "ptr.cmp")
+                    .map_err(|_| CodegenError::LlvmBuild("ptr compare"))?;
+                Ok(cmp.into())
+            }
+            _ => Err(CodegenError::Unsupported(format!(
+                "unsupported pointer operation: {:?}",
+                op
+            ))),
         }
     }
 }
