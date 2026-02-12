@@ -79,7 +79,7 @@ cargo make test                            # All integration tests
 
 ```bash
 cd /tmp
-/path/to/airyc-compiler -i /path/to/testcases/file.airy
+/path/to/airyc-compiler /path/to/testcases/file.airy
 ```
 
 ## Code Style Guidelines

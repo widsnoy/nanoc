@@ -7,7 +7,6 @@ use clap::{Parser, ValueEnum};
 #[command(name = "airyc-cli", version = "0.0.1", about = "airyc-lang cli tool")]
 pub struct Args {
     /// source file(s) (.airy) path - can specify multiple files
-    #[arg(short, long, num_args = 1..)]
     pub input_path: Vec<PathBuf>,
 
     /// output dir, (default .)

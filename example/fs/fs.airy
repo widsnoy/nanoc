@@ -1,0 +1,850 @@
+import "stdlib.airy"
+
+// 常量定义
+let BLOCK_SIZE: const i32 = 1024;
+let SIZE: const i32 = 1024000;
+let MAX_DEPTH: const i32 = 30;
+let MAX_LENGTH: const i32 = 100;
+let FILE_NAME_LEN: const i32 = 100;
+let MAX_FILE_LENGTH: const i32 = 2048;
+let ROOTBLOCKNUM: const i32 = 2;
+let MAXOPENFILE: const i32 = 100;
+let FAT_BLOCK_SIZE: const i32 = 16;
+let END: const i32 = -233;
+let FREE: const i32 = -1;
+
+// 数据结构定义
+struct FAT {
+    next: i32
+}
+
+struct FCB {
+    filename: [i8; 100],
+    not_empty: i8,
+    attrbute: i8,
+    time: i32,
+    date: i32,
+    first_block: i32,
+    last_block_len: i32,
+    length: i32
+}
+
+struct USEROPEN {
+    fcb: *mut struct FCB,
+    dir: [i8; 100],
+    topenfile: i8,
+    buf: *mut i8,
+    buf_ptr: i32,
+    data_ptr: i32
+}
+
+struct BLOCK0 {
+    information: [i8; 10],
+    block0: *mut i8,
+    block0_ed: *mut i8,
+    fat0: *mut i8,
+    fat0_ed: *mut i8,
+    fat1: *mut i8,
+    fat1_ed: *mut i8,
+    root: *mut i8,
+    root_ed: *mut i8,
+    data: *mut i8
+}
+
+struct BLOCK {
+    data: [i8; 1024]
+}
+
+// 全局变量
+let open_file_list: [struct USEROPEN; 100];
+let curdir: i32;
+let current_dir: [i8; 100];
+let fcb_stk: [*mut struct FCB; 30];
+let fcb_top: i32;
+let boot: *mut struct BLOCK0;
+let mem: [i8; 1024000];
+
+// get_fcb 函数使用的静态变量
+let get_fcb_stk: [*mut struct FCB; 30];
+let get_fcb_top: i32;
+let get_fcb_temp_path: [i8; 3000];
+
+// sizeof 常量定义
+let SIZEOF_FAT: const i32 = 4;
+let SIZEOF_FCB: const i32 = 128;
+let SIZEOF_PTR: const i32 = 8;
+let SIZEOF_I32: const i32 = 4;
+
+// 类型转换辅助函数
+fn cast_to_fcb(ptr: *mut i8) -> *mut struct FCB {
+    let void_ptr: *mut void = ptr;
+    return void_ptr;
+}
+
+fn cast_to_fat(ptr: *mut i8) -> *mut struct FAT {
+    let void_ptr: *mut void = ptr;
+    return void_ptr;
+}
+
+fn cast_to_i32_ptr(ptr: *mut i8) -> *mut i32 {
+    let void_ptr: *mut void = ptr;
+    return void_ptr;
+}
+
+fn cast_to_fcb_ptr_ptr(ptr: *mut i8) -> *mut *mut struct FCB {
+    let void_ptr: *mut void = ptr;
+    return void_ptr;
+}
+
+fn cast_to_i8(ptr: *mut void) -> *mut i8 {
+    return ptr;
+}
+
+fn cast_to_block0(ptr: *mut i8) -> *mut struct BLOCK0 {
+    let void_ptr: *mut void = ptr;
+    return void_ptr;
+}
+
+// 初始化 BLOCK0
+fn block0_Init(p: *mut struct BLOCK0, info: *const i8, vhead: *mut i8) {
+    if (info != null) {
+        memmove(p->information, info, strlen(info) + 1);
+    }
+    p->block0 = vhead;
+    p->block0_ed = vhead + BLOCK_SIZE;
+    p->fat0 = vhead + BLOCK_SIZE;
+    p->fat0_ed = vhead + BLOCK_SIZE * 3;
+    p->fat1 = vhead + BLOCK_SIZE * 3;
+    p->fat1_ed = vhead + BLOCK_SIZE * 5;
+    p->root = vhead + BLOCK_SIZE * 5;
+    p->root_ed = vhead + BLOCK_SIZE * 7;
+    p->data = vhead + BLOCK_SIZE * 7;
+}
+
+// 创建 FCB
+fn fcb_set(name: *const i8, free: i8, attrbute: i8, time: i32, date: i32, first_block: i32, length: i32) -> *mut struct FCB {
+    let p: *mut struct FCB = cast_to_fcb(null);
+    
+    let it: *mut struct FCB = cast_to_fcb(boot->root);
+    let root_ed: *mut struct FCB = cast_to_fcb(boot->root_ed);
+    while (it < root_ed) {
+        if (it->not_empty == 0) {
+            p = it;
+            break;
+        }
+        it = it + 1;
+    }
+    
+    if (p == null) {
+        printf("[fcb_set]: no empty slot\n");
+        return null;
+    }
+    
+    memmove(p->filename, name, strlen(name) + 1);
+    p->not_empty = free;
+    p->attrbute = attrbute;
+    p->time = time;
+    p->date = date;
+    p->first_block = first_block;
+    p->length = length;
+    
+    return p;
+}
+
+// 遍历目录，寻找子目录或者文件
+fn travel_dir(dir: *mut struct FCB, name: *const i8) -> *mut struct FCB {
+    let fat_p: i32 = dir->first_block;
+    if (fat_p == -1) {
+        return null;
+    }
+    
+    while (fat_p != END) {
+        let block_ptr: *mut i8 = boot->data + fat_p * 1024;
+        let it: *mut i32 = cast_to_i32_ptr(block_ptr);
+        let end: *mut i32 = cast_to_i32_ptr(block_ptr + 1024);
+        
+        while (it < end) {
+            if (*it > 0) {
+                let fcb_ptr: *mut i8 = &mem[0] + *it;
+                let fcb: *mut struct FCB = cast_to_fcb(fcb_ptr);
+                if (strcmp(fcb->filename, name) == 0) {
+                    return fcb;
+                }
+            }
+            it = it + 1;
+        }
+        
+        let fat_ptr: *mut i8 = boot->fat0 + fat_p * 4;
+        let fat_entry: *mut struct FAT = cast_to_fat(fat_ptr);
+        fat_p = fat_entry->next;
+    }
+    
+    return null;
+}
+
+// 获取 FCB
+fn get_fcb(path: *const i8, chdir: i32) -> *mut struct FCB {
+    if (strspn(path, " \r\n") >= strlen(path)) {
+        return null;
+    }
+    
+    strncpy(get_fcb_temp_path, path, 2999);
+    get_fcb_temp_path[2999] = 0i8;
+    
+    let token: *mut i8 = strtok(get_fcb_temp_path, " /");
+    
+    if (path[strspn(path, " ")] != 47) {
+        get_fcb_top = fcb_top;
+        let i: i32 = 0;
+        while (i <= get_fcb_top) {
+            get_fcb_stk[i] = fcb_stk[i];
+            i = i + 1;
+        }
+    } else {
+        get_fcb_top = 0;
+        get_fcb_stk[0] = fcb_stk[0];
+    }
+    
+    while (token != null) {
+        if (strcmp(token, "..") == 0) {
+            if (get_fcb_top == 0) {
+                return null;
+            }
+            get_fcb_top = get_fcb_top - 1;
+        } else if (strcmp(token, ".") != 0) {
+            get_fcb_stk[get_fcb_top + 1] = travel_dir(get_fcb_stk[get_fcb_top], token);
+            get_fcb_top = get_fcb_top + 1;
+            if (get_fcb_stk[get_fcb_top] == null) {
+                return null;
+            }
+        }
+        
+        token = strtok(null, " /");
+        if (get_fcb_stk[get_fcb_top]->attrbute == 0 && token != null) {
+            printf("can't enter a file");
+            return null;
+        }
+    }
+    
+    if (chdir == 1) {
+        fcb_top = get_fcb_top;
+        let i: i32 = 0;
+        while (i <= get_fcb_top) {
+            fcb_stk[i] = get_fcb_stk[i];
+            i = i + 1;
+        }
+    }
+    
+    return get_fcb_stk[get_fcb_top];
+}
+
+// 检查目录是否为空
+fn is_empty_dir(path: *const i8) -> i32 {
+    let fat_p: i32 = get_fcb(path, 0)->first_block;
+    if (fat_p == -1) {
+        return -1;
+    }
+    
+    while (fat_p != END) {
+        let block_ptr: *mut i8 = boot->data + fat_p * 1024;
+        let it: *mut *mut struct FCB = cast_to_fcb_ptr_ptr(block_ptr);
+        let end: *mut *mut struct FCB = cast_to_fcb_ptr_ptr(block_ptr + 1024);
+        
+        while (it < end) {
+            if (it != null && *it != null) {
+                return 0;
+            }
+            it = it + 1;
+        }
+        
+        let fat_ptr: *mut i8 = boot->fat0 + fat_p * 4;
+        let fat_entry: *mut struct FAT = cast_to_fat(fat_ptr);
+        fat_p = fat_entry->next;
+    }
+    
+    return 1;
+}
+
+// 检查文件是否在打开列表中
+fn in_open_list(fcb: *mut struct FCB) -> i32 {
+    let i: i32 = 0;
+    while (i < MAXOPENFILE) {
+        if (open_file_list[i].topenfile != 0 && open_file_list[i].fcb == fcb) {
+            return i;
+        }
+        i = i + 1;
+    }
+    return -1;
+}
+
+// 打开文件
+fn my_open(path: *const i8, chdir: i32) -> i32 {
+    let file_fcb: *mut struct FCB = get_fcb(path, chdir);
+    
+    if (file_fcb == null) {
+        return -1;
+    }
+    
+    let tmp: i32 = in_open_list(file_fcb);
+    if (tmp != -1) {
+        return tmp;
+    }
+    
+    let i: i32 = 0;
+    while (i < MAXOPENFILE) {
+        if (open_file_list[i].topenfile == 0) {
+            let op: *mut struct USEROPEN = &open_file_list[i];
+            op->fcb = file_fcb;
+            strcpy(op->dir, path);
+            
+            op->data_ptr = -1;
+            let fat_p: i32 = file_fcb->first_block;
+            while (fat_p != -1 && fat_p != END) {
+                op->data_ptr = fat_p;
+                let fat_ptr: *mut i8 = boot->fat0 + fat_p * 4;
+                let fat_entry: *mut struct FAT = cast_to_fat(fat_ptr);
+                fat_p = fat_entry->next;
+            }
+            
+            op->buf_ptr = file_fcb->last_block_len;
+            
+            if (op->data_ptr >= 0) {
+                op->buf = boot->data + op->data_ptr * 1024;
+            }
+            
+            op->topenfile = 1i8;
+            return i;
+        }
+        i = i + 1;
+    }
+    
+    return -1;
+}
+
+// 添加空块
+fn add_empty_block(fd: i32, lst: i32) -> i32 {
+    let id: i32 = -1;
+    
+    let it: *mut struct FAT = cast_to_fat(boot->fat0);
+    let fat0_ed: *mut struct FAT = cast_to_fat(boot->fat0_ed);
+    while (it < fat0_ed) {
+        if (it->next == FREE) {
+            id = it - boot->fat0;
+            break;
+        }
+        it = it + 1;
+    }
+    
+    if (id == -1) {
+        printf("no empty block\n");
+        return -1;
+    }
+    
+    if (lst >= 0) {
+        let fat0_ptr: *mut i8 = boot->fat0 + lst * 4;
+        let fat0_entry: *mut struct FAT = cast_to_fat(fat0_ptr);
+        let fat1_ptr: *mut i8 = boot->fat1 + lst * 4;
+        let fat1_entry: *mut struct FAT = cast_to_fat(fat1_ptr);
+        fat0_entry->next = id;
+        fat1_entry->next = id;
+    }
+    
+    let fat0_ptr: *mut i8 = boot->fat0 + id * 4;
+    let fat0_entry: *mut struct FAT = cast_to_fat(fat0_ptr);
+    let fat1_ptr: *mut i8 = boot->fat1 + id * 4;
+    let fat1_entry: *mut struct FAT = cast_to_fat(fat1_ptr);
+    fat0_entry->next = END;
+    fat1_entry->next = END;
+    
+    let op: *mut struct USEROPEN = &open_file_list[fd];
+    op->buf = boot->data + id * 1024;
+    op->buf_ptr = 0;
+    op->data_ptr = id;
+    
+    if (op->fcb->first_block == -1) {
+        op->fcb->first_block = op->data_ptr;
+    }
+    
+    return 0;
+}
+
+// 写缓冲区
+fn writebuf(fd: i32, src: *mut i8, len: i32) -> i32 {
+    let op: *mut struct USEROPEN = &open_file_list[fd];
+    let remaining: i32 = len;
+    let src_ptr: *mut i8 = src;
+    
+    while (remaining > 0) {
+        if ((op->buf_ptr == BLOCK_SIZE || op->data_ptr < 0) && add_empty_block(fd, op->data_ptr) < 0) {
+            printf("[writebuf]: no empty space to write\n");
+            return -1;
+        }
+        
+        let n: i32 = BLOCK_SIZE - op->buf_ptr;
+        if (n > remaining) {
+            n = remaining;
+        }
+        
+        memmove(op->buf + op->buf_ptr, src_ptr, n);
+        op->buf_ptr = op->buf_ptr + n;
+        src_ptr = src_ptr + n;
+        remaining = remaining - n;
+        op->fcb->length = op->fcb->length + n;
+    }
+    
+    return 1;
+}
+
+// 关闭文件
+fn my_close(fd: i32) -> i32 {
+    if (fd < 0 || fd >= MAXOPENFILE) {
+        return -1;
+    }
+    
+    let op: *mut struct USEROPEN = &open_file_list[fd];
+    if (op->topenfile == 1) {
+        op->fcb->last_block_len = op->buf_ptr;
+        op->topenfile = 0i8;
+    }
+    
+    return 1;
+}
+
+// 启动系统
+fn startsys() {
+    memset(&mem[0], 0, SIZE);
+    boot = cast_to_block0(&mem[0]);
+    
+    let file: *mut void = fopen("disk", "rb");
+    if (file != null) {
+        let bytesRead: i32 = fread(&mem[0], 1, SIZE, file);
+        if (bytesRead < SIZE) {
+            if (feof(file) != 0) {
+                printf("已到达文件末尾，实际读取 %d 字节。\n", bytesRead);
+                exit(1);
+            } else if (ferror(file) != 0) {
+                perror("读取文件时出错");
+                exit(1);
+            }
+        }
+        fclose(file);
+        block0_Init(boot, null, &mem[0]);
+    } else {
+        block0_Init(boot, "Fake FAT", &mem[0]);
+        
+        let it: *mut struct FAT = cast_to_fat(boot->fat0);
+    let fat0_ed: *mut struct FAT = cast_to_fat(boot->fat0_ed);
+        while (it < fat0_ed) {
+            it->next = FREE;
+            it = it + 1;
+        }
+        
+        it = cast_to_fat(boot->fat1);
+        let fat1_ed: *mut struct FAT = cast_to_fat(boot->fat1_ed);
+        while (it < fat1_ed) {
+            it->next = FREE;
+            it = it + 1;
+        }
+        
+        let root_fcb: *mut struct FCB = fcb_set("/", 1i8, 1i8, 0, 0, -1, 0);
+        if (root_fcb != boot->root) {
+            printf("Error\n");
+        }
+    }
+    
+    fcb_stk[0] = cast_to_fcb(boot->root);
+    fcb_top = 0;
+    current_dir[0] = 47i8;
+    current_dir[1] = 0i8;
+    
+    let i: i32 = 0;
+    while (i < MAXOPENFILE) {
+        open_file_list[i].topenfile = 0i8;
+        i = i + 1;
+    }
+    
+    curdir = my_open("/", 0);
+
+    printf("╔═══════════════════════════════════════════════════════════╗\n");
+    printf("║                                                           ║\n");
+    printf("║     ✨ Naive FAT File System                              ║\n");
+    printf("║                                                           ║\n");
+    printf("║     🚀 Powered by Airyc-Lang                              ║\n");
+    printf("║                                                           ║\n");
+    printf("║     📁 A toy FAT filesystem implementation                ║\n");
+    printf("║     🎯 Type 'help' for available commands                 ║\n");
+    printf("║                                                           ║\n");
+    printf("╚═══════════════════════════════════════════════════════════╝\n");
+    printf("\n");
+
+}
+
+// cd 命令
+fn my_cd(path: *const i8) {
+    let tmp: i32 = my_open(path, 1);
+    if (tmp == -1) {
+        printf("[cd]: invalid path\n");
+        return;
+    }
+    
+    my_close(curdir);
+    curdir = tmp;
+    strcpy(current_dir, open_file_list[curdir].fcb->filename);
+}
+
+// mkdir 命令
+fn my_mkdir(dirname: *const i8) {
+    let op: *mut struct USEROPEN = &open_file_list[curdir];
+    
+    if (travel_dir(fcb_stk[fcb_top], dirname) == null && strcmp(dirname, ".") != 0 && strcmp(dirname, "..") != 0) {
+        let new_fcb: *mut struct FCB = fcb_set(dirname, 1i8, 1i8, 0, 0, -1, 0);
+        let offset: i32 = cast_to_i8(new_fcb) - &mem[0];
+        let offset_void: *mut void = &offset;
+        writebuf(curdir, cast_to_i8(offset_void), 4);
+    } else {
+        printf("[mkdir]: create dir failed");
+    }
+}
+
+// touch 命令
+fn my_touch(filename: *const i8) {
+    let op: *mut struct USEROPEN = &open_file_list[curdir];
+    
+    if (travel_dir(fcb_stk[fcb_top], filename) == null) {
+        let new_fcb: *mut struct FCB = fcb_set(filename, 1i8, 0i8, 0, 0, -1, 0);
+        let offset: i32 = cast_to_i8(new_fcb) - &mem[0];
+        let offset_void: *mut void = &offset;
+        writebuf(curdir, cast_to_i8(offset_void), 4);
+    } else {
+        printf("[touch]: create file failed");
+    }
+}
+
+// ls 命令
+fn my_ls() {
+    let fat_p: i32 = fcb_stk[fcb_top]->first_block;
+    if (fat_p == -1) {
+        return;
+    }
+    
+    while (fat_p != END) {
+        let block_ptr: *mut i8 = boot->data + fat_p * 1024;
+        let it: *mut i32 = cast_to_i32_ptr(block_ptr);
+        let end: *mut i32 = cast_to_i32_ptr(block_ptr + 1024);
+        
+        while (it < end) {
+            if (*it > 0) {
+                let fcb_ptr: *mut i8 = &mem[0] + *it;
+                let fcb: *mut struct FCB = cast_to_fcb(fcb_ptr);
+                if (fcb->not_empty != 0) {
+                    let type_str: *mut i8 = "FILE";
+                    if (fcb->attrbute != 0) {
+                        type_str = "DIR";
+                    }
+                    printf("%s %s ", fcb->filename, type_str);
+                    if (fcb->attrbute == 0) {
+                        printf("length: %d ", fcb->length);
+                    }
+                    
+                    
+                    puts("");
+                }
+            }
+            it = it + 1;
+        }
+        
+        let fat_ptr: *mut i8 = boot->fat0 + fat_p * 4;
+        let fat_entry: *mut struct FAT = cast_to_fat(fat_ptr);
+        fat_p = fat_entry->next;
+    }
+}
+
+// tree 命令
+fn my_tree(fcb: *mut struct FCB, pre_block: i32) {
+    let fat_p: i32 = fcb->first_block;
+    if (fat_p == -1) {
+        return;
+    }
+    
+    while (fat_p != END) {
+        let block_ptr: *mut i8 = boot->data + fat_p * 1024;
+        let it: *mut i32 = cast_to_i32_ptr(block_ptr);
+        let end: *mut i32 = cast_to_i32_ptr(block_ptr + 1024);
+        
+        while (it < end) {
+            if (*it > 0) {
+                let child_ptr: *mut i8 = &mem[0] + *it;
+                let child_fcb: *mut struct FCB = cast_to_fcb(child_ptr);
+                
+                if (child_fcb->not_empty != 0) {
+                    let j: i32 = 0;
+                    while (j < pre_block) {
+                        putchar(32);
+                        j = j + 1;
+                    }
+                    
+                    printf("%s\n", child_fcb->filename);
+                    if (child_fcb->attrbute == 1) {
+                        my_tree(child_fcb, pre_block + 2);
+                    }
+                }
+            }
+            it = it + 1;
+        }
+        
+        let fat_ptr: *mut i8 = boot->fat0 + fat_p * 4;
+        let fat_entry: *mut struct FAT = cast_to_fat(fat_ptr);
+        fat_p = fat_entry->next;
+    }
+}
+
+// pwd 命令
+fn my_pwd() {
+    let i: i32 = 0;
+    while (i <= fcb_top) {
+        if (i > 1) {
+            putchar(47);
+        }
+        printf("%s", fcb_stk[i]->filename);
+        i = i + 1;
+    }
+}
+
+// 清理数据
+fn clean_data(fat_p: i32) {
+    if (fat_p != -1) {
+        let current: i32 = fat_p;
+        while (current != END) {
+            let fat_ptr: *mut i8 = boot->fat0 + current * 4;
+            let fat_entry: *mut struct FAT = cast_to_fat(fat_ptr);
+            let tmp: i32 = fat_entry->next;
+            
+            let block_ptr: *mut i8 = boot->data + current * 1024;
+            let it: *mut i8 = block_ptr;
+            let end: *mut i8 = block_ptr + 1024;
+        
+        while (it < end) {
+                *it = 0i8;
+                it = it + 1;
+            }
+            
+            fat_entry->next = FREE;
+            current = tmp;
+        }
+    }
+}
+
+// write 命令
+fn my_write(filename: *const i8, type: i32) {
+    let file_fcb: *mut struct FCB = get_fcb(filename, 0);
+    
+    if (file_fcb == null) {
+        printf("[write]: don't have a file named %s\n", filename);
+        return;
+    }
+    
+    if (file_fcb->attrbute == 1) {
+        printf("[write]: %s is a directory\n", filename);
+        return;
+    }
+    
+    if (type == 0) {
+        clean_data(file_fcb->first_block);
+        file_fcb->first_block = -1;
+        file_fcb->length = 0;
+        my_close(in_open_list(file_fcb));
+    }
+    
+    let buf: [i8; 2048];
+    let ch: i8;
+    let index: i32 = 0;
+    
+    getchar();
+    ch = getchar();
+    while (ch != 96 && index < 2047) {
+        buf[index] = ch;
+        index = index + 1;
+        ch = getchar();
+    }
+    buf[index] = 0i8;
+    
+    let fd: i32 = my_open(filename, 0);
+    writebuf(fd, buf, index);
+    getchar();
+}
+
+// rm 命令
+fn my_rm(filename: *const i8) {
+    let file_fcb: *mut struct FCB = get_fcb(filename, 0);
+    
+    if (file_fcb == null) {
+        printf("[rm]: don't have a file named %s\n", filename);
+        return;
+    }
+    
+    if (file_fcb->attrbute == 1 && is_empty_dir(filename) == 0) {
+        printf("[rm]: %s is not an empty directory\n", filename);
+        return;
+    }
+    
+    my_close(in_open_list(file_fcb));
+    
+    let fat_p: i32 = file_fcb->first_block;
+    clean_data(fat_p);
+    
+    memset(file_fcb, 0, 128);
+    
+    fat_p = fcb_stk[fcb_top]->first_block;
+    while (fat_p != END) {
+        let block_ptr: *mut i8 = boot->data + fat_p * 1024;
+        let it: *mut i32 = cast_to_i32_ptr(block_ptr);
+        let end: *mut i32 = cast_to_i32_ptr(block_ptr + 1024);
+        
+        while (it < end) {
+            let fcb_ptr: *mut i8 = &mem[0] + *it;
+            let fcb: *mut struct FCB = cast_to_fcb(fcb_ptr);
+            if (*it > 0 && fcb == file_fcb) {
+                *it = 0i8;
+                break;
+            }
+            it = it + 1;
+        }
+        
+        let fat_ptr: *mut i8 = boot->fat0 + fat_p * 4;
+        let fat_entry: *mut struct FAT = cast_to_fat(fat_ptr);
+        fat_p = fat_entry->next;
+    }
+}
+
+// cat 命令
+fn my_read(filename: *const i8) {
+    let file_fcb: *mut struct FCB = get_fcb(filename, 0);
+    
+    if (file_fcb == null) {
+        printf("[cat]: don't have a file named %s\n", filename);
+        return;
+    }
+    
+    if (file_fcb->attrbute == 1 && is_empty_dir(filename) == 0) {
+        printf("[cat]: %s is not an empty directory\n", filename);
+        return;
+    }
+    
+    let fat_p: i32 = file_fcb->first_block;
+    let cnt: i32 = 0;
+    
+    while (fat_p != END) {
+        let block_ptr: *mut i8 = boot->data + fat_p * 1024;
+        let it: *mut i8 = block_ptr;
+        let end: *mut i8 = block_ptr + 1024;
+        
+        while (it < end) {
+            if (it == null || *it == 0) {
+                printf("file is broken\n");
+                return;
+            }
+            putchar(*it);
+            cnt = cnt + 1;
+            if (cnt == file_fcb->length) {
+                return;
+            }
+            it = it + 1;
+        }
+        
+        let fat_ptr: *mut i8 = boot->fat0 + fat_p * 4;
+        let fat_entry: *mut struct FAT = cast_to_fat(fat_ptr);
+        fat_p = fat_entry->next;
+    }
+}
+
+// 关闭系统
+fn close_sys() {
+    let i: i32 = 0;
+    while (i < MAX_FILE_LENGTH) {
+        my_close(i);
+        i = i + 1;
+    }
+    
+    let fp: *mut void = fopen("disk", "wb");
+    if (fp == null) {
+        perror("打开文件失败");
+        return;
+    }
+    
+    let written: i32 = fwrite(&mem[0], 1, SIZE, fp);
+    fclose(fp);
+}
+
+// help 命令
+fn my_help() {
+    printf("可用命令列表：\n");
+    printf("  cd <目录名>         - 切换当前目录\n");
+    printf("  mkdir <目录名>      - 创建新目录\n");
+    printf("  ls                  - 显示当前目录下的内容\n");
+    printf("  pwd                 - 显示当前路径\n");
+    printf("  touch <文件名>      - 创建一个空文件\n");
+    printf("  rm <文件或目录名>   - 删除文件或目录\n");
+    printf("  cat <文件名>        - 查看文件内容\n");
+    printf("  write <内容> <文件> - 向文件写入内容（内容长度>1为追加模式）\n");
+    printf("  tree                - 以树状结构显示当前目录及其子目录内容\n");
+    printf("  help                - 显示帮助信息\n");
+    printf("  exit                - 退出文件系统\n");
+}
+
+// 主函数
+fn main() -> i32 {
+    startsys();
+    let op: [i8; 20];
+    let path: [i8; 101];
+    let arg: [i8; 101];
+    
+    while (1) {
+        printf("Naive@FAT ");
+        my_pwd();
+        printf(" > ");
+        
+        if (scanf("%s", &op[0]) == -1) {
+            break;
+        }
+        
+        if (strcmp(&op[0], "cd") == 0) {
+            scanf("%s", &path[0]);
+            my_cd(&path[0]);
+        } else if (strcmp(&op[0], "mkdir") == 0) {
+            scanf("%s", &path[0]);
+            my_mkdir(&path[0]);
+        } else if (strcmp(&op[0], "ls") == 0) {
+            my_ls();
+        } else if (strcmp(&op[0], "pwd") == 0) {
+            my_pwd();
+        } else if (strcmp(&op[0], "touch") == 0) {
+            scanf("%s", &path[0]);
+            my_touch(&path[0]);
+        } else if (strcmp(&op[0], "rm") == 0) {
+            scanf("%s", &path[0]);
+            my_rm(&path[0]);
+        } else if (strcmp(&op[0], "cat") == 0) {
+            scanf("%s", &path[0]);
+            my_read(&path[0]);
+        } else if (strcmp(&op[0], "write") == 0) {
+            scanf("%s %s", &arg[0], &path[0]);
+            let write_mode: i32 = 0;
+            if (strlen(&arg[0]) > 1) {
+                write_mode = 1;
+            }
+            my_write(&path[0], write_mode);
+        } else if (strcmp(&op[0], "exit") == 0) {
+            close_sys();
+            break;
+        } else if (strcmp(&op[0], "tree") == 0) {
+            my_tree(fcb_stk[fcb_top], 0);
+        } else if (strcmp(&op[0], "help") == 0) {
+            my_help();
+        } else {
+            printf("WTF??");
+        }
+        puts("");
+    }
+    
+    return 0;
+}
