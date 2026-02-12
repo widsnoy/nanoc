@@ -87,8 +87,6 @@ pub fn parse_type_node(
             Ty::I32
         } else if pt_node.i8_token().is_some() {
             Ty::I8
-        } else if pt_node.f32_token().is_some() {
-            Ty::F32
         } else if pt_node.bool_token().is_some() {
             Ty::Bool
         } else if pt_node.void_token().is_some() {
@@ -226,7 +224,7 @@ impl Module {
 
         match &inner_ty {
             // 标量类型：期望一个表达式
-            Ty::I32 | Ty::I8 | Ty::F32 | Ty::Bool | Ty::Pointer { .. } => {
+            Ty::I32 | Ty::I8 | Ty::Bool | Ty::Pointer { .. } => {
                 let Some(expr) = init_val_node.expr() else {
                     // 期望表达式，但得到了初始化列表
                     return Err(AnalyzeError::ConstantExprExpected {

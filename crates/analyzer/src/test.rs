@@ -170,7 +170,7 @@ fn test_function_definition() {
 #[test]
 fn test_function_parameters() {
     let source = r#"
-    fn sum(a: i32, b: f32, c: i32) -> i32 {
+    fn sum(a: i32, b: i32, c: i32) -> i32 {
         let x: i32;
     }
     "#;
@@ -216,12 +216,12 @@ fn test_non_const_propagation_error() {
 }
 
 #[test]
-fn test_const_float_arithmetic() {
+fn test_const_int_arithmetic() {
     let source = r#"
     fn main() -> i32 {
-        let a: const f32 = 1.5 + 2.5;
-        let b: const f32 = 10.0 - 3.5;
-        let c: const f32 = 2.0 * 3.5;
+        let a: const i32 = 1 + 2;
+        let b: const i32 = 10 - 3;
+        let c: const i32 = 2 * 3;
     }
     "#;
     let module = analyze(source);
@@ -272,8 +272,8 @@ fn test_multiple_functions() {
         let b: i32;
     }
 
-    fn func3(a: f32, b: i32) -> f32 {
-        let c: f32;
+    fn func3(a: i32, b: i32) -> i32 {
+        let c: i32;
     }
     "#;
     let module = analyze(source);

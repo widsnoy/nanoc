@@ -351,7 +351,6 @@ ast_node!(
 ast_node!(
     Literal ~ LITERAL {
         int_token: token(INT_LITERAL),
-        float_token: token(FLOAT_LITERAL),
         null_token: token(NULL_KW),
         true_token: token(TRUE_KW),
         false_token: token(FALSE_KW),
@@ -363,7 +362,6 @@ ast_node!(
     PrimitType ~ PRIMIT_TYPE {
         i32_token: token(I32_KW),
         i8_token: token(I8_KW),
-        f32_token: token(F32_KW),
         bool_token: token(BOOL_KW),
         void_token: token(VOID_KW),
         struct_token: token(STRUCT_KW),

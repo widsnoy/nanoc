@@ -6,7 +6,6 @@ use syntax::SyntaxKind;
 pub enum Ty {
     I32,
     I8,
-    F32,
     Bool,
     Void,
     Array(Box<Ty>, Option<i32>),
@@ -20,7 +19,6 @@ impl fmt::Display for Ty {
         match self {
             Ty::I32 => write!(f, "i32"),
             Ty::I8 => write!(f, "i8"),
-            Ty::F32 => write!(f, "f32"),
             Ty::Bool => write!(f, "bool"),
             Ty::Void => write!(f, "void"),
             Ty::Array(inner, size) => {
@@ -118,7 +116,6 @@ impl Ty {
         match self {
             Ty::I32 => Value::I32(0),
             Ty::I8 => Value::I8(0),
-            Ty::F32 => Value::F32(0.0),
             Ty::Bool => Value::Bool(false),
             Ty::Void => Value::I32(0),
             Ty::Array(ntype, _) => ntype.const_zero(),
@@ -134,7 +131,6 @@ impl Ty {
             (Ty::Void, Ty::Void) => true,
             (Ty::I32, Ty::I32) => true,
             (Ty::I8, Ty::I8) => true,
-            (Ty::F32, Ty::F32) => true,
             (Ty::Bool, Ty::Bool) => true,
 
             // 整数类型隐式转
@@ -177,7 +173,6 @@ impl Ty {
                 // 相同类型保持不变
                 (Ty::I32, Ty::I32) => Some(Ty::I32),
                 (Ty::I8, Ty::I8) => Some(Ty::I8),
-                (Ty::F32, Ty::F32) => Some(Ty::F32),
 
                 // 混合类型提升规则
                 (Ty::I32, Ty::I8 | Ty::Bool) | (Ty::I8 | Ty::Bool, Ty::I32) => Some(Ty::I32),
@@ -194,9 +189,6 @@ impl Ty {
             LT | GT | LTEQ | GTEQ | EQEQ | NEQ => match (&lhs_unwrapped, &rhs_unwrapped) {
                 // 整数/bool 比较：允许混合
                 (Ty::I32 | Ty::I8 | Ty::Bool, Ty::I32 | Ty::I8 | Ty::Bool) => Some(Ty::Bool),
-
-                // 浮点比较
-                (Ty::F32, Ty::F32) => Some(Ty::Bool),
 
                 // 指针比较
                 (l, r) if l.is_pointer() && r.is_pointer() => Some(Ty::Bool),
@@ -230,7 +222,6 @@ impl Ty {
             (Ty::I32, PLUS | MINUS) => Some(Ty::I32),
             (Ty::I8, PLUS | MINUS) => Some(Ty::I8),
             (Ty::Bool, PLUS | MINUS) => Some(Ty::I32), // bool 提升到 i32
-            (Ty::F32, PLUS | MINUS) => Some(Ty::F32),
 
             // 逻辑非: ! - 接受整数类型
             (Ty::Bool | Ty::I32 | Ty::I8, BANG) => Some(Ty::Bool),

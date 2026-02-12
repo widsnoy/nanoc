@@ -127,7 +127,7 @@ impl ArrayTree {
         is_const: &mut bool,
     ) -> Result<ArrayTree, ArrayInitError> {
         match ty {
-            Ty::I32 | Ty::I8 | Ty::F32 | Ty::Bool | Ty::Pointer { .. } => {
+            Ty::I32 | Ty::I8 | Ty::Bool | Ty::Pointer { .. } => {
                 let Some(u) = cursor else { unreachable!() };
                 if let Some(expr) = u.try_expr() {
                     let range = u.text_range();

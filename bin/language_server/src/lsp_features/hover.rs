@@ -136,7 +136,6 @@ fn format_variable_signature(
         Some(analyzer::value::Value::I32(x)) => x.to_string(),
         Some(analyzer::value::Value::I8(x)) => x.to_string(),
         Some(analyzer::value::Value::Bool(x)) => x.to_string(),
-        Some(analyzer::value::Value::F32(x)) => x.to_string(),
         _ => variable.ty.to_string(),
     };
     format!("{}: {}", variable.name, v)

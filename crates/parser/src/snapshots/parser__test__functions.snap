@@ -73,7 +73,7 @@ COMP_UNIT@0..155
           WHITESPACE@73..74 " "
           TYPE@74..77
             PRIMIT_TYPE@74..77
-              F32_KW@74..77 "f32"
+              I32_KW@74..77 "i32"
       R_PAREN@77..78 ")"
       WHITESPACE@78..79 " "
       ARROW@79..81 "->"

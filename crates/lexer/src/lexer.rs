@@ -29,8 +29,6 @@ pub enum Token {
     INT_KW,
     #[token("i8")]
     I8_KW,
-    #[token("f32")]
-    FLOAT_KW,
     #[token("bool")]
     BOOL_KW,
     #[token("void")]
@@ -139,9 +137,6 @@ pub enum Token {
     #[regex(r"0[0-7]*", priority = 3)]
     #[regex(r"[1-9][0-9]*", priority = 3)]
     INT_LITERAL,
-
-    #[regex(r"(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?", priority = 2)]
-    FLOAT_LITERAL,
 }
 
 impl From<Token> for SyntaxKind {
@@ -155,7 +150,6 @@ impl From<Token> for SyntaxKind {
             Token::CONST_KW => SyntaxKind::CONST_KW,
             Token::INT_KW => SyntaxKind::I32_KW,
             Token::I8_KW => SyntaxKind::I8_KW,
-            Token::FLOAT_KW => SyntaxKind::F32_KW,
             Token::BOOL_KW => SyntaxKind::BOOL_KW,
             Token::VOID_KW => SyntaxKind::VOID_KW,
             Token::IF_KW => SyntaxKind::IF_KW,
@@ -203,7 +197,6 @@ impl From<Token> for SyntaxKind {
             Token::IDENT => SyntaxKind::IDENT,
             Token::STRING_LITERAL => SyntaxKind::STRING_LITERAL,
             Token::INT_LITERAL => SyntaxKind::INT_LITERAL,
-            Token::FLOAT_LITERAL => SyntaxKind::FLOAT_LITERAL,
         }
     }
 }
@@ -228,10 +221,6 @@ impl<'a> Lexer<'a> {
                 Err(e) => {
                     let err = match e {
                         LexerErrorKind::InvalidInteger => LexerError::InvalidInteger {
-                            text: text[span.clone()].to_string(),
-                            range: span.clone().into(),
-                        },
-                        LexerErrorKind::InvalidFloat => LexerError::InvalidFloat {
                             text: text[span.clone()].to_string(),
                             range: span.clone().into(),
                         },

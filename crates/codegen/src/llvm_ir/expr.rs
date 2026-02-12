@@ -47,7 +47,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     fn compile_binary_expr(&mut self, expr: BinaryExpr) -> Result<BasicValueEnum<'ctx>> {
-        use inkwell::FloatPredicate;
         use inkwell::IntPredicate;
 
         let op_token = expr
@@ -278,38 +277,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
                 self.compile_int_binary_op(op_token.kind(), l, r, lhs_ty, rhs_ty)
             }
-            (BasicValueEnum::FloatValue(l), BasicValueEnum::FloatValue(r)) => {
-                let res: BasicValueEnum = match op_token.kind() {
-                    SyntaxKind::PLUS => self
-                        .builder
-                        .build_float_add(l, r, "fadd")
-                        .map_err(|_| CodegenError::LlvmBuild("fadd"))?
-                        .into(),
-                    SyntaxKind::MINUS => self
-                        .builder
-                        .build_float_sub(l, r, "fsub")
-                        .map_err(|_| CodegenError::LlvmBuild("fsub"))?
-                        .into(),
-                    SyntaxKind::STAR => self
-                        .builder
-                        .build_float_mul(l, r, "fmul")
-                        .map_err(|_| CodegenError::LlvmBuild("fmul"))?
-                        .into(),
-                    SyntaxKind::SLASH => self
-                        .builder
-                        .build_float_div(l, r, "fdiv")
-                        .map_err(|_| CodegenError::LlvmBuild("fdiv"))?
-                        .into(),
-                    SyntaxKind::LT => self.build_float_cmp(FloatPredicate::OLT, l, r, "flt")?,
-                    SyntaxKind::GT => self.build_float_cmp(FloatPredicate::OGT, l, r, "fgt")?,
-                    SyntaxKind::LTEQ => self.build_float_cmp(FloatPredicate::OLE, l, r, "fle")?,
-                    SyntaxKind::GTEQ => self.build_float_cmp(FloatPredicate::OGE, l, r, "fge")?,
-                    SyntaxKind::EQEQ => self.build_float_cmp(FloatPredicate::OEQ, l, r, "feq")?,
-                    SyntaxKind::NEQ => self.build_float_cmp(FloatPredicate::ONE, l, r, "fne")?,
-                    _ => return Err(CodegenError::Unsupported("float binary op".into())),
-                };
-                Ok(res)
-            }
             _ => Err(CodegenError::TypeMismatch(format!(
                 "binary op lhs: {:?} rhs: {:?}",
                 lhs, rhs
@@ -361,15 +328,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     Ok(self.bool_to_i32(nb)?.into())
                 }
                 _ => Err(CodegenError::Unsupported("int unary op".into())),
-            },
-            BasicValueEnum::FloatValue(f) => match op_token.kind() {
-                SyntaxKind::PLUS => Ok(f.into()),
-                SyntaxKind::MINUS => Ok(self
-                    .builder
-                    .build_float_neg(f, "fneg")
-                    .map_err(|_| CodegenError::LlvmBuild("float neg"))?
-                    .into()),
-                _ => Err(CodegenError::Unsupported("float unary op".into())),
             },
             _ => Err(CodegenError::Unsupported("operand type".into())),
         }
@@ -468,13 +426,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             let v = i32::from_str_radix(num_str, radix)
                 .map_err(|_| CodegenError::Unsupported(format!("invalid int: {}", s)))?;
             return Ok(self.context.i32_type().const_int(v as u64, true).into());
-        }
-        if let Some(float_token) = expr.float_token() {
-            let s = float_token.text().to_string();
-            let v: f32 = s
-                .parse()
-                .map_err(|_| CodegenError::Unsupported(format!("invalid float: {}", s)))?;
-            return Ok(self.context.f32_type().const_float(v as f64).into());
         }
         if expr.null_token().is_some() {
             // 生成 null 指针

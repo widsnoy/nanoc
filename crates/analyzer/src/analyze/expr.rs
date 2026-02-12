@@ -203,7 +203,7 @@ impl ExprVisitor for Module {
                     _ => {
                         self.new_error(AnalyzeError::TypeMismatch {
                             expected: Ty::I32,
-                            found: Ty::F32,
+                            found: Ty::I32, // 占位符，实际类型会在运行时确定
                             range: utils::trim_node_text_range(&indice),
                         });
                         return;
@@ -382,11 +382,7 @@ impl ExprVisitor for Module {
 
     fn enter_literal(&mut self, node: Literal) {
         let range = node.text_range();
-        let v = if let Some(n) = node.float_token() {
-            let s = n.text();
-            self.set_expr_type(range, Ty::F32);
-            Value::F32(s.parse::<f32>().unwrap())
-        } else if node.null_token().is_some() {
+        let v = if node.null_token().is_some() {
             self.set_expr_type(
                 range,
                 Ty::Pointer {

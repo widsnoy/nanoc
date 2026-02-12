@@ -2,7 +2,7 @@
 source: crates/parser/src/test.rs
 expression: try_it(source)
 ---
-COMP_UNIT@0..227
+COMP_UNIT@0..221
   NEWLINE@0..1 "\n"
   WHITESPACE@1..5 "    "
   VAR_DEF@5..26
@@ -26,7 +26,7 @@ COMP_UNIT@0..227
     SEMI@25..26 ";"
   NEWLINE@26..27 "\n"
   WHITESPACE@27..31 "    "
-  VAR_DEF@31..54
+  VAR_DEF@31..52
     LET_KW@31..34 "let"
     WHITESPACE@34..35 " "
     NAME@35..36
@@ -37,147 +37,147 @@ COMP_UNIT@0..227
       CONST_KW@38..43 "const"
       WHITESPACE@43..44 " "
       PRIMIT_TYPE@44..47
-        F32_KW@44..47 "f32"
+        I32_KW@44..47 "i32"
     WHITESPACE@47..48 " "
     EQ@48..49 "="
-    INIT_VAL@49..53
+    INIT_VAL@49..51
       WHITESPACE@49..50 " "
-      LITERAL@50..53
-        FLOAT_LITERAL@50..53 "2.0"
-    SEMI@53..54 ";"
-  NEWLINE@54..55 "\n"
-  WHITESPACE@55..59 "    "
-  VAR_DEF@59..82
-    LET_KW@59..62 "let"
-    WHITESPACE@62..63 " "
-    NAME@63..64
-      IDENT@63..64 "C"
-    COLON@64..65 ":"
-    WHITESPACE@65..66 " "
-    TYPE@66..75
-      CONST_KW@66..71 "const"
-      WHITESPACE@71..72 " "
-      PRIMIT_TYPE@72..75
-        F32_KW@72..75 "f32"
-    WHITESPACE@75..76 " "
-    EQ@76..77 "="
-    INIT_VAL@77..81
-      WHITESPACE@77..78 " "
-      LITERAL@78..81
-        FLOAT_LITERAL@78..81 "3.0"
-    SEMI@81..82 ";"
-  NEWLINE@82..83 "\n"
-  WHITESPACE@83..87 "    "
-  VAR_DEF@87..98
-    LET_KW@87..90 "let"
-    WHITESPACE@90..91 " "
-    NAME@91..92
-      IDENT@91..92 "a"
-    COLON@92..93 ":"
-    WHITESPACE@93..94 " "
-    TYPE@94..97
-      PRIMIT_TYPE@94..97
-        I32_KW@94..97 "i32"
-    SEMI@97..98 ";"
-  NEWLINE@98..99 "\n"
-  WHITESPACE@99..103 "    "
-  VAR_DEF@103..120
-    LET_KW@103..106 "let"
-    WHITESPACE@106..107 " "
-    NAME@107..108
-      IDENT@107..108 "b"
-    COLON@108..109 ":"
+      LITERAL@50..51
+        INT_LITERAL@50..51 "2"
+    SEMI@51..52 ";"
+  NEWLINE@52..53 "\n"
+  WHITESPACE@53..57 "    "
+  VAR_DEF@57..78
+    LET_KW@57..60 "let"
+    WHITESPACE@60..61 " "
+    NAME@61..62
+      IDENT@61..62 "C"
+    COLON@62..63 ":"
+    WHITESPACE@63..64 " "
+    TYPE@64..73
+      CONST_KW@64..69 "const"
+      WHITESPACE@69..70 " "
+      PRIMIT_TYPE@70..73
+        I32_KW@70..73 "i32"
+    WHITESPACE@73..74 " "
+    EQ@74..75 "="
+    INIT_VAL@75..77
+      WHITESPACE@75..76 " "
+      LITERAL@76..77
+        INT_LITERAL@76..77 "3"
+    SEMI@77..78 ";"
+  NEWLINE@78..79 "\n"
+  WHITESPACE@79..83 "    "
+  VAR_DEF@83..94
+    LET_KW@83..86 "let"
+    WHITESPACE@86..87 " "
+    NAME@87..88
+      IDENT@87..88 "a"
+    COLON@88..89 ":"
+    WHITESPACE@89..90 " "
+    TYPE@90..93
+      PRIMIT_TYPE@90..93
+        I32_KW@90..93 "i32"
+    SEMI@93..94 ";"
+  NEWLINE@94..95 "\n"
+  WHITESPACE@95..99 "    "
+  VAR_DEF@99..114
+    LET_KW@99..102 "let"
+    WHITESPACE@102..103 " "
+    NAME@103..104
+      IDENT@103..104 "b"
+    COLON@104..105 ":"
+    WHITESPACE@105..106 " "
+    TYPE@106..109
+      PRIMIT_TYPE@106..109
+        I32_KW@106..109 "i32"
     WHITESPACE@109..110 " "
-    TYPE@110..113
-      PRIMIT_TYPE@110..113
-        F32_KW@110..113 "f32"
-    WHITESPACE@113..114 " "
-    EQ@114..115 "="
-    INIT_VAL@115..119
-      WHITESPACE@115..116 " "
-      LITERAL@116..119
-        FLOAT_LITERAL@116..119 "1.0"
-    SEMI@119..120 ";"
-  NEWLINE@120..121 "\n"
-  WHITESPACE@121..125 "    "
-  VAR_DEF@125..148
-    LET_KW@125..128 "let"
-    WHITESPACE@128..129 " "
-    NAME@129..130
-      IDENT@129..130 "s"
-    COLON@130..131 ":"
-    WHITESPACE@131..132 " "
-    TYPE@132..147
-      PRIMIT_TYPE@132..147
-        STRUCT_KW@132..138 "struct"
-        WHITESPACE@138..139 " "
-        NAME@139..147
-          IDENT@139..147 "MyStruct"
-    SEMI@147..148 ";"
-  NEWLINE@148..149 "\n"
-  WHITESPACE@149..153 "    "
-  VAR_DEF@153..169
-    LET_KW@153..156 "let"
-    WHITESPACE@156..157 " "
-    NAME@157..158
-      IDENT@157..158 "p"
-    COLON@158..159 ":"
-    WHITESPACE@159..160 " "
-    TYPE@160..168
-      POINTER@160..164
-        STAR@160..161 "*"
-        MUT_KW@161..164 "mut"
-      WHITESPACE@164..165 " "
-      TYPE@165..168
-        PRIMIT_TYPE@165..168
-          I32_KW@165..168 "i32"
-    SEMI@168..169 ";"
-  NEWLINE@169..170 "\n"
-  WHITESPACE@170..174 "    "
-  VAR_DEF@174..193
-    LET_KW@174..177 "let"
-    WHITESPACE@177..178 " "
-    NAME@178..181
-      IDENT@178..181 "arr"
-    COLON@181..182 ":"
-    WHITESPACE@182..183 " "
-    TYPE@183..192
-      L_BRACK@183..184 "["
-      TYPE@184..187
-        PRIMIT_TYPE@184..187
-          I32_KW@184..187 "i32"
-      SEMI@187..188 ";"
-      LITERAL@188..191
-        WHITESPACE@188..189 " "
-        INT_LITERAL@189..191 "10"
-      R_BRACK@191..192 "]"
-    SEMI@192..193 ";"
-  NEWLINE@193..194 "\n"
-  WHITESPACE@194..198 "    "
-  VAR_DEF@198..222
-    LET_KW@198..201 "let"
+    EQ@110..111 "="
+    INIT_VAL@111..113
+      WHITESPACE@111..112 " "
+      LITERAL@112..113
+        INT_LITERAL@112..113 "1"
+    SEMI@113..114 ";"
+  NEWLINE@114..115 "\n"
+  WHITESPACE@115..119 "    "
+  VAR_DEF@119..142
+    LET_KW@119..122 "let"
+    WHITESPACE@122..123 " "
+    NAME@123..124
+      IDENT@123..124 "s"
+    COLON@124..125 ":"
+    WHITESPACE@125..126 " "
+    TYPE@126..141
+      PRIMIT_TYPE@126..141
+        STRUCT_KW@126..132 "struct"
+        WHITESPACE@132..133 " "
+        NAME@133..141
+          IDENT@133..141 "MyStruct"
+    SEMI@141..142 ";"
+  NEWLINE@142..143 "\n"
+  WHITESPACE@143..147 "    "
+  VAR_DEF@147..163
+    LET_KW@147..150 "let"
+    WHITESPACE@150..151 " "
+    NAME@151..152
+      IDENT@151..152 "p"
+    COLON@152..153 ":"
+    WHITESPACE@153..154 " "
+    TYPE@154..162
+      POINTER@154..158
+        STAR@154..155 "*"
+        MUT_KW@155..158 "mut"
+      WHITESPACE@158..159 " "
+      TYPE@159..162
+        PRIMIT_TYPE@159..162
+          I32_KW@159..162 "i32"
+    SEMI@162..163 ";"
+  NEWLINE@163..164 "\n"
+  WHITESPACE@164..168 "    "
+  VAR_DEF@168..187
+    LET_KW@168..171 "let"
+    WHITESPACE@171..172 " "
+    NAME@172..175
+      IDENT@172..175 "arr"
+    COLON@175..176 ":"
+    WHITESPACE@176..177 " "
+    TYPE@177..186
+      L_BRACK@177..178 "["
+      TYPE@178..181
+        PRIMIT_TYPE@178..181
+          I32_KW@178..181 "i32"
+      SEMI@181..182 ";"
+      LITERAL@182..185
+        WHITESPACE@182..183 " "
+        INT_LITERAL@183..185 "10"
+      R_BRACK@185..186 "]"
+    SEMI@186..187 ";"
+  NEWLINE@187..188 "\n"
+  WHITESPACE@188..192 "    "
+  VAR_DEF@192..216
+    LET_KW@192..195 "let"
+    WHITESPACE@195..196 " "
+    NAME@196..200
+      IDENT@196..200 "arr2"
+    COLON@200..201 ":"
     WHITESPACE@201..202 " "
-    NAME@202..206
-      IDENT@202..206 "arr2"
-    COLON@206..207 ":"
-    WHITESPACE@207..208 " "
-    TYPE@208..221
-      L_BRACK@208..209 "["
-      TYPE@209..217
-        L_BRACK@209..210 "["
-        TYPE@210..213
-          PRIMIT_TYPE@210..213
-            I32_KW@210..213 "i32"
-        SEMI@213..214 ";"
-        LITERAL@214..216
-          WHITESPACE@214..215 " "
-          INT_LITERAL@215..216 "3"
-        R_BRACK@216..217 "]"
-      SEMI@217..218 ";"
-      LITERAL@218..220
-        WHITESPACE@218..219 " "
-        INT_LITERAL@219..220 "2"
-      R_BRACK@220..221 "]"
-    SEMI@221..222 ";"
-  NEWLINE@222..223 "\n"
-  WHITESPACE@223..227 "    "
+    TYPE@202..215
+      L_BRACK@202..203 "["
+      TYPE@203..211
+        L_BRACK@203..204 "["
+        TYPE@204..207
+          PRIMIT_TYPE@204..207
+            I32_KW@204..207 "i32"
+        SEMI@207..208 ";"
+        LITERAL@208..210
+          WHITESPACE@208..209 " "
+          INT_LITERAL@209..210 "3"
+        R_BRACK@210..211 "]"
+      SEMI@211..212 ";"
+      LITERAL@212..214
+        WHITESPACE@212..213 " "
+        INT_LITERAL@213..214 "2"
+      R_BRACK@214..215 "]"
+    SEMI@215..216 ";"
+  NEWLINE@216..217 "\n"
+  WHITESPACE@217..221 "    "

@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use analyzer::{module::Module, project::Project};
 use inkwell::context::Context;
 use syntax::{
-    SyntaxNode,
     ast::{AstNode, CompUnit},
+    SyntaxNode,
 };
 use vfs::Vfs;
 
@@ -148,13 +148,13 @@ fn test_array_initialize() {
     let a: [i32; 3] = {};
     let b: [[[i32; 4]; 3]; 2] = {1, 2, 3, 4, {5}, {6}, {7, 8}};
     
-    let d: [f32; 2] = {1.11};
+    let d: [i32; 2] = {1};
 
     let g: [i32; 2] = {1, 2};
 
     fn main() -> i32 {
         let c: i32 = b[1][0][1];
-        let e: f32 = d[0];
+        let e: i32 = d[0];
         let a: [i32; 3] = {1, 2, 3};
         let b: [i32; 2] = {1, a[1]};
     }

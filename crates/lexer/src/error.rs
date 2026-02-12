@@ -8,7 +8,6 @@ use tools::TextRange;
 #[derive(Debug, Default, Clone, PartialEq)]
 pub enum LexerErrorKind {
     InvalidInteger,
-    InvalidFloat,
     #[default]
     Unknown,
 }
@@ -19,14 +18,6 @@ pub enum LexerError {
     #[error("invalid integer literal: {text}")]
     #[diagnostic(code(lexer::invalid_integer))]
     InvalidInteger {
-        text: String,
-        #[label("here")]
-        range: TextRange,
-    },
-
-    #[error("invalid float literal: {text}")]
-    #[diagnostic(code(lexer::invalid_float))]
-    InvalidFloat {
         text: String,
         #[label("here")]
         range: TextRange,
@@ -43,9 +34,7 @@ pub enum LexerError {
 impl LexerError {
     pub fn range(&self) -> &TextRange {
         match self {
-            LexerError::InvalidInteger { range, .. }
-            | LexerError::InvalidFloat { range, .. }
-            | LexerError::Unknown { range } => range,
+            LexerError::InvalidInteger { range, .. } | LexerError::Unknown { range } => range,
         }
     }
 }

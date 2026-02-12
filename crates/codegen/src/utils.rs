@@ -5,8 +5,8 @@ use analyzer::r#type::Ty;
 use analyzer::value::Value;
 use inkwell::basic_block::BasicBlock;
 use inkwell::types::{BasicType, BasicTypeEnum};
-use inkwell::values::{BasicValueEnum, FloatValue, FunctionValue, IntValue, PointerValue};
-use inkwell::{AddressSpace, FloatPredicate, IntPredicate};
+use inkwell::values::{BasicValueEnum, FunctionValue, IntValue, PointerValue};
+use inkwell::{AddressSpace, IntPredicate};
 use syntax::ast::AstNode;
 use tools::TextRange;
 
@@ -80,7 +80,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         match ntype {
             Ty::I32 => Ok(self.context.i32_type().into()),
             Ty::I8 => Ok(self.context.i8_type().into()),
-            Ty::F32 => Ok(self.context.f32_type().into()),
             Ty::Bool => Ok(self.context.bool_type().into()),
             Ty::Void => Ok(self.context.i8_type().into()),
             Ty::Array(ntype, count) => {
@@ -157,13 +156,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .map(|x| x.into_array_value())
                             .collect::<Vec<_>>();
                         array_type.const_array(&values).into()
-                    }
-                    BasicTypeEnum::FloatType(float_type) => {
-                        let values = value_vec
-                            .into_iter()
-                            .map(|x| x.into_float_value())
-                            .collect::<Vec<_>>();
-                        float_type.const_array(&values).into()
                     }
                     BasicTypeEnum::IntType(int_type) => {
                         let values = value_vec
@@ -319,15 +311,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                         .map_err(|_| CodegenError::LlvmBuild("int compare failed"))
                 }
             }
-            BasicValueEnum::FloatValue(f) => self
-                .builder
-                .build_float_compare(
-                    inkwell::FloatPredicate::ONE,
-                    f,
-                    f.get_type().const_float(0.0),
-                    "floattoboolf",
-                )
-                .map_err(|_| CodegenError::LlvmBuild("float compare failed")),
             BasicValueEnum::PointerValue(p) => {
                 let i64_ty = self.context.i64_type();
                 let ptr_as_int = self
@@ -360,7 +343,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             Value::I32(x) => Ok(self.context.i32_type().const_int(*x as u64, false).into()),
             Value::I8(x) => Ok(self.context.i8_type().const_int(*x as u64, false).into()),
             Value::Bool(x) => Ok(self.context.bool_type().const_int(*x as u64, false).into()),
-            Value::F32(x) => Ok(self.context.f32_type().const_float(*x as f64).into()),
             Value::Array(tree) => self.convert_array_tree_to_global_init(tree, ty.unwrap()),
             Value::Struct(struct_id, fields) => {
                 // 生成 struct 常量
@@ -453,20 +435,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         self.builder
             .build_int_compare(pred, l, r, name)
             .map_err(|_| CodegenError::LlvmBuild("cmp"))
-    }
-
-    /// Build float compare
-    pub(crate) fn build_float_cmp(
-        &self,
-        pred: FloatPredicate,
-        l: FloatValue<'ctx>,
-        r: FloatValue<'ctx>,
-        name: &str,
-    ) -> Result<BasicValueEnum<'ctx>> {
-        self.builder
-            .build_float_compare(pred, l, r, name)
-            .map(|v| v.into())
-            .map_err(|_| CodegenError::LlvmBuild("fcmp"))
     }
 
     /// Build unconditional branch if current block has no terminator

@@ -20,10 +20,10 @@ fn try_it(source: &str) -> SyntaxNode<AirycLanguage> {
 fn test_declarations() {
     let source = r#"
     let A: const i32 = 1;
-    let B: const f32 = 2.0;
-    let C: const f32 = 3.0;
+    let B: const i32 = 2;
+    let C: const i32 = 3;
     let a: i32;
-    let b: f32 = 1.0;
+    let b: i32 = 1;
     let s: struct MyStruct;
     let p: *mut i32;
     let arr: [i32; 10];
@@ -52,7 +52,7 @@ fn test_functions() {
     let source = r#"
     fn func1() {}
     fn func2(a: i32) -> i32 {}
-    fn func3(a: i32, b: f32) -> i32 {}
+    fn func3(a: i32, b: i32) -> i32 {}
     fn func4(p: *mut i32, arr: *mut [i32; 10]) -> *mut i32 {}
     "#;
     insta::assert_debug_snapshot!(try_it(source));
@@ -272,7 +272,7 @@ fn test_struct_trailing_comma_no_deadloop() {
 #[test]
 fn test_import_parsing() {
     use crate::parse::Parser;
-    use syntax::{AstNode, ast::CompUnit};
+    use syntax::{ast::CompUnit, AstNode};
 
     let text = r#"import "../lib"
 import "../utils"::add

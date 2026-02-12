@@ -11,7 +11,6 @@ pub enum Value {
     I32(i32),
     I8(i8),
     Bool(bool),
-    F32(f32),
     Array(ArrayTree),
     Struct(StructID, Vec<Value>),
     StructZero(StructID),
@@ -55,16 +54,6 @@ impl Value {
         }
     }
 
-    /// 将 Value 转换为 f32（用于常量折叠）
-    pub fn cast_to_f32(&self) -> Result<Value, EvalError> {
-        match self {
-            Value::F32(v) => Ok(Value::F32(*v)),
-            Value::I32(v) => Ok(Value::F32(*v as f32)),
-            Value::I8(v) => Ok(Value::F32(*v as f32)),
-            _ => Err(EvalError::TypeMismatch),
-        }
-    }
-
     /// 将 Value 转换为目标类型（对应 Ty::assign_to_me_is_ok 的转换逻辑）
     /// 用于常量传播时的隐式类型转换
     pub fn convert_to(&self, target_ty: &Ty, module: &Module) -> Result<Value, EvalError> {
@@ -81,7 +70,6 @@ impl Value {
             Ty::I32 => self.cast_to_i32(),
             Ty::I8 => self.cast_to_i8(),
             Ty::Bool => self.cast_to_bool(),
-            Ty::F32 => self.cast_to_f32(),
             // 对于其他类型（数组、结构体、指针），不进行转换
             _ => Ok(self.clone()),
         }
@@ -92,7 +80,6 @@ impl Value {
             Value::I32(_) => Ty::I32,
             Value::I8(_) => Ty::I8,
             Value::Bool(_) => Ty::Bool,
-            Value::F32(_) => Ty::F32,
             Value::Array(_) => Ty::Array(Box::new(Ty::Void), None),
             Value::Struct(struct_id, _) => {
                 let name = module
@@ -129,7 +116,6 @@ impl Value {
                 // 相同类型保持不变，直接运算
                 (Value::I32(_), Value::I32(_)) => {}
                 (Value::I8(_), Value::I8(_)) => {}
-                (Value::F32(_), Value::F32(_)) => {}
 
                 // i32 混合类型：提升到 i32
                 (Value::I32(_), Value::I8(_) | Value::Bool(_))
@@ -268,20 +254,6 @@ impl Value {
                 NEQ => Ok(Value::Bool(l != r)),
                 _ => Err(EvalError::UnsupportedOperation(format!("{:?}", op))),
             },
-            (Value::F32(l), Value::F32(r)) => match op {
-                PLUS => Ok(Value::F32(l + r)),
-                MINUS => Ok(Value::F32(l - r)),
-                STAR => Ok(Value::F32(l * r)),
-                SLASH => Ok(Value::F32(l / r)),
-                PERCENT => Ok(Value::F32(l % r)),
-                NEQ => Ok(Value::Bool(l != r)),
-                EQEQ => Ok(Value::Bool(l == r)),
-                LT => Ok(Value::Bool(l < r)),
-                LTEQ => Ok(Value::Bool(l <= r)),
-                GT => Ok(Value::Bool(l > r)),
-                GTEQ => Ok(Value::Bool(l >= r)),
-                _ => Err(EvalError::UnsupportedOperation(format!("{:?}", op))),
-            },
             // null 与 null 比较
             (Value::Null, Value::Null) => match op {
                 EQEQ => Ok(Value::Bool(true)),
@@ -322,11 +294,6 @@ impl Value {
                     let i32_val = val.cast_to_i32()?;
                     Self::eval_unary(i32_val, op)
                 }
-                Value::F32(v) => match op {
-                    PLUS => Ok(Value::F32(v)),
-                    MINUS => Ok(Value::F32(-v)),
-                    _ => unreachable!(),
-                },
                 _ => Err(EvalError::TypeMismatch),
             },
             _ => Err(EvalError::UnsupportedOperation(format!("{:?}", op))),

@@ -14,7 +14,6 @@ pub enum SyntaxKind {
     CONST_KW,    // "const"
     I32_KW,      // "i32"
     I8_KW,       // "i8"
-    F32_KW,      // "f32"
     BOOL_KW,     // "bool"
     VOID_KW,     // "void"
     IF_KW,       // "if"
@@ -35,7 +34,6 @@ pub enum SyntaxKind {
     IDENT,          // my_var
     STRING_LITERAL, // "string"
     INT_LITERAL,    // 123, 0xFF
-    FLOAT_LITERAL,  // 3.14
     PLUS,           // +
     MINUS,          // -
     STAR,           // *
@@ -134,7 +132,6 @@ impl SyntaxKind {
             SyntaxKind::CONST_KW
                 | SyntaxKind::I32_KW
                 | SyntaxKind::I8_KW
-                | SyntaxKind::F32_KW
                 | SyntaxKind::BOOL_KW
                 | SyntaxKind::VOID_KW
                 | SyntaxKind::IF_KW
@@ -191,7 +188,7 @@ impl SyntaxKind {
 
     /// 检查是否为数字字面量
     pub fn is_number(self) -> bool {
-        matches!(self, SyntaxKind::INT_LITERAL | SyntaxKind::FLOAT_LITERAL)
+        matches!(self, SyntaxKind::INT_LITERAL)
     }
 }
 
