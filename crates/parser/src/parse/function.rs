@@ -61,6 +61,16 @@ impl Parser<'_> {
             if !is_first && !self.expect(SyntaxKind::COMMA) {
                 continue;
             }
+
+            // 检查是否为可变参数 ...
+            if self.at(SyntaxKind::DOTDOTDOT) {
+                self.start_node(SyntaxKind::FUNC_F_PARAM);
+                self.bump(); // consume ...
+                self.finish_node();
+                // ... 必须是最后一个参数，所以直接 break
+                break;
+            }
+
             if !self.parse_func_f_param() {
                 self.finish_node();
                 return false;

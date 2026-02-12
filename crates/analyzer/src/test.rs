@@ -186,6 +186,159 @@ fn test_duplicate_function_parameters_error() {
     "#;
     let module = analyze(source);
     assert!(!module.semantic_errors.is_empty());
+    assert!(matches!(
+        module.semantic_errors[0],
+        AnalyzeError::VariableDefined { .. }
+    ));
+}
+
+// ========== 函数调用参数检查测试 ==========
+
+#[test]
+fn test_function_argument_count_mismatch_too_few() {
+    let source = r#"
+    fn add(a: i32, b: i32) -> i32 {
+        return a + b;
+    }
+    
+    fn main() -> i32 {
+        let x: i32 = add(1);
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert_eq!(module.semantic_errors.len(), 1);
+    assert!(matches!(
+        &module.semantic_errors[0],
+        AnalyzeError::ArgumentCountMismatch {
+            expected: 2,
+            found: 1,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn test_function_argument_count_mismatch_too_many() {
+    let source = r#"
+    fn add(a: i32, b: i32) -> i32 {
+        return a + b;
+    }
+    
+    fn main() -> i32 {
+        let x: i32 = add(1, 2, 3);
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert_eq!(module.semantic_errors.len(), 1);
+    assert!(matches!(
+        &module.semantic_errors[0],
+        AnalyzeError::ArgumentCountMismatch {
+            expected: 2,
+            found: 3,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn test_function_argument_type_mismatch() {
+    let source = r#"
+    fn process(ptr: *mut i32) -> void {
+        return;
+    }
+    
+    fn main() -> i32 {
+        let x: i32 = 10;
+        process(x);
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert_eq!(module.semantic_errors.len(), 1);
+    assert!(matches!(
+        &module.semantic_errors[0],
+        AnalyzeError::ArgumentTypeMismatch(_)
+    ));
+}
+
+#[test]
+fn test_function_call_correct() {
+    let source = r#"
+    fn add(a: i32, b: i32) -> i32 {
+        return a + b;
+    }
+    
+    fn main() -> i32 {
+        let x: i32 = add(1, 2);
+        return x;
+    }
+    "#;
+    let module = analyze(source);
+    if !module.semantic_errors.is_empty() {
+        eprintln!("Unexpected errors: {:?}", module.semantic_errors);
+    }
+    assert!(module.semantic_errors.is_empty());
+}
+
+#[test]
+fn test_function_call_with_implicit_conversion() {
+    let source = r#"
+    fn process(x: i32) -> i32 {
+        return x;
+    }
+    
+    fn main() -> i32 {
+        let b: bool = true;
+        let result: i32 = process(b);
+        return result;
+    }
+    "#;
+    let module = analyze(source);
+    if !module.semantic_errors.is_empty() {
+        eprintln!("Unexpected errors: {:?}", module.semantic_errors);
+    }
+    assert!(module.semantic_errors.is_empty());
+}
+
+#[test]
+fn test_external_function_call() {
+    let source = r#"
+    fn external_func(a: i32, b: *const i8) -> i32;
+    
+    fn main() -> i32 {
+        let result: i32 = external_func(42, null);
+        return result;
+    }
+    "#;
+    let module = analyze(source);
+    if !module.semantic_errors.is_empty() {
+        eprintln!("Unexpected errors: {:?}", module.semantic_errors);
+    }
+    assert!(module.semantic_errors.is_empty());
+}
+
+#[test]
+fn test_external_function_call_wrong_args() {
+    let source = r#"
+    fn external_func(a: i32, b: *const i8) -> i32;
+    
+    fn main() -> i32 {
+        let result: i32 = external_func(42);
+        return result;
+    }
+    "#;
+    let module = analyze(source);
+    assert_eq!(module.semantic_errors.len(), 1);
+    assert!(matches!(
+        &module.semantic_errors[0],
+        AnalyzeError::ArgumentCountMismatch {
+            expected: 2,
+            found: 1,
+            ..
+        }
+    ));
 }
 
 #[test]
@@ -670,5 +823,102 @@ fn test_const_void_variable_error() {
     assert!(matches!(
         module.semantic_errors[0],
         AnalyzeError::InvalidVoidUsage { .. }
+    ));
+}
+
+// ========== 可变参数测试 ==========
+
+#[test]
+fn test_variadic_function_call() {
+    let source = r#"
+    fn printf(format: *const i8, ...) -> i32;
+    
+    fn main() -> i32 {
+        printf(null, 1, 2, 3);
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    if !module.semantic_errors.is_empty() {
+        eprintln!("Unexpected errors: {:?}", module.semantic_errors);
+    }
+    assert!(module.semantic_errors.is_empty());
+}
+
+#[test]
+fn test_variadic_function_too_few_args() {
+    let source = r#"
+    fn printf(format: *const i8, ...) -> i32;
+    
+    fn main() -> i32 {
+        printf();
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert_eq!(module.semantic_errors.len(), 1);
+    assert!(matches!(
+        &module.semantic_errors[0],
+        AnalyzeError::ArgumentCountMismatch {
+            expected: 1,
+            found: 0,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn test_variadic_function_with_impl() {
+    let source = r#"
+    fn my_func(x: i32, ...) -> i32 {
+        return x;
+    }
+    
+    fn main() -> i32 {
+        let result: i32 = my_func(42, 1, 2, 3);
+        return result;
+    }
+    "#;
+    let module = analyze(source);
+    if !module.semantic_errors.is_empty() {
+        eprintln!("Unexpected errors: {:?}", module.semantic_errors);
+    }
+    assert!(module.semantic_errors.is_empty());
+}
+
+#[test]
+fn test_variadic_function_no_fixed_params() {
+    let source = r#"
+    fn varargs(...) -> i32;
+    
+    fn main() -> i32 {
+        varargs(1, 2, 3);
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    if !module.semantic_errors.is_empty() {
+        eprintln!("Unexpected errors: {:?}", module.semantic_errors);
+    }
+    // 允许没有固定参数的可变参数函数
+    assert!(module.semantic_errors.is_empty());
+}
+
+#[test]
+fn test_variadic_function_type_check() {
+    let source = r#"
+    fn process(x: i32, ...) -> i32;
+    
+    fn main() -> i32 {
+        let ptr: *mut i32 = null;
+        process(ptr);
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert_eq!(module.semantic_errors.len(), 1);
+    assert!(matches!(
+        &module.semantic_errors[0],
+        AnalyzeError::ArgumentTypeMismatch(_)
     ));
 }

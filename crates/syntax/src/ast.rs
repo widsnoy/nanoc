@@ -192,8 +192,16 @@ ast_node!(
     FuncFParam ~ FUNC_F_PARAM {
         name: node(Name),
         ty: node(Type),
+        variadic_token: token(DOTDOTDOT),
     }
 );
+
+impl FuncFParam {
+    /// 检查是否为可变参数（...）
+    pub fn is_variadic(&self) -> bool {
+        self.variadic_token().is_some()
+    }
+}
 
 ast_node!(
     FuncAttach ~ FUNC_ATTACH {

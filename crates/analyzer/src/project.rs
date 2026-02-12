@@ -46,7 +46,7 @@ impl Project {
             errors.into_iter().for_each(|e| {
                 module
                     .semantic_errors
-                    .push(crate::error::AnalyzeError::ParserError(e))
+                    .push(crate::error::AnalyzeError::ParserError(Box::new(e)))
             });
 
             // 收集符号并分配 ID
@@ -161,8 +161,15 @@ impl Project {
                         continue;
                     }
 
-                    let func_id =
-                        module.new_function(name.clone(), vec![], vec![], Ty::Void, false, range);
+                    let func_id = module.new_function(
+                        name.clone(),
+                        vec![],
+                        vec![],
+                        Ty::Void,
+                        false,
+                        false,
+                        range,
+                    );
                     module.function_map.insert(name, func_id);
                 }
             } else if let Some(struct_def) = StructDef::cast(ele)
@@ -235,6 +242,36 @@ impl Project {
                     continue;
                 };
 
+                // 提取参数类型信息和可变参数标志
+                let mut meta_types = Vec::new();
+                let mut is_variadic = false;
+
+                if let Some(params_node) = sign.params() {
+                    for param in params_node.params() {
+                        // 检查是否为可变参数
+                        if param.is_variadic() {
+                            is_variadic = true;
+                            break;
+                        }
+
+                        if let Some(param_name) = param.name().and_then(|n| n.var_name())
+                            && let Some(ty_node) = param.ty()
+                        {
+                            match crate::utils::parse_type_node(module, &ty_node, None) {
+                                Ok(Some(ty)) => {
+                                    meta_types.push((param_name, ty));
+                                }
+                                Ok(None) => continue,
+                                Err(e) => {
+                                    module.semantic_errors.push(e);
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 提取返回类型
                 let ret_type = if let Some(ty_node) = sign.ret_type() {
                     match crate::utils::parse_type_node(module, &ty_node, None) {
                         Ok(Some(ty)) => ty,
@@ -250,8 +287,11 @@ impl Project {
                     Ty::Void
                 };
 
+                // 更新函数定义
                 if let Some(func_data) = module.get_function_mut_by_id(func_id) {
+                    func_data.meta_types = meta_types;
                     func_data.ret_type = ret_type;
+                    func_data.is_variadic = is_variadic;
                 }
             }
         }

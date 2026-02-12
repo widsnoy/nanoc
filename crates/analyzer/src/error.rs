@@ -7,11 +7,31 @@ use tools::TextRange;
 
 use crate::{array::ArrayInitError, r#type::Ty};
 
+#[derive(Debug, Clone)]
+pub struct ArgumentTypeMismatchData {
+    pub function_name: String,
+    pub param_name: String,
+    pub arg_index: usize,
+    pub expected: Ty,
+    pub found: Ty,
+    pub range: TextRange,
+}
+
+impl std::fmt::Display for ArgumentTypeMismatchData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "function '{}' argument {} ('{}') type mismatch: expected {}, found {}",
+            self.function_name, self.arg_index, self.param_name, self.expected, self.found
+        )
+    }
+}
+
 #[derive(Debug, Clone, Error, Diagnostic)]
 pub enum AnalyzeError {
     #[error(transparent)]
     #[diagnostic(transparent)]
-    ParserError(ParserError),
+    ParserError(Box<ParserError>),
 
     #[error("type mismatch: expected {expected}, found {found}")]
     #[diagnostic(code(semantic::type_mismatch))]
@@ -181,6 +201,10 @@ pub enum AnalyzeError {
         range: TextRange,
     },
 
+    #[error("{0}")]
+    #[diagnostic(code(semantic::argument_type_mismatch))]
+    ArgumentTypeMismatch(Box<ArgumentTypeMismatchData>),
+
     #[error("can't assign to const variable '{name}'")]
     #[diagnostic(code(semantic::assign_to_const))]
     AssignToConst {
@@ -295,6 +319,7 @@ impl AnalyzeError {
     pub fn range(&self) -> &TextRange {
         match self {
             Self::ParserError(e) => e.range(),
+            Self::ArgumentTypeMismatch(data) => &data.range,
             Self::TypeMismatch { range, .. }
             | Self::ConstantExprExpected { range }
             | Self::VariableDefined { range, .. }

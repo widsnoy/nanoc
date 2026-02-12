@@ -87,6 +87,8 @@ pub enum Token {
     R_BRACK,
     #[token("*")]
     STAR,
+    #[token("...")]
+    DOTDOTDOT,
     #[token(".")]
     DOT,
     #[token("->")]
@@ -178,6 +180,7 @@ impl From<Token> for SyntaxKind {
             Token::L_BRACK => SyntaxKind::L_BRACK,
             Token::R_BRACK => SyntaxKind::R_BRACK,
             Token::STAR => SyntaxKind::STAR,
+            Token::DOTDOTDOT => SyntaxKind::DOTDOTDOT,
             Token::DOT => SyntaxKind::DOT,
             Token::ARROW => SyntaxKind::ARROW,
             Token::PLUS => SyntaxKind::PLUS,

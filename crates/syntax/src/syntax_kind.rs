@@ -51,6 +51,7 @@ pub enum SyntaxKind {
     PIPEPIPE,       // ||
     BANG,           // !
     DOT,            // .
+    DOTDOTDOT,      // ...
     ARROW,          // ->
     COMMA,          // ,
     SEMI,           // ;

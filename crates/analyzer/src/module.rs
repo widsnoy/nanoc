@@ -171,6 +171,7 @@ impl Module {
         id
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_function(
         &mut self,
         name: String,
@@ -178,6 +179,7 @@ impl Module {
         meta_types: Vec<(String, Ty)>,
         ret_type: Ty,
         have_impl: bool,
+        is_variadic: bool,
         range: TextRange,
     ) -> FunctionID {
         let function = Function {
@@ -186,6 +188,7 @@ impl Module {
             meta_types,
             ret_type,
             have_impl,
+            is_variadic,
             range,
         };
         let id = self.functions.insert(function);
@@ -379,6 +382,7 @@ pub struct Function {
     pub meta_types: Vec<(String, Ty)>,
     pub ret_type: Ty,
     pub have_impl: bool,
+    pub is_variadic: bool,
     pub range: TextRange,
 }
 

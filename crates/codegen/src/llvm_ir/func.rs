@@ -38,6 +38,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         let name = &func_info.name;
         let ret_ty = &func_info.ret_type;
         let is_void = matches!(ret_ty, Ty::Void);
+        let is_variadic = func_info.is_variadic;
 
         let basic_params = func_info
             .meta_types
@@ -47,9 +48,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         let ret_llvm_ty = self.convert_ntype_to_type(ret_ty)?;
         let fn_type = if is_void {
-            self.context.void_type().fn_type(&basic_params, false)
+            self.context.void_type().fn_type(&basic_params, is_variadic)
         } else {
-            ret_llvm_ty.fn_type(&basic_params, false)
+            ret_llvm_ty.fn_type(&basic_params, is_variadic)
         };
 
         let function = self.module.add_function(name, fn_type, None);

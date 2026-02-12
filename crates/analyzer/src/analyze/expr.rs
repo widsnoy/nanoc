@@ -18,10 +18,6 @@ impl ExprVisitor for Module {
             return;
         };
 
-        // 获取实际参数数量
-        // FIXME: 做参数和类型检查
-        // let arg_count = node.args().map(|args| args.args().count()).unwrap_or(0);
-
         // 检查函数是否已定义
         let Some(func_id) = self.get_function_id_by_name(&func_name) else {
             self.new_error(AnalyzeError::FunctionUndefined {
@@ -39,6 +35,62 @@ impl ExprVisitor for Module {
             debug_assert!(false, "Function {:?} not found", func_id);
             return;
         };
+
+        let actual_args: Vec<_> = node
+            .args()
+            .map(|args| args.args().collect())
+            .unwrap_or_default();
+
+        let expected_params = &func.meta_types;
+        let is_variadic = func.is_variadic;
+
+        // 检查参数个数
+        if is_variadic {
+            // 可变参数函数：实际参数个数 >= 固定参数个数
+            if actual_args.len() < expected_params.len() {
+                self.new_error(AnalyzeError::ArgumentCountMismatch {
+                    function_name: func_name.clone(),
+                    expected: expected_params.len(),
+                    found: actual_args.len(),
+                    range: node.args().map(|a| a.text_range()).unwrap_or(func_range),
+                });
+                // 即使参数个数不匹配，也设置返回类型以便后续分析
+                self.set_expr_type(node.text_range(), func.ret_type.clone());
+                return;
+            }
+        } else {
+            // 普通函数：实际参数个数 == 固定参数个数
+            if actual_args.len() != expected_params.len() {
+                self.new_error(AnalyzeError::ArgumentCountMismatch {
+                    function_name: func_name.clone(),
+                    expected: expected_params.len(),
+                    found: actual_args.len(),
+                    range: node.args().map(|a| a.text_range()).unwrap_or(func_range),
+                });
+                self.set_expr_type(node.text_range(), func.ret_type.clone());
+                return;
+            }
+        }
+
+        // 检查固定参数的类型（可变参数部分不检查类型）
+        for (i, (actual_arg, (param_name, expected_ty))) in
+            actual_args.iter().zip(expected_params.iter()).enumerate()
+        {
+            if let Some(actual_ty) = self.get_expr_type(actual_arg.text_range())
+                && !expected_ty.assign_to_me_is_ok(actual_ty)
+            {
+                self.new_error(AnalyzeError::ArgumentTypeMismatch(Box::new(
+                    crate::error::ArgumentTypeMismatchData {
+                        function_name: func_name.clone(),
+                        param_name: param_name.clone(),
+                        arg_index: i + 1,
+                        expected: expected_ty.clone(),
+                        found: actual_ty.clone(),
+                        range: actual_arg.text_range(),
+                    },
+                )));
+            }
+        }
 
         // 设置返回类型
         self.set_expr_type(node.text_range(), func.ret_type.clone());

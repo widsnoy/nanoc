@@ -28,14 +28,21 @@ impl FuncVisitor for Module {
     fn leave_func_sign(&mut self, node: FuncSign) {
         let mut param_list = vec![];
         let mut meta_type_list = vec![];
+        let mut is_variadic = false;
 
         let Some(scope) = self.scopes.get(*self.analyzing.current_scope) else {
             return;
         };
 
-        // 收集参数 VariableID
+        // 收集参数 VariableID 和检测可变参数
         if let Some(params) = node.params() {
             for param in params.params() {
+                // 检查是否为可变参数
+                if param.is_variadic() {
+                    is_variadic = true;
+                    break;
+                }
+
                 let Some(name_node) = param.name() else {
                     return;
                 };
@@ -87,6 +94,7 @@ impl FuncVisitor for Module {
                 func_data.meta_types = meta_type_list;
                 func_data.ret_type = ret_type.clone();
                 func_data.have_impl = have_impl;
+                func_data.is_variadic = is_variadic;
             }
         } else {
             debug_assert!(false);
@@ -95,6 +103,11 @@ impl FuncVisitor for Module {
     }
 
     fn leave_func_f_param(&mut self, node: FuncFParam) {
+        // 如果是可变参数，直接返回（不需要创建变量）
+        if node.is_variadic() {
+            return;
+        }
+
         let Some((name, range)) = node.name().and_then(|n| utils::extract_name_and_range(&n))
         else {
             return;

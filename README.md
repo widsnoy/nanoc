@@ -13,7 +13,7 @@ Path        := String ['::' Ident]
 GlobalDecl  := VarDef | FuncDef | StructDef | FuncAttach
 
 Type        := ['const'] PrimitType | Pointer Type | '[' Type ';' Expr ']'
-PrimitType  := 'void' | 'i32' | 'f32' | 'struct' Name
+PrimitType  := 'void' | 'i32' | 'i8' | 'bool' | 'struct' Name
 Pointer     := '*' ('mut' | 'const')
 
 VarDef      := 'let' Name ':' Type ['=' InitVal] ';'
@@ -21,7 +21,7 @@ InitVal     := Expr | '{' [InitVal {',' InitVal}] '}'
 
 FuncDef     :=  FuncSign (';' | Block)
 FuncSign    := 'fn' Name '(' [FuncFParams] ')' ['->' Type]
-FuncFParams := FuncFParam {',' FuncFParam}
+FuncFParams := FuncFParam {',' FuncFParam} ['...']
 FuncFParam  := Name: Type
 FuncRParams := Expr {',' Expr}
 FuncAttach  := 'attach' Name Block
