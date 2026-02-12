@@ -316,10 +316,8 @@ impl Module {
         let Some(name_node) = node.name() else {
             return false;
         };
-        let Some(var_name) = name_node.var_name() else {
-            return false;
-        };
-        let Some(var_range) = name_node.var_range() else {
+
+        let Some((var_name, var_range)) = utils::extract_name_and_range(&name_node) else {
             return false;
         };
 

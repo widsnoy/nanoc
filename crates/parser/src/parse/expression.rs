@@ -146,6 +146,7 @@ impl Parser<'_> {
     }
 
     fn parse_postfix_op(&mut self) {
+        self.bump_trivia();
         self.start_node(SyntaxKind::POSTFIX_OP);
         self.bump(); // . or ->
         self.finish_node();
@@ -244,6 +245,7 @@ impl Parser<'_> {
 
     /// 仅在确认是二元运算符后调用
     fn parse_binary_op(&mut self) {
+        self.bump_trivia();
         self.start_node(SyntaxKind::BINARY_OP);
         self.bump(); // op
         self.finish_node();
@@ -251,6 +253,7 @@ impl Parser<'_> {
 
     /// 仅在确认是一元运算符后调用
     fn parse_unary_op(&mut self) {
+        self.bump_trivia();
         self.start_node(SyntaxKind::UNARY_OP);
         self.bump(); // op
         self.finish_node();

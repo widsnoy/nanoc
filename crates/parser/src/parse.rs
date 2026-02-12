@@ -98,9 +98,9 @@ impl<'a> Parser<'a> {
 
     pub fn parse_root(&mut self) {
         self.start_node(SyntaxKind::COMP_UNIT);
-        self.bump_trivia();
 
         loop {
+            self.bump_trivia();
             match self.peek() {
                 SyntaxKind::IMPORT_KW => {
                     self.parse_header();

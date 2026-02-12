@@ -51,6 +51,7 @@ impl Parser<'_> {
                 }
 
                 if !self.parse_init_val() {
+                    self.finish_node();
                     return false;
                 }
                 is_first = false;
