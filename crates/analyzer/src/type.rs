@@ -148,7 +148,9 @@ impl Ty {
 
             // 指针类型：*void 可以与任何指针互转
             (Ty::Pointer { pointee: p1, .. }, Ty::Pointer { pointee: p2, .. }) => {
-                matches!(p1.as_ref(), Ty::Void) || matches!(p2.as_ref(), Ty::Void) || p1 == p2
+                matches!(p1.as_ref(), Ty::Void)
+                    || matches!(p2.as_ref(), Ty::Void)
+                    || p1.unwrap_const() == p2.unwrap_const()
             }
 
             (Ty::Struct { id: id1, .. }, Ty::Struct { id: id2, .. }) => id1 == id2,

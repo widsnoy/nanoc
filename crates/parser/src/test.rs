@@ -272,7 +272,7 @@ fn test_struct_trailing_comma_no_deadloop() {
 #[test]
 fn test_import_parsing() {
     use crate::parse::Parser;
-    use syntax::{ast::CompUnit, AstNode};
+    use syntax::{AstNode, ast::CompUnit};
 
     let text = r#"import "../lib"
 import "../utils"::add

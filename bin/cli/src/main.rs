@@ -112,12 +112,9 @@ fn main() {
                 .unwrap_or("a.out");
 
             // 链接所有目标文件
-            if let Err(e) = linking::link_multiple_objects(
-                &object_files,
-                &args.output_dir,
-                output_name,
-                &args.runtime,
-            ) {
+            if let Err(e) =
+                linking::link_multiple_objects(&object_files, &args.output_dir, output_name)
+            {
                 eprintln!("Error: {}", e);
                 std::process::exit(1);
             }

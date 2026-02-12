@@ -11,6 +11,7 @@ pub enum Value {
     I32(i32),
     I8(i8),
     Bool(bool),
+    String(String),
     Array(ArrayTree),
     Struct(StructID, Vec<Value>),
     StructZero(StructID),
@@ -80,6 +81,10 @@ impl Value {
             Value::I32(_) => Ty::I32,
             Value::I8(_) => Ty::I8,
             Value::Bool(_) => Ty::Bool,
+            Value::String(_) => Ty::Pointer {
+                pointee: Box::new(Ty::I8),
+                is_const: true,
+            },
             Value::Array(_) => Ty::Array(Box::new(Ty::Void), None),
             Value::Struct(struct_id, _) => {
                 let name = module

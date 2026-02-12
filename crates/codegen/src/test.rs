@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use analyzer::{module::Module, project::Project};
 use inkwell::context::Context;
 use syntax::{
-    ast::{AstNode, CompUnit},
     SyntaxNode,
+    ast::{AstNode, CompUnit},
 };
 use vfs::Vfs;
 
@@ -44,6 +45,7 @@ fn try_it(code: &str) -> String {
         module: &llvm_module,
         analyzer: &module,
         symbols: Default::default(),
+        string_constants: HashMap::new(),
     };
 
     program.compile_comp_unit(comp_unit).unwrap();

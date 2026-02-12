@@ -20,7 +20,6 @@ pub fn link_multiple_objects(
     object_files: &[(String, Vec<u8>)],
     output_dir: &Path,
     output_name: &str,
-    runtime_path: &Path,
 ) -> Result<()> {
     let mut object_paths = Vec::new();
 
@@ -38,7 +37,7 @@ pub fn link_multiple_objects(
     for object_path in &object_paths {
         cmd.arg(object_path);
     }
-    cmd.arg(runtime_path).arg("-o").arg(&output_path);
+    cmd.arg("-o").arg(&output_path);
 
     let output = cmd
         .output()

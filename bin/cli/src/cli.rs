@@ -14,10 +14,6 @@ pub struct Args {
     #[arg(short, long, default_value = ".")]
     pub output_dir: PathBuf,
 
-    /// runtime path, default /usr/local/lib/libsysy.a
-    #[arg(short, long, default_value = "/usr/local/lib/libairyc_runtime.a")]
-    pub runtime: PathBuf,
-
     /// emit target
     #[arg(short, long, value_enum, default_value_t = EmitTarget::Exe)]
     pub emit: EmitTarget,

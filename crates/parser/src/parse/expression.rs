@@ -190,7 +190,10 @@ impl Parser<'_> {
         } else if self.peek().is_number()
             || matches!(
                 self.peek(),
-                SyntaxKind::NULL_KW | SyntaxKind::TRUE_KW | SyntaxKind::FALSE_KW
+                SyntaxKind::NULL_KW
+                    | SyntaxKind::TRUE_KW
+                    | SyntaxKind::FALSE_KW
+                    | SyntaxKind::STRING_LITERAL
             )
         {
             self.start_node(SyntaxKind::LITERAL);

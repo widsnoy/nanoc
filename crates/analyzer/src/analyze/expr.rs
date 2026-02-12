@@ -453,6 +453,20 @@ impl ExprVisitor for Module {
                 },
             );
             Value::Null
+        } else if node.string_token().is_some() {
+            // 字符串字面量类型为 *const i8
+            self.set_expr_type(
+                range,
+                Ty::Pointer {
+                    pointee: Box::new(Ty::I8),
+                    is_const: true,
+                },
+            );
+            // 获取字符串内容（去掉引号）
+            let string_token = node.string_token().unwrap();
+            let s = string_token.text().to_string();
+            let content = &s[1..s.len() - 1]; // 去掉首尾的双引号
+            Value::String(content.to_string())
         } else if node.true_token().is_some() {
             self.set_expr_type(range, Ty::Bool);
             Value::Bool(true)

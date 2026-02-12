@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use inkwell::basic_block::BasicBlock;
-use inkwell::values::{FunctionValue, PointerValue};
+use inkwell::values::{FunctionValue, GlobalValue, PointerValue};
 use inkwell::{builder::Builder, context::Context};
 use syntax::ast::*;
 
@@ -28,6 +28,7 @@ pub struct Program<'a, 'ctx> {
     pub module: &'a inkwell::module::Module<'ctx>,
     pub analyzer: &'a analyzer::module::Module,
     pub symbols: SymbolTable<'a, 'ctx>,
+    pub string_constants: HashMap<String, GlobalValue<'ctx>>,
 }
 
 #[derive(Clone, Copy)]

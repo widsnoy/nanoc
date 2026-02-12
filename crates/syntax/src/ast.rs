@@ -359,6 +359,7 @@ ast_node!(
 ast_node!(
     Literal ~ LITERAL {
         int_token: token(INT_LITERAL),
+        string_token: token(STRING_LITERAL),
         null_token: token(NULL_KW),
         true_token: token(TRUE_KW),
         false_token: token(FALSE_KW),

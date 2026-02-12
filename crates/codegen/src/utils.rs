@@ -134,7 +134,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     /// Convert `ArrayTree` to LLVM constant value for global variable initialization.
     /// This function only handles compile-time constants.
     pub(crate) fn convert_array_tree_to_global_init(
-        &self,
+        &mut self,
         tree: &ArrayTree,
         ty: BasicTypeEnum<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>> {
@@ -170,6 +170,13 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .map(|x| x.into_struct_value())
                             .collect::<Vec<_>>();
                         struct_ty.const_array(&values).into()
+                    }
+                    BasicTypeEnum::PointerType(ptr_ty) => {
+                        let values = value_vec
+                            .into_iter()
+                            .map(|x| x.into_pointer_value())
+                            .collect::<Vec<_>>();
+                        ptr_ty.const_array(&values).into()
                     }
                     _ => {
                         return Err(CodegenError::Unsupported(
@@ -269,7 +276,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     /// Get constant value from analyzer
     /// 如果是 Array，保证 ty.is_some() == true
     pub(crate) fn get_const_var_value(
-        &self,
+        &mut self,
         ast_node: &impl AstNode,
         ty: Option<BasicTypeEnum<'ctx>>,
     ) -> Result<BasicValueEnum<'ctx>> {
@@ -283,7 +290,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     /// Get constant value from analyzer
     /// 如果是 Array，保证 ty.is_some() == true
     pub(crate) fn get_const_var_value_by_range(
-        &self,
+        &mut self,
         range: TextRange,
         ty: Option<BasicTypeEnum<'ctx>>,
     ) -> Result<BasicValueEnum<'ctx>> {
@@ -335,7 +342,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     /// Convert `Value` to `BasicValueEnum`
     /// 如果是 Array，保证 ty.is_some() == true
     pub(crate) fn convert_value(
-        &self,
+        &mut self,
         value: &Value,
         ty: Option<BasicTypeEnum<'ctx>>,
     ) -> Result<BasicValueEnum<'ctx>> {
@@ -343,6 +350,11 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             Value::I32(x) => Ok(self.context.i32_type().const_int(*x as u64, false).into()),
             Value::I8(x) => Ok(self.context.i8_type().const_int(*x as u64, false).into()),
             Value::Bool(x) => Ok(self.context.bool_type().const_int(*x as u64, false).into()),
+            Value::String(s) => {
+                // 字符串常量
+                let ptr = self.get_or_create_string_constant(s)?;
+                Ok(ptr.into())
+            }
             Value::Array(tree) => self.convert_array_tree_to_global_init(tree, ty.unwrap()),
             Value::Struct(struct_id, fields) => {
                 // 生成 struct 常量
@@ -563,5 +575,30 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .into()),
             _ => Ok(val),
         }
+    }
+
+    /// 获取或创建全局字符串常量（带去重）
+    /// 返回指向字符串的 *const i8 指针
+    pub(crate) fn get_or_create_string_constant(
+        &mut self,
+        content: &str,
+    ) -> Result<PointerValue<'ctx>> {
+        // 检查缓存，如果已存在则直接返回
+        if let Some(global) = self.string_constants.get(content) {
+            return Ok(global.as_pointer_value());
+        }
+
+        // 使用 inkwell API 创建新的字符串常量
+        let name = format!(".str.{}", self.string_constants.len());
+        let global = self
+            .builder
+            .build_global_string_ptr(content, &name)
+            .map_err(|_| CodegenError::LlvmBuild("build_global_string_ptr"))?;
+
+        // 记录到缓存中
+        self.string_constants.insert(content.to_string(), global);
+
+        // 返回指针
+        Ok(global.as_pointer_value())
     }
 }

@@ -418,6 +418,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .map_err(|_| CodegenError::Unsupported(format!("invalid int: {}", s)))?;
             return Ok(self.context.i32_type().const_int(v as u64, true).into());
         }
+        if let Some(string_token) = expr.string_token() {
+            // 字符串字面量
+            let s = string_token.text();
+            let content = &s[1..s.len() - 1]; // 去掉引号
+
+            let ptr = self.get_or_create_string_constant(content)?;
+            return Ok(ptr.into());
+        }
         if expr.null_token().is_some() {
             // 生成 null 指针
             let ptr_ty = self.context.ptr_type(inkwell::AddressSpace::default());

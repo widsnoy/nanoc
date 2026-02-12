@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use analyzer::module::Module;
@@ -78,6 +79,7 @@ fn generate_and_optimize<'ctx>(
         module: &module,
         analyzer,
         symbols: Default::default(),
+        string_constants: HashMap::new(),
     };
 
     let root = SyntaxNode::new_root(green_node);
@@ -136,7 +138,7 @@ fn create_target_machine(opt_level: OptLevel) -> Result<TargetMachine> {
             "generic",
             "",
             opt_level.into(),
-            RelocMode::Default,
+            RelocMode::PIC,
             CodeModel::Default,
         )
         .ok_or_else(|| CodegenError::TargetMachine("failed to create target machine".to_string()))
