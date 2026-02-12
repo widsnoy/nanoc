@@ -30,8 +30,6 @@ args = [
     "performance",
     "--compiler",
     "./target/debug/airyc-cli",
-    "--runtime",
-    "./target/debug/libruntime.a",
     "--timeout",
     "20",
     "--verbose"

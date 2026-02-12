@@ -27,7 +27,7 @@ impl std::fmt::Display for ArgumentTypeMismatchData {
     }
 }
 
-#[derive(Debug, Clone, Error, Diagnostic)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum AnalyzeError {
     #[error(transparent)]
     #[diagnostic(transparent)]
@@ -329,6 +329,14 @@ pub enum AnalyzeError {
         #[label("here")]
         range: TextRange,
     },
+
+    #[error("{err}")]
+    #[diagnostic(code(unescape))]
+    UnescapeError {
+        err: Box<snailquote::UnescapeError>,
+        #[label("here")]
+        range: TextRange,
+    },
 }
 
 impl AnalyzeError {
@@ -371,7 +379,8 @@ impl AnalyzeError {
             | Self::ImportSymbolConflict { range, .. }
             | Self::RecursiveType { range, .. }
             | Self::InitializerMismatch { range, .. }
-            | Self::BinaryOpTypeMismatch { range, .. } => range,
+            | Self::BinaryOpTypeMismatch { range, .. }
+            | Self::UnescapeError { range, .. } => range,
         }
     }
 }

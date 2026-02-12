@@ -201,7 +201,7 @@ impl ExprVisitor for Module {
 
         if self.is_compile_time_constant(expr.text_range()) {
             let val = self.value_table.get(&expr.text_range()).unwrap().clone();
-            
+
             match Value::eval_unary(val.clone(), op.op().kind()) {
                 Ok(res) => {
                     self.value_table.insert(node.text_range(), res);
@@ -210,8 +210,11 @@ impl ExprVisitor for Module {
                     // 常量表达式溢出，报告错误
                     // 但需要检查是否是 -128i8 这样的特例
                     let expr_range = expr.text_range();
-                    if op_kind == SyntaxKind::MINUS 
-                        && self.analyzing.overflowing_literals.contains_key(&expr_range) 
+                    if op_kind == SyntaxKind::MINUS
+                        && self
+                            .analyzing
+                            .overflowing_literals
+                            .contains_key(&expr_range)
                     {
                         // 这是字面量溢出的情况，已经在字面量溢出检测中处理
                         // 不报告一元运算溢出
@@ -530,8 +533,17 @@ impl ExprVisitor for Module {
             // 获取字符串内容（去掉引号）
             let string_token = node.string_token().unwrap();
             let s = string_token.text().to_string();
-            let content = &s[1..s.len() - 1]; // 去掉首尾的双引号
-            Value::String(content.to_string())
+            let content = match snailquote::unescape(&s) {
+                Ok(s) => s,
+                Err(e) => {
+                    self.new_error(AnalyzeError::UnescapeError {
+                        err: Box::new(e),
+                        range: utils::trim_node_text_range(&node),
+                    });
+                    return;
+                }
+            };
+            Value::String(content)
         } else if node.true_token().is_some() {
             self.set_expr_type(range, Ty::Bool);
             Value::Bool(true)

@@ -16,3 +16,4 @@ rowan.workspace = true
 thiserror.workspace = true
 miette.workspace = true
 dashmap.workspace = true
+snailquote.workspace = true

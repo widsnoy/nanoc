@@ -22,9 +22,10 @@ pub fn analyze_project(input_paths: &[PathBuf], vfs: &Vfs) -> Result<Project> {
 
     // 按文件收集错误
     let mut errors_by_file = HashMap::new();
-    for module in project.modules.values() {
+    for module in project.modules.values_mut() {
         if !module.semantic_errors.is_empty() {
-            errors_by_file.insert(module.file_id, module.semantic_errors.clone());
+            let vec = module.semantic_errors.drain(..).collect();
+            errors_by_file.insert(module.file_id, vec);
         }
     }
 

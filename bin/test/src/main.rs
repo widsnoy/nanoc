@@ -16,9 +16,6 @@ struct Args {
     #[arg(short, long, default_value = "./target/release/airyc-compiler")]
     compiler: PathBuf,
 
-    #[arg(short, long, default_value = "./target/release/libairyc_runtime.a")]
-    runtime: PathBuf,
-
     #[arg(long)]
     exclude: Vec<String>,
 
@@ -149,7 +146,6 @@ fn run_test(case: &TestCase, args: &Args, tmp_dir: &Path) -> Result<TestResult> 
         String::new()
     };
 
-    let runtime_lib = &args.runtime;
     let compiler = &args.compiler;
 
     let std_out = case.path.with_extension("out");
@@ -174,8 +170,6 @@ fn run_test(case: &TestCase, args: &Args, tmp_dir: &Path) -> Result<TestResult> 
         .arg(&case.path)
         .arg("-o")
         .arg(tmp_dir)
-        .arg("-r")
-        .arg(runtime_lib)
         .output()
         .context("airyc-compiler compile failed")?;
 

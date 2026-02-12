@@ -74,7 +74,7 @@ impl ArrayTreeTrait for InitVal {
     }
 }
 
-#[derive(Debug, Clone, Error, Diagnostic)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum ArrayInitError {
     #[error("Cannot assign array to scalar")]
     #[diagnostic(code(array::assign_array_to_number))]
