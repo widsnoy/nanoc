@@ -5,15 +5,9 @@ default_to_workspace = false
 alias = "build"
 
 [tasks.build]
-dependencies = ["build-compiler", "build-runtime"]
-
-[tasks.build-compiler]
 command = "cargo"
 args = ["build", "--bin", "airyc-cli"]
 
-[tasks.build-runtime]
-command = "cargo"
-args = ["build", "-p", "runtime"]
 
 [tasks.test]
 description = "Run all integration tests"
