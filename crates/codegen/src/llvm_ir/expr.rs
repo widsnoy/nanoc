@@ -294,7 +294,14 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     // &*ptr == ptr
                     self.compile_expr(de.expr().ok_or(CodegenError::Missing("deref operand"))?)
                 }
-                _ => Err(CodegenError::Unsupported("cannot take address".into())),
+                Expr::PostfixExpr(pe) => {
+                    let (ptr, _) = self.get_postfix_expr_ptr(pe)?;
+                    Ok(ptr.into())
+                }
+                _ => Err(CodegenError::Unsupported(format!(
+                    "cannot take address {:?}",
+                    operand.syntax().text()
+                ))),
             };
         } else if op_kind == SyntaxKind::STAR {
             return self.compile_deref_expr(&expr);
@@ -387,20 +394,17 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
     fn compile_index_val(&mut self, expr: IndexVal) -> Result<BasicValueEnum<'ctx>> {
         let (ty, ptr, name) = self.get_index_val_ptr(&expr)?;
+
+        // 如果是数组类型，执行 decay 并返回指针
         if ty.is_array_type() {
-            // 数组 decay 成指向第一个元素的指针
-            let zero = self.context.i32_type().const_zero();
-            let gep = unsafe {
-                self.builder
-                    .build_gep(ty, ptr, &[zero, zero], "arr.decay")
-                    .map_err(|_| CodegenError::LlvmBuild("gep"))?
-            };
-            Ok(gep.into())
-        } else {
-            self.builder
-                .build_load(ty, ptr, &name)
-                .map_err(|_| CodegenError::LlvmBuild("load"))
+            let (_, decayed_ptr) = self.maybe_decay_array(ty, ptr)?;
+            return Ok(decayed_ptr.into());
         }
+
+        // 否则 load 值
+        self.builder
+            .build_load(ty, ptr, &name)
+            .map_err(|_| CodegenError::LlvmBuild("load"))
     }
 
     fn compile_literal(&mut self, expr: Literal) -> Result<BasicValueEnum<'ctx>> {
@@ -459,6 +463,13 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     fn compile_postfix_expr(&mut self, expr: PostfixExpr) -> Result<BasicValueEnum<'ctx>> {
         let (field_ptr, field_ty) = self.get_postfix_expr_ptr(expr)?;
 
+        // 如果是数组类型，执行 decay 并返回指针
+        if field_ty.is_array_type() {
+            let (_, decayed_ptr) = self.maybe_decay_array(field_ty, field_ptr)?;
+            return Ok(decayed_ptr.into());
+        }
+
+        // 否则 load 值
         self.builder
             .build_load(field_ty, field_ptr, "field")
             .map_err(|_| CodegenError::LlvmBuild("load field failed"))
@@ -565,9 +576,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             .map(|e| self.compile_expr(e).map(|v| v.into_int_value()))
             .collect::<Result<Vec<_>>>()?;
 
-        if indices.is_empty() {
-            return Ok((cur_llvm_type, ptr, name));
-        }
         (cur_llvm_type, ptr) = self.calculate_index_op(cur_ntype, cur_llvm_type, ptr, indices)?;
         Ok((cur_llvm_type, ptr, name))
     }

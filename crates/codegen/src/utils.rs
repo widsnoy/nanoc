@@ -270,7 +270,28 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 }
             }
         }
+
         Ok((cur_llvm_type, ptr))
+    }
+
+    /// 如果 ptr 指向数组类型，执行 array decay
+    pub(crate) fn maybe_decay_array(
+        &self,
+        ty: BasicTypeEnum<'ctx>,
+        ptr: PointerValue<'ctx>,
+    ) -> Result<(BasicTypeEnum<'ctx>, PointerValue<'ctx>)> {
+        if ty.is_array_type() {
+            let zero = self.context.i32_type().const_zero();
+            let decayed_ptr = unsafe {
+                self.builder
+                    .build_gep(ty, ptr, &[zero, zero], "arr.decay")
+                    .map_err(|_| CodegenError::LlvmBuild("array decay gep"))?
+            };
+            let ptr_ty = self.context.ptr_type(AddressSpace::default()).into();
+            Ok((ptr_ty, decayed_ptr))
+        } else {
+            Ok((ty, ptr))
+        }
     }
 
     /// Get constant value from analyzer

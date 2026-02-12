@@ -150,7 +150,7 @@ impl Module {
             };
         }
         // 如果结果是数组类型，decay 成指向元素的指针
-        if let Ty::Array(inner, _) = current {
+        if let Ty::Array(inner, _) = current.unwrap_const() {
             Ok(Ty::Pointer {
                 pointee: inner,
                 is_const: true,

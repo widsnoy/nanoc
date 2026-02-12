@@ -448,22 +448,18 @@ impl ExprVisitor for Module {
             let field = self.get_field_by_id(field_id).unwrap();
             // 计算索引后的类型（如果有数组索引）
             let indices: Vec<_> = field_access_node.indices().collect();
-            let result_ty = if indices.is_empty() {
-                field.ty.clone()
-            } else {
-                // 有数组索引，需要计算索引后的类型
-                match Self::compute_indexed_type(
-                    &field.ty,
-                    indices.len(),
-                    utils::trim_node_text_range(&field_access_node),
-                ) {
-                    Ok(ty) => ty,
-                    Err(e) => {
-                        self.new_error(e);
-                        return;
-                    }
+            let result_ty = match Self::compute_indexed_type(
+                &field.ty,
+                indices.len(),
+                utils::trim_node_text_range(&field_access_node),
+            ) {
+                Ok(ty) => ty,
+                Err(e) => {
+                    self.new_error(e);
+                    return;
                 }
             };
+
             // 如果 base_ty 是 const，需要继承
             let result_ty = if base_ty.is_const() && !result_ty.is_const() {
                 Ty::Const(Box::new(result_ty))
