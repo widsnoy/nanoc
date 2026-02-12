@@ -85,6 +85,7 @@ pub(crate) struct AnalyzeContext {
     pub(crate) current_scope: ScopeID,
     pub(crate) current_function_ret_type: Option<Ty>,
     pub(crate) loop_depth: usize,
+    pub(crate) overflowing_literals: HashMap<TextRange, String>,
 }
 
 #[derive(Debug, Default)]
@@ -136,6 +137,24 @@ impl Module {
     pub fn analyze(&mut self) {
         let root = SyntaxNode::new_root(self.green_tree.clone());
         self.walk(&root);
+
+        // 检查未处理的溢出字面量（没有被一元负号包裹的）
+        for (range, literal_text) in self.analyzing.overflowing_literals.drain() {
+            // 从字面量文本中提取类型
+            let ty_str = if literal_text.ends_with("i8") {
+                "i8"
+            } else {
+                "i32"
+            };
+
+            self.semantic_errors
+                .push(AnalyzeError::IntegerLiteralOverflow {
+                    literal: literal_text,
+                    ty: ty_str.to_string(),
+                    range,
+                });
+        }
+
         self.analyzing = AnalyzeContext::default();
     }
 

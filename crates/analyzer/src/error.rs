@@ -49,6 +49,23 @@ pub enum AnalyzeError {
         range: TextRange,
     },
 
+    #[error("integer literal out of range for type {ty}: {literal}")]
+    #[diagnostic(code(semantic::integer_literal_overflow))]
+    IntegerLiteralOverflow {
+        literal: String,
+        ty: String,
+        #[label("here")]
+        range: TextRange,
+    },
+
+    #[error("arithmetic overflow in constant expression: {message}")]
+    #[diagnostic(code(semantic::const_arithmetic_overflow))]
+    ConstArithmeticOverflow {
+        message: String,
+        #[label("overflow occurs here")]
+        range: TextRange,
+    },
+
     #[error("variable '{name}' is already defined")]
     #[diagnostic(code(semantic::variable_defined))]
     VariableDefined {
@@ -322,6 +339,8 @@ impl AnalyzeError {
             Self::ArgumentTypeMismatch(data) => &data.range,
             Self::TypeMismatch { range, .. }
             | Self::ConstantExprExpected { range }
+            | Self::IntegerLiteralOverflow { range, .. }
+            | Self::ConstArithmeticOverflow { range, .. }
             | Self::VariableDefined { range, .. }
             | Self::FunctionDefined { range, .. }
             | Self::VariableUndefined { range, .. }

@@ -134,8 +134,20 @@ impl ExprVisitor for Module {
             let lhs_val = self.value_table.get(&lhs.text_range()).unwrap();
             let rhs_val = self.value_table.get(&rhs.text_range()).unwrap();
 
-            if let Ok(val) = Value::eval(lhs_val, rhs_val, op.op().kind()) {
-                self.value_table.insert(node.text_range(), val);
+            match Value::eval(lhs_val, rhs_val, op.op().kind()) {
+                Ok(val) => {
+                    self.value_table.insert(node.text_range(), val);
+                }
+                Err(crate::value::EvalError::Overflow(msg)) => {
+                    // 常量表达式溢出，报告错误
+                    self.new_error(AnalyzeError::ConstArithmeticOverflow {
+                        message: msg,
+                        range: node.text_range(),
+                    });
+                }
+                Err(_) => {
+                    // 其他错误（类型不匹配等），忽略（不存储常量值）
+                }
             }
         }
     }
@@ -189,8 +201,61 @@ impl ExprVisitor for Module {
 
         if self.is_compile_time_constant(expr.text_range()) {
             let val = self.value_table.get(&expr.text_range()).unwrap().clone();
-            if let Ok(res) = Value::eval_unary(val, op.op().kind()) {
-                self.value_table.insert(node.text_range(), res);
+            
+            match Value::eval_unary(val.clone(), op.op().kind()) {
+                Ok(res) => {
+                    self.value_table.insert(node.text_range(), res);
+                }
+                Err(crate::value::EvalError::Overflow(msg)) => {
+                    // 常量表达式溢出，报告错误
+                    // 但需要检查是否是 -128i8 这样的特例
+                    let expr_range = expr.text_range();
+                    if op_kind == SyntaxKind::MINUS 
+                        && self.analyzing.overflowing_literals.contains_key(&expr_range) 
+                    {
+                        // 这是字面量溢出的情况，已经在字面量溢出检测中处理
+                        // 不报告一元运算溢出
+                    } else {
+                        // 普通的一元运算溢出
+                        self.new_error(AnalyzeError::ConstArithmeticOverflow {
+                            message: msg,
+                            range: node.text_range(),
+                        });
+                    }
+                }
+                Err(_) => {
+                    // 其他错误，忽略
+                }
+            }
+
+            // 检查溢出的字面量：如果操作数是溢出的字面量，且操作符是负号
+            if op_kind == SyntaxKind::MINUS {
+                let expr_range = expr.text_range();
+                if let Some(literal_text) = self.analyzing.overflowing_literals.get(&expr_range) {
+                    // 检查是否是特例（如 -128i8）
+                    // 特例：字面量截断后的值取负后等于自身（即最小负数）
+                    let is_min_value = match val {
+                        Value::I8(v) => v == i8::MIN,
+                        Value::I32(v) => v == i32::MIN,
+                        _ => false,
+                    };
+
+                    if !is_min_value {
+                        // 不是特例，报告溢出错误
+                        let ty_str = match val {
+                            Value::I8(_) => "i8",
+                            Value::I32(_) => "i32",
+                            _ => unreachable!(),
+                        };
+                        self.new_error(AnalyzeError::IntegerLiteralOverflow {
+                            literal: literal_text.clone(),
+                            ty: ty_str.to_string(),
+                            range: expr_range,
+                        });
+                    }
+                    // 从溢出列表中移除
+                    self.analyzing.overflowing_literals.remove(&expr_range);
+                }
             }
         }
     }
@@ -478,19 +543,77 @@ impl ExprVisitor for Module {
                 return;
             };
             let s = n.text();
-            let (num_str, radix) = match s.chars().next() {
-                Some('0') => match s.chars().nth(1) {
-                    Some('x') | Some('X') => (&s[2..], 16),
-                    Some(_) => (&s[1..], 8),
-                    None => (s, 10),
-                },
-                _ => (s, 10),
+
+            // 分离后缀
+            let (num_part, suffix) = if let Some(ss) = s.strip_suffix("i8") {
+                (ss, Some("i8"))
+            } else if let Some(ss) = s.strip_suffix("i32") {
+                (ss, Some("i32"))
+            } else {
+                (s, None)
             };
-            self.set_expr_type(range, Ty::I32);
-            Value::I32(match i32::from_str_radix(num_str, radix) {
+
+            // 解析进制
+            let (num_str, radix) = match num_part.chars().next() {
+                Some('0') => match num_part.chars().nth(1) {
+                    Some('x') | Some('X') => (&num_part[2..], 16),
+                    Some(_) if num_part.len() > 1 => (&num_part[1..], 8),
+                    _ => (num_part, 10),
+                },
+                _ => (num_part, 10),
+            };
+
+            // 根据后缀确定类型（默认 i32）
+            let ty = match suffix {
+                Some("i8") => Ty::I8,
+                Some("i32") | None => Ty::I32,
+                _ => unreachable!(),
+            };
+
+            // 使用 u128 解析，然后截断到目标类型
+            let value_u128 = match u128::from_str_radix(num_str, radix) {
                 Ok(v) => v,
-                Err(_) => return,
-            })
+                Err(_) => {
+                    // 解析失败（数字太大或格式错误）
+                    self.semantic_errors
+                        .push(crate::error::AnalyzeError::IntegerLiteralOverflow {
+                            literal: s.to_string(),
+                            ty: match ty {
+                                Ty::I8 => "i8",
+                                Ty::I32 => "i32",
+                                _ => unreachable!(),
+                            }
+                            .to_string(),
+                            range,
+                        });
+                    return;
+                }
+            };
+
+            // 检查是否溢出（超出有符号类型的正数范围）
+            let overflows = match ty {
+                Ty::I8 => value_u128 > i8::MAX as u128,
+                Ty::I32 => value_u128 > i32::MAX as u128,
+                _ => unreachable!(),
+            };
+
+            // 截断到目标类型
+            let value = match ty {
+                Ty::I8 => Value::I8(value_u128 as i8),
+                Ty::I32 => Value::I32(value_u128 as i32),
+                _ => unreachable!(),
+            };
+
+            // 如果溢出，标记此字面量（后续在一元负号处理时检查）
+            if overflows {
+                // 记录溢出的字面量，用于后续检测 -128i8 特例
+                self.analyzing
+                    .overflowing_literals
+                    .insert(range, s.to_string());
+            }
+
+            self.set_expr_type(range, ty);
+            value
         };
         self.value_table.insert(range, v);
     }

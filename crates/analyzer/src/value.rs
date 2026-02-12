@@ -22,6 +22,7 @@ pub enum Value {
 pub enum EvalError {
     TypeMismatch,
     UnsupportedOperation(String),
+    Overflow(String),
 }
 
 impl Value {
@@ -193,9 +194,30 @@ impl Value {
 
         match (lhs, rhs) {
             (Value::I32(l), Value::I32(r)) => match op {
-                PLUS => Ok(Value::I32(l + r)),
-                MINUS => Ok(Value::I32(l - r)),
-                STAR => Ok(Value::I32(l * r)),
+                PLUS => {
+                    let (result, overflow) = l.overflowing_add(*r);
+                    if overflow {
+                        Err(EvalError::Overflow(format!("{} + {} overflows i32", l, r)))
+                    } else {
+                        Ok(Value::I32(result))
+                    }
+                }
+                MINUS => {
+                    let (result, overflow) = l.overflowing_sub(*r);
+                    if overflow {
+                        Err(EvalError::Overflow(format!("{} - {} overflows i32", l, r)))
+                    } else {
+                        Ok(Value::I32(result))
+                    }
+                }
+                STAR => {
+                    let (result, overflow) = l.overflowing_mul(*r);
+                    if overflow {
+                        Err(EvalError::Overflow(format!("{} * {} overflows i32", l, r)))
+                    } else {
+                        Ok(Value::I32(result))
+                    }
+                }
                 SLASH => {
                     if *r == 0 {
                         Err(EvalError::UnsupportedOperation(
@@ -223,9 +245,30 @@ impl Value {
                 _ => Err(EvalError::TypeMismatch),
             },
             (Value::I8(l), Value::I8(r)) => match op {
-                PLUS => Ok(Value::I8(l + r)),
-                MINUS => Ok(Value::I8(l - r)),
-                STAR => Ok(Value::I8(l * r)),
+                PLUS => {
+                    let (result, overflow) = l.overflowing_add(*r);
+                    if overflow {
+                        Err(EvalError::Overflow(format!("{} + {} overflows i8", l, r)))
+                    } else {
+                        Ok(Value::I8(result))
+                    }
+                }
+                MINUS => {
+                    let (result, overflow) = l.overflowing_sub(*r);
+                    if overflow {
+                        Err(EvalError::Overflow(format!("{} - {} overflows i8", l, r)))
+                    } else {
+                        Ok(Value::I8(result))
+                    }
+                }
+                STAR => {
+                    let (result, overflow) = l.overflowing_mul(*r);
+                    if overflow {
+                        Err(EvalError::Overflow(format!("{} * {} overflows i8", l, r)))
+                    } else {
+                        Ok(Value::I8(result))
+                    }
+                }
                 SLASH => {
                     if *r == 0 {
                         Err(EvalError::UnsupportedOperation(
@@ -286,12 +329,12 @@ impl Value {
             PLUS | MINUS => match val {
                 Value::I32(v) => match op {
                     PLUS => Ok(Value::I32(v)),
-                    MINUS => Ok(Value::I32(-v)),
+                    MINUS => Ok(Value::I32(v.wrapping_neg())),
                     _ => unreachable!(),
                 },
                 Value::I8(v) => match op {
                     PLUS => Ok(Value::I8(v)),
-                    MINUS => Ok(Value::I8(-v)),
+                    MINUS => Ok(Value::I8(v.wrapping_neg())),
                     _ => unreachable!(),
                 },
                 Value::Bool(_) => {
