@@ -203,18 +203,9 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                             .build_int_sub(i1, i2, "diff")
                             .map_err(|_| CodegenError::LlvmBuild("sub"))?;
 
-                        // size_of 返回的是 IntValue，可能需要扩展到 i64
-                        let size_val_i64 = if size_val.get_type() == i64_ty {
-                            size_val
-                        } else {
-                            self.builder
-                                .build_int_z_extend(size_val, i64_ty, "size.ext")
-                                .map_err(|_| CodegenError::LlvmBuild("zext"))?
-                        };
-
                         let result = self
                             .builder
-                            .build_int_signed_div(diff, size_val_i64, "ptr.diff")
+                            .build_int_signed_div(diff, size_val, "ptr.diff")
                             .map_err(|_| CodegenError::LlvmBuild("div"))?;
                         let i32_ty = self.context.i32_type();
                         // FIXME:

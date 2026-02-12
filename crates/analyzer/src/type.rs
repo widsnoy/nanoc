@@ -2,6 +2,15 @@ use crate::{module::StructID, value::Value};
 use std::fmt::{self};
 use syntax::SyntaxKind;
 
+/// 一元操作验证错误类型
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UnaryOpError {
+    /// void 指针解引用错误
+    VoidPointerDeref,
+    /// 无效的操作符应用
+    InvalidOp,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ty {
     I32,
@@ -117,7 +126,7 @@ impl Ty {
             Ty::I32 => Value::I32(0),
             Ty::I8 => Value::I8(0),
             Ty::Bool => Value::Bool(false),
-            Ty::Void => Value::I32(0),
+            Ty::Void => unreachable!("void type should not have a constant zero value"),
             Ty::Array(ntype, _) => ntype.const_zero(),
             Ty::Pointer { .. } => Value::Null,
             Ty::Struct { id, .. } => Value::StructZero(*id),
@@ -211,7 +220,11 @@ impl Ty {
 
     /// 验证一元操作符并计算结果类型        
     /// 结果总是非 const
-    pub fn validate_unary_op(&self, op: SyntaxKind) -> Option<Ty> {
+    ///
+    /// 返回值：
+    /// - Ok(Ty): 操作合法，返回结果类型
+    /// - Err(UnaryOpError): 操作非法，返回错误类型
+    pub fn validate_unary_op(&self, op: SyntaxKind) -> Result<Ty, UnaryOpError> {
         use SyntaxKind::*;
 
         // 先去掉 const 包装
@@ -219,27 +232,54 @@ impl Ty {
 
         match (&unwrapped, op) {
             // 算术运算符: +, -
-            (Ty::I32, PLUS | MINUS) => Some(Ty::I32),
-            (Ty::I8, PLUS | MINUS) => Some(Ty::I8),
-            (Ty::Bool, PLUS | MINUS) => Some(Ty::I32), // bool 提升到 i32
+            (Ty::I32, PLUS | MINUS) => Ok(Ty::I32),
+            (Ty::I8, PLUS | MINUS) => Ok(Ty::I8),
+            (Ty::Bool, PLUS | MINUS) => Ok(Ty::I32), // bool 提升到 i32
 
             // 逻辑非: ! - 接受整数类型
-            (Ty::Bool | Ty::I32 | Ty::I8, BANG) => Some(Ty::Bool),
+            (Ty::Bool | Ty::I32 | Ty::I8, BANG) => Ok(Ty::Bool),
 
             // 取地址: &
             // 注意：这里生成的指针类型是 *mut，不继承 const
-            (ty, AMP) => Some(Ty::Pointer {
+            (ty, AMP) => Ok(Ty::Pointer {
                 pointee: Box::new(ty.clone()),
                 is_const: false,
             }),
 
             // 解引用: *
             // 不检查指针的 const/mut 修饰符
-            (Ty::Pointer { pointee, .. }, STAR) => Some((**pointee).clone()),
+            (Ty::Pointer { pointee, .. }, STAR) => {
+                // 检查是否为 void 指针
+                if matches!(pointee.as_ref(), Ty::Void) {
+                    Err(UnaryOpError::VoidPointerDeref)
+                } else {
+                    Ok((**pointee).clone())
+                }
+            }
 
             // 其他情况不合法
-            _ => None,
+            _ => Err(UnaryOpError::InvalidOp),
         }
         // 注意：结果总是非 const
+    }
+
+    /// 检查类型是否为非法的 void 使用
+    /// 返回 true 表示这是一个非法的 void 类型使用
+    /// void 只能用于：1) 函数返回类型 2) 指针类型 (*void)
+    pub fn is_invalid_void_usage(&self) -> bool {
+        match self {
+            Ty::Void => true, // 直接的 void 类型是非法的
+            Ty::Const(inner) => inner.is_invalid_void_usage(),
+            _ => false,
+        }
+    }
+
+    /// 检查类型是否为 void 指针
+    pub fn is_void_pointer(&self) -> bool {
+        match self {
+            Ty::Pointer { pointee, .. } => matches!(pointee.as_ref(), Ty::Void),
+            Ty::Const(inner) => inner.is_void_pointer(),
+            _ => false,
+        }
     }
 }

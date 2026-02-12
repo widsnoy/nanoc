@@ -113,6 +113,15 @@ impl FuncVisitor for Module {
                     return;
                 }
             };
+
+        // 检查是否为非法的 void 使用
+        if param_type.is_invalid_void_usage() {
+            self.new_error(AnalyzeError::InvalidVoidUsage {
+                range: ty_node.text_range(),
+            });
+            return;
+        }
+
         let scope = self.scopes.get_mut(*self.analyzing.current_scope).unwrap();
 
         if scope.have_variable_def(&name) {

@@ -534,6 +534,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
             return Ok(val);
         }
 
+        // 透明指针
+        if from.is_pointer() && to.is_pointer() {
+            return Ok(val);
+        }
+
+        // 整数类型转换
         let int_val = val.into_int_value();
 
         match (from, to) {

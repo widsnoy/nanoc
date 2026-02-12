@@ -35,6 +35,13 @@ pub fn parse_type_node(
             return Ok(None);
         };
 
+        // 检查数组元素类型是否为非法的 void 使用
+        if inner.is_invalid_void_usage() {
+            return Err(AnalyzeError::InvalidVoidUsage {
+                range: inner_node.text_range(),
+            });
+        }
+
         // 解析数组大小
         let size = if let Some(expr_node) = ty_node.size_expr() {
             if let Some(vt) = value_table {

@@ -7,7 +7,7 @@ use syntax::visitor::ExprVisitor;
 use crate::array::ArrayTreeValue;
 use crate::error::AnalyzeError;
 use crate::module::{Module, ReferenceTag};
-use crate::r#type::Ty;
+use crate::r#type::{Ty, UnaryOpError};
 use crate::value::Value;
 
 impl ExprVisitor for Module {
@@ -107,15 +107,25 @@ impl ExprVisitor for Module {
             }
 
             match inner_ty.validate_unary_op(op_kind) {
-                Some(result_ty) => {
+                Ok(result_ty) => {
                     self.set_expr_type(node.text_range(), result_ty);
                 }
-                None => {
-                    self.new_error(AnalyzeError::ApplyOpOnType {
-                        ty: inner_ty.clone(),
-                        op: op.op_str(),
-                        range: utils::trim_node_text_range(&expr),
-                    });
+                Err(err) => {
+                    let trimmed_range = utils::trim_node_text_range(&expr);
+                    match err {
+                        UnaryOpError::VoidPointerDeref => {
+                            self.new_error(AnalyzeError::VoidPointerDeref {
+                                range: trimmed_range,
+                            });
+                        }
+                        UnaryOpError::InvalidOp => {
+                            self.new_error(AnalyzeError::ApplyOpOnType {
+                                ty: inner_ty.clone(),
+                                op: op.op_str(),
+                                range: trimmed_range,
+                            });
+                        }
+                    }
                     return;
                 }
             }

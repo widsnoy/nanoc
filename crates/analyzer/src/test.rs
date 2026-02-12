@@ -546,3 +546,129 @@ fn test_undefined_variable_error() {
         _ => panic!("Expected VariableUndefined error"),
     }
 }
+
+// ========== void 类型限制测试 ==========
+
+#[test]
+fn test_void_variable_error() {
+    let source = r#"
+    fn main() -> i32 {
+        let x: void;
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.semantic_errors.is_empty());
+    assert!(matches!(
+        module.semantic_errors[0],
+        AnalyzeError::InvalidVoidUsage { .. }
+    ));
+}
+
+#[test]
+fn test_void_parameter_error() {
+    let source = r#"
+    fn foo(x: void) -> i32 {
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.semantic_errors.is_empty());
+    assert!(matches!(
+        module.semantic_errors[0],
+        AnalyzeError::InvalidVoidUsage { .. }
+    ));
+}
+
+#[test]
+fn test_void_struct_field_error() {
+    let source = r#"
+    struct Foo {
+        x: void,
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.semantic_errors.is_empty());
+    assert!(matches!(
+        module.semantic_errors[0],
+        AnalyzeError::InvalidVoidUsage { .. }
+    ));
+}
+
+#[test]
+fn test_void_array_element_error() {
+    let source = r#"
+    fn main() -> i32 {
+        let arr: [void; 10];
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.semantic_errors.is_empty());
+    assert!(matches!(
+        module.semantic_errors[0],
+        AnalyzeError::InvalidVoidUsage { .. }
+    ));
+}
+
+#[test]
+fn test_void_pointer_deref_error() {
+    let source = r#"
+    fn main() -> i32 {
+        let p: *mut void;
+        let x: i32 = *p;
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.semantic_errors.is_empty());
+    // 应该有 VoidPointerDeref 错误
+    assert!(matches!(
+        module.semantic_errors[0],
+        AnalyzeError::VoidPointerDeref { .. }
+    ));
+}
+
+#[test]
+fn test_void_return_type_ok() {
+    let source = r#"
+    fn foo() -> void {
+        return;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(module.semantic_errors.is_empty());
+}
+
+#[test]
+fn test_void_pointer_ok() {
+    let source = r#"
+    let p: *mut void = null;
+    let q: *const void = null;
+    
+    fn main() -> i32 {
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    if !module.semantic_errors.is_empty() {
+        eprintln!("Unexpected errors: {:?}", module.semantic_errors);
+    }
+    assert!(module.semantic_errors.is_empty());
+}
+
+#[test]
+fn test_const_void_variable_error() {
+    let source = r#"
+    fn main() -> i32 {
+        let x: const void;
+        return 0;
+    }
+    "#;
+    let module = analyze(source);
+    assert!(!module.semantic_errors.is_empty());
+    assert!(matches!(
+        module.semantic_errors[0],
+        AnalyzeError::InvalidVoidUsage { .. }
+    ));
+}

@@ -48,6 +48,14 @@ impl DeclVisitor for Module {
                 }
             };
 
+            // 检查是否为非法的 void 使用
+            if ty.is_invalid_void_usage() {
+                self.new_error(AnalyzeError::InvalidVoidUsage {
+                    range: ty_node.text_range(),
+                });
+                return;
+            }
+
             if !field_names.insert(name.clone()) {
                 self.new_error(AnalyzeError::VariableDefined { name, range });
                 continue;
@@ -99,6 +107,14 @@ impl DeclVisitor for Module {
                 return;
             }
         };
+
+        // 检查是否为非法的 void 使用
+        if var_type.is_invalid_void_usage() {
+            self.new_error(AnalyzeError::InvalidVoidUsage {
+                range: ty_node.text_range(),
+            });
+            return;
+        }
 
         let current_scope = self.analyzing.current_scope;
         let scope = self.scopes.get_mut(*current_scope).unwrap();

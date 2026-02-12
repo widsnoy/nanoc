@@ -144,6 +144,23 @@ pub enum AnalyzeError {
         range: TextRange,
     },
 
+    #[error("invalid_void_usage")]
+    #[diagnostic(
+        code(semantic::invalid_void_usage),
+        help("void type can only be used as function return type or pointer type")
+    )]
+    InvalidVoidUsage {
+        #[label("here")]
+        range: TextRange,
+    },
+
+    #[error("cannot dereference void pointer")]
+    #[diagnostic(code(semantic::void_pointer_deref))]
+    VoidPointerDeref {
+        #[label("here")]
+        range: TextRange,
+    },
+
     #[error("function '{name}' is not defined")]
     #[diagnostic(code(semantic::function_undefined))]
     FunctionUndefined {
@@ -299,6 +316,8 @@ impl AnalyzeError {
             | Self::ReturnTypeMismatch { range, .. }
             | Self::NotALValue { range }
             | Self::ApplyOpOnType { range, .. }
+            | Self::InvalidVoidUsage { range }
+            | Self::VoidPointerDeref { range }
             | Self::AddressOfRight { range }
             | Self::FunctionImplemented { range, .. }
             | Self::FunctionUnImplemented { range, .. }
