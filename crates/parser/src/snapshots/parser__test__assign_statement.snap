@@ -30,9 +30,9 @@ COMP_UNIT@0..78
         SEMI@30..31 ";"
       ASSIGN_STMT@31..47
         UNARY_EXPR@31..42
-          UNARY_OP@31..41
-            NEWLINE@31..32 "\n"
-            WHITESPACE@32..40 "        "
+          NEWLINE@31..32 "\n"
+          WHITESPACE@32..40 "        "
+          UNARY_OP@40..41
             STAR@40..41 "*"
           INDEX_VAL@41..42
             NAME@41..42

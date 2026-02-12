@@ -23,16 +23,16 @@ COMP_UNIT@0..261
         INDEX_VAL@18..19
           NAME@18..19
             IDENT@18..19 "a"
-        BINARY_OP@19..21
-          WHITESPACE@19..20 " "
+        WHITESPACE@19..20 " "
+        BINARY_OP@20..21
           PLUS@20..21 "+"
         BINARY_EXPR@21..27
           INDEX_VAL@21..23
             WHITESPACE@21..22 " "
             NAME@22..23
               IDENT@22..23 "b"
-          BINARY_OP@23..25
-            WHITESPACE@23..24 " "
+          WHITESPACE@23..24 " "
+          BINARY_OP@24..25
             STAR@24..25 "*"
           INDEX_VAL@25..27
             WHITESPACE@25..26 " "
@@ -62,16 +62,16 @@ COMP_UNIT@0..261
             INDEX_VAL@47..48
               NAME@47..48
                 IDENT@47..48 "a"
-            BINARY_OP@48..50
-              WHITESPACE@48..49 " "
+            WHITESPACE@48..49 " "
+            BINARY_OP@49..50
               PLUS@49..50 "+"
             INDEX_VAL@50..52
               WHITESPACE@50..51 " "
               NAME@51..52
                 IDENT@51..52 "b"
           R_PAREN@52..53 ")"
-        BINARY_OP@53..55
-          WHITESPACE@53..54 " "
+        WHITESPACE@53..54 " "
+        BINARY_OP@54..55
           STAR@54..55 "*"
         INDEX_VAL@55..57
           WHITESPACE@55..56 " "
@@ -98,16 +98,16 @@ COMP_UNIT@0..261
         INDEX_VAL@76..77
           NAME@76..77
             IDENT@76..77 "a"
-        BINARY_OP@77..80
-          WHITESPACE@77..78 " "
+        WHITESPACE@77..78 " "
+        BINARY_OP@78..80
           PIPEPIPE@78..80 "||"
         BINARY_EXPR@80..87
           INDEX_VAL@80..82
             WHITESPACE@80..81 " "
             NAME@81..82
               IDENT@81..82 "b"
-          BINARY_OP@82..85
-            WHITESPACE@82..83 " "
+          WHITESPACE@82..83 " "
+          BINARY_OP@83..85
             AMPAMP@83..85 "&&"
           INDEX_VAL@85..87
             WHITESPACE@85..86 " "
@@ -134,8 +134,8 @@ COMP_UNIT@0..261
         INDEX_VAL@106..107
           NAME@106..107
             IDENT@106..107 "a"
-        BINARY_OP@107..110
-          WHITESPACE@107..108 " "
+        WHITESPACE@107..108 " "
+        BINARY_OP@108..110
           EQEQ@108..110 "=="
         INDEX_VAL@110..112
           WHITESPACE@110..111 " "
@@ -162,8 +162,8 @@ COMP_UNIT@0..261
         INDEX_VAL@133..134
           NAME@133..134
             IDENT@133..134 "a"
-        BINARY_OP@134..136
-          WHITESPACE@134..135 " "
+        WHITESPACE@134..135 " "
+        BINARY_OP@135..136
           LT@135..136 "<"
         INDEX_VAL@136..138
           WHITESPACE@136..137 " "
@@ -193,12 +193,12 @@ COMP_UNIT@0..261
           INDEX_VAL@162..163
             NAME@162..163
               IDENT@162..163 "a"
-        BINARY_OP@163..165
-          WHITESPACE@163..164 " "
+        WHITESPACE@163..164 " "
+        BINARY_OP@164..165
           PLUS@164..165 "+"
         UNARY_EXPR@165..168
-          UNARY_OP@165..167
-            WHITESPACE@165..166 " "
+          WHITESPACE@165..166 " "
+          UNARY_OP@166..167
             BANG@166..167 "!"
           INDEX_VAL@167..168
             NAME@167..168
@@ -227,12 +227,12 @@ COMP_UNIT@0..261
           INDEX_VAL@190..191
             NAME@190..191
               IDENT@190..191 "p"
-        BINARY_OP@191..193
-          WHITESPACE@191..192 " "
+        WHITESPACE@191..192 " "
+        BINARY_OP@192..193
           PLUS@192..193 "+"
         UNARY_EXPR@193..196
-          UNARY_OP@193..195
-            WHITESPACE@193..194 " "
+          WHITESPACE@193..194 " "
+          UNARY_OP@194..195
             AMP@194..195 "&"
           INDEX_VAL@195..196
             NAME@195..196

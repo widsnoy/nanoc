@@ -32,8 +32,8 @@ COMP_UNIT@0..68
             WHITESPACE@33..41 "        "
             NAME@41..42
               IDENT@41..42 "a"
-          BINARY_OP@42..44
-            WHITESPACE@42..43 " "
+          WHITESPACE@42..43 " "
+          BINARY_OP@43..44
             PLUS@43..44 "+"
           INDEX_VAL@44..46
             WHITESPACE@44..45 " "

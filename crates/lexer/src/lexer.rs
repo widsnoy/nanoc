@@ -135,9 +135,9 @@ pub enum Token {
     IDENT,
     #[regex(r#""([^"\\]|\\.)*""#)]
     STRING_LITERAL,
-    #[regex(r"0[xX][0-9a-fA-F]+", priority = 3)]
-    #[regex(r"0[0-7]*", priority = 3)]
-    #[regex(r"[1-9][0-9]*", priority = 3)]
+    #[regex(r"0[xX][0-9a-fA-F]+(i8|i32)?", priority = 3)]
+    #[regex(r"0[0-7]*(i8|i32)?", priority = 3)]
+    #[regex(r"[1-9][0-9]*(i8|i32)?", priority = 3)]
     INT_LITERAL,
 }
 

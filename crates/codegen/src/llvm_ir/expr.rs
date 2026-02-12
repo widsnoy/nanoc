@@ -404,34 +404,8 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
     }
 
     fn compile_literal(&mut self, expr: Literal) -> Result<BasicValueEnum<'ctx>> {
-        if let Some(int_token) = expr.int_token() {
-            let s = int_token.text().to_string();
-            let (num_str, radix) = match s.chars().next() {
-                Some('0') => match s.chars().nth(1) {
-                    Some('x') | Some('X') => (&s[2..], 16),
-                    Some(_) => (&s[1..], 8),
-                    None => (&s[..], 10),
-                },
-                _ => (&s[..], 10),
-            };
-            let v = i32::from_str_radix(num_str, radix)
-                .map_err(|_| CodegenError::Unsupported(format!("invalid int: {}", s)))?;
-            return Ok(self.context.i32_type().const_int(v as u64, true).into());
-        }
-        if let Some(string_token) = expr.string_token() {
-            // 字符串字面量
-            let s = string_token.text();
-            let content = &s[1..s.len() - 1]; // 去掉引号
-
-            let ptr = self.get_or_create_string_constant(content)?;
-            return Ok(ptr.into());
-        }
-        if expr.null_token().is_some() {
-            // 生成 null 指针
-            let ptr_ty = self.context.ptr_type(inkwell::AddressSpace::default());
-            return Ok(ptr_ty.const_null().into());
-        }
-        Err(CodegenError::Unsupported("unknown literal".into()))
+        let range = expr.text_range();
+        self.get_const_var_value_by_range(range, None)
     }
 
     /// 获取 struct 字段的指针
