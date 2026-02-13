@@ -760,12 +760,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                     .builder
                     .build_int_signed_div(diff, size_val, "ptr.diff")
                     .map_err(|_| CodegenError::LlvmBuild("div"))?;
-                let i32_ty = self.context.i32_type();
-                let truncated = self
-                    .builder
-                    .build_int_truncate(result, i32_ty, "diff.i32")
-                    .map_err(|_| CodegenError::LlvmBuild("trunc"))?;
-                Ok(truncated.into())
+                Ok(result.into())
             }
             // 指针比较运算
             SyntaxKind::EQEQ

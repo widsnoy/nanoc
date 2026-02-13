@@ -219,7 +219,7 @@ impl Ty {
                     {
                         Some(r.clone())
                     }
-                    (l, r) if l.is_pointer() && r.is_pointer() && op == MINUS => Some(Ty::I32),
+                    (l, r) if l.is_pointer() && r.is_pointer() && op == MINUS => Some(Ty::I64),
 
                     // 相同类型保持不变
                     (Ty::I32, Ty::I32) => Some(Ty::I32),
