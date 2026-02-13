@@ -13,7 +13,7 @@ Path        := String ['::' Ident]
 GlobalDecl  := VarDef | FuncDef | StructDef | FuncAttach
 
 Type        := ['const'] PrimitType | Pointer Type | '[' Type ';' Expr ']'
-PrimitType  := 'void' | 'i32' | 'i8' | 'bool' | 'struct' Name
+PrimitType  := 'void' | 'i64' | 'i32' | 'i8' | 'u64' | 'u32' | 'u8' | 'bool' | 'struct' Name
 Pointer     := '*' ('mut' | 'const')
 
 VarDef      := 'let' Name ':' Type ['=' InitVal] ';'
@@ -73,7 +73,7 @@ ParenExpr   := '(' Expr ')'
 IndexVal    := Name {'[' Expr ']'}
 FieldAccess := Name {'[' Expr ']'}
 
-Literal     := IntLiteral | 'null'
+Literal     := IntLiteral | char | String | 'null'
 Name        := Ident
 ```
 
