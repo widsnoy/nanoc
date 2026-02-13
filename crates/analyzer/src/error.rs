@@ -98,6 +98,14 @@ pub enum AnalyzeError {
         range: TextRange,
     },
 
+    #[error("can't implement for external function {name}")]
+    #[diagnostic(code(semantic::implement_external_function))]
+    ImplementExternalFunction {
+        name: String,
+        #[label("here")]
+        range: TextRange,
+    },
+
     #[error("variable '{name}' is not defined")]
     #[diagnostic(code(semantic::variable_undefined))]
     VariableUndefined {
@@ -373,6 +381,7 @@ impl AnalyzeError {
             | Self::AddressOfRight { range }
             | Self::FunctionImplemented { range, .. }
             | Self::FunctionUnImplemented { range, .. }
+            | Self::ImplementExternalFunction { range, .. }
             | Self::CircularDependency { range }
             | Self::ImportPathNotFound { range, .. }
             | Self::ImportSymbolNotFound { range, .. }

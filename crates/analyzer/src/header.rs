@@ -1,6 +1,9 @@
 //! 头文件分析器：解析 import 语句，导入符号
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use syntax::{AstNode as _, SyntaxNode, ast::CompUnit};
 use tools::TextRange;
@@ -42,12 +45,25 @@ impl HeaderAnalyzer {
         let mut imports = Vec::new();
         let mut errors = Vec::new();
         let root = SyntaxNode::new_root(module.green_tree.clone());
+        let current_dir = if let Some(current_path) = vfs
+            .get_file_by_file_id(&current_file_id)
+            .map(|f| f.path.clone())
+            && let Some(current_dir) = current_path.parent()
+        {
+            current_dir.to_path_buf()
+        } else {
+            return ModuleImports {
+                file_id: current_file_id,
+                imports: vec![],
+                errors: vec![],
+            };
+        };
 
         if let Some(comp_unit) = CompUnit::cast(root) {
             for header in comp_unit.headers() {
                 if let Some(path_node) = header.path() {
                     let path_node_range_trimmed = utils::trim_node_text_range(&path_node);
-                    match Self::resolve_import_path(&path_node, current_file_id, vfs) {
+                    match Self::resolve_import_path(&path_node, &current_dir, vfs) {
                         Ok((target_file_id, symbol_name)) => {
                             match Self::collect_import_info(
                                 target_file_id,
@@ -88,7 +104,7 @@ impl HeaderAnalyzer {
     /// 解析 import 路径，返回目标文件 ID 和可选的符号名
     fn resolve_import_path(
         path_node: &syntax::ast::Path,
-        current_file_id: FileID,
+        current_dir: &Path,
         vfs: &Vfs,
     ) -> Result<(FileID, Option<String>), AnalyzeError> {
         let path_node_range_trimmed = utils::trim_node_text_range(path_node);
@@ -100,32 +116,30 @@ impl HeaderAnalyzer {
                     range: path_node_range_trimmed,
                 })?;
 
-        let path_with_quotes = path_token.text();
-        let path_text = path_with_quotes.trim_matches('"');
+        let unescape_path =
+            snailquote::unescape(path_token.text()).map_err(|e| AnalyzeError::UnescapeError {
+                err: Box::new(e),
+                range: path_token.text_range().into(),
+            })?;
+        let header_path = PathBuf::from(unescape_path);
 
         let symbol_name = path_node.symbol().map(|s| s.text().to_string());
 
-        let current_file = vfs.get_file_by_file_id(&current_file_id).ok_or_else(|| {
-            AnalyzeError::ImportPathNotFound {
-                path: path_text.to_string(),
+        let mut target_path: PathBuf = current_dir.into();
+        target_path.push(header_path);
+        if target_path.extension().is_none() {
+            target_path.set_extension("airy");
+        }
+        target_path = target_path
+            .canonicalize()
+            .map_err(|e| AnalyzeError::ImportPathNotFound {
+                path: format!("{:?}", e),
                 range: path_node_range_trimmed,
-            }
-        })?;
-
-        let current_dir = current_file
-            .path
-            .parent()
-            .unwrap_or(std::path::Path::new(""));
-
-        let target_path = if path_text.ends_with(".airy") {
-            current_dir.join(path_text)
-        } else {
-            current_dir.join(format!("{}.airy", path_text))
-        };
+            })?;
 
         let target_file_id = vfs.get_file_id_by_path(&target_path).ok_or_else(|| {
             AnalyzeError::ImportPathNotFound {
-                path: format!("{} (resolved to {:?})", path_text, target_path),
+                path: format!("{:?}", target_path),
                 range: path_node_range_trimmed,
             }
         })?;

@@ -206,7 +206,7 @@ impl Module {
             params,
             meta_types,
             ret_type,
-            have_impl,
+            have_local_impl: have_impl,
             is_variadic,
             range,
         };
@@ -400,7 +400,7 @@ pub struct Function {
     pub params: Vec<VariableID>,
     pub meta_types: Vec<(String, Ty)>,
     pub ret_type: Ty,
-    pub have_impl: bool,
+    pub have_local_impl: bool,
     pub is_variadic: bool,
     pub range: TextRange,
 }
