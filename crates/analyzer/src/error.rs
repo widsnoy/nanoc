@@ -276,13 +276,6 @@ pub enum AnalyzeError {
         range: TextRange,
     },
 
-    #[error("circular dependency detected in module imports")]
-    #[diagnostic(code(semantic::circular_dependency))]
-    CircularDependency {
-        #[label("this module is part of a circular dependency")]
-        range: TextRange,
-    },
-
     #[error("import path not found: {path}")]
     #[diagnostic(code(semantic::import_path_not_found))]
     ImportPathNotFound {
@@ -383,7 +376,6 @@ impl AnalyzeError {
             | Self::AddressOfRight { range }
             | Self::FunctionImplemented { range, .. }
             | Self::ImplementExternalFunction { range, .. }
-            | Self::CircularDependency { range }
             | Self::ImportPathNotFound { range, .. }
             | Self::ImportSymbolNotFound { range, .. }
             | Self::ImportSymbolConflict { range, .. }
