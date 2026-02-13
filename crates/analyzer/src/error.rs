@@ -99,14 +99,6 @@ pub enum AnalyzeError {
         range: TextRange,
     },
 
-    #[error("function '{name}' is not implemented")]
-    #[diagnostic(code(semantic::function_unimplemented))]
-    FunctionUnImplemented {
-        name: String,
-        #[label("here")]
-        range: TextRange,
-    },
-
     #[error("can't implement for external function {name}")]
     #[diagnostic(code(semantic::implement_external_function))]
     ImplementExternalFunction {
@@ -390,7 +382,6 @@ impl AnalyzeError {
             | Self::VoidPointerDeref { range }
             | Self::AddressOfRight { range }
             | Self::FunctionImplemented { range, .. }
-            | Self::FunctionUnImplemented { range, .. }
             | Self::ImplementExternalFunction { range, .. }
             | Self::CircularDependency { range }
             | Self::ImportPathNotFound { range, .. }
