@@ -43,31 +43,28 @@ pub fn parse_type_node(
         }
 
         // 解析数组大小
-        let size = if let Some(expr_node) = ty_node.size_expr() {
-            if let Some(vt) = value_table {
-                let expr_range = expr_node.text_range();
-                match vt.get(&expr_range) {
-                    Some(Value::I32(n)) => Some(*n),
-                    Some(Value::I8(n)) => Some(*n as i32),
-                    Some(other_value) => {
-                        return Err(AnalyzeError::TypeMismatch {
-                            expected: Ty::Const(Box::new(Ty::I32)),
-                            found: other_value.get_type(module),
-                            range: utils::trim_node_text_range(&expr_node),
-                        });
-                    }
-                    None => {
-                        return Err(AnalyzeError::ConstantExprExpected {
-                            range: utils::trim_node_text_range(&expr_node),
-                        });
+        let size =
+            match (ty_node.size_expr(), value_table) {
+                (Some(expr_node), Some(vt)) => {
+                    let expr_range = expr_node.text_range();
+                    match vt.get(&expr_range) {
+                        Some(value) => Some(value.get_array_size().ok_or_else(|| {
+                            AnalyzeError::TypeMismatch {
+                                expected: Ty::I32,
+                                found: value.get_type(module),
+                                range: utils::trim_node_text_range(&expr_node),
+                            }
+                        })?),
+                        None => {
+                            return Err(AnalyzeError::ConstantExprExpected {
+                                range: utils::trim_node_text_range(&expr_node),
+                            });
+                        }
                     }
                 }
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+                (Some(_), None) => None,
+                (None, _) => None,
+            };
 
         Ok(Some(Ty::Array(Box::new(inner), size)))
     } else if let Some(pointer) = ty_node.pointer() {
@@ -94,6 +91,14 @@ pub fn parse_type_node(
             Ty::I32
         } else if pt_node.i8_token().is_some() {
             Ty::I8
+        } else if pt_node.u8_token().is_some() {
+            Ty::U8
+        } else if pt_node.u32_token().is_some() {
+            Ty::U32
+        } else if pt_node.i64_token().is_some() {
+            Ty::I64
+        } else if pt_node.u64_token().is_some() {
+            Ty::U64
         } else if pt_node.bool_token().is_some() {
             Ty::Bool
         } else if pt_node.void_token().is_some() {
@@ -231,7 +236,14 @@ impl Module {
 
         match &inner_ty {
             // 标量类型：期望一个表达式
-            Ty::I32 | Ty::I8 | Ty::Bool | Ty::Pointer { .. } => {
+            Ty::I32
+            | Ty::I8
+            | Ty::U8
+            | Ty::U32
+            | Ty::I64
+            | Ty::U64
+            | Ty::Bool
+            | Ty::Pointer { .. } => {
                 let Some(expr) = init_val_node.expr() else {
                     // 期望表达式，但得到了初始化列表
                     return Err(AnalyzeError::ConstantExprExpected {

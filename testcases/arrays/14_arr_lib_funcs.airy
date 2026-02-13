@@ -1,5 +1,5 @@
-fn scanf(format: *const i8, ...);
-fn printf(t: *const i8, ...);
+fn scanf(format: *const u8, ...);
+fn printf(t: *const u8, ...);
 
 fn __airyc_getarray(arr: *mut i32) -> i32 {
     let n: i32 = 0;

@@ -1,4 +1,4 @@
-fn printf(t: *const i8, ...);
+fn printf(t: *const u8, ...);
 
 fn main() -> i32 {
     printf("=== Advanced Escape Sequences ===\n");

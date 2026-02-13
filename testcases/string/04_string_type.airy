@@ -1,9 +1,9 @@
-fn printf(t: *const i8, ...);
-fn puts(s: *const i8) -> i32;
+fn printf(t: *const u8, ...);
+fn puts(s: *const u8) -> i32;
 
 fn main() -> i32 {
     // 字符串字面量的类型是 *const i8
-    let msg: *const i8 = "Hello, airyc!";
+    let msg: *const u8 = "Hello, airyc!";
     printf("String variable: %s\n", msg);
     
     // 直接使用字符串字面量

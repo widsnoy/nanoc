@@ -195,6 +195,7 @@ impl Parser<'_> {
                     | SyntaxKind::TRUE_KW
                     | SyntaxKind::FALSE_KW
                     | SyntaxKind::STRING_LITERAL
+                    | SyntaxKind::CHAR_LITERAL
             )
         {
             self.start_node(SyntaxKind::LITERAL);

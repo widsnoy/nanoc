@@ -510,9 +510,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         lhs_ty: &Ty,
         rhs_ty: &Ty,
     ) -> Result<BasicValueEnum<'ctx>> {
-        let lhs_unwrapped = lhs_ty.unwrap_const();
-        let rhs_unwrapped = rhs_ty.unwrap_const();
-
         // 算术运算：根据类型提升规则
         if matches!(
             op,
@@ -522,7 +519,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 | SyntaxKind::SLASH
                 | SyntaxKind::PERCENT
         ) {
-            return self.compile_int_arithmetic(op, l, r, &lhs_unwrapped, &rhs_unwrapped);
+            return self.compile_int_arithmetic(op, l, r, lhs_ty, rhs_ty);
         }
 
         // 比较运算：返回 bool (i1)
@@ -535,13 +532,13 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 | SyntaxKind::EQEQ
                 | SyntaxKind::NEQ
         ) {
-            return self.compile_int_comparison(op, l, r, &lhs_unwrapped, &rhs_unwrapped);
+            return self.compile_int_comparison(op, l, r, lhs_ty, rhs_ty);
         }
 
         // 逻辑运算：返回 bool (i1)
         if matches!(op, SyntaxKind::AMPAMP | SyntaxKind::PIPEPIPE) {
-            let lb = self.cast_int_to_bool(l, lhs_ty)?;
-            let rb = self.cast_int_to_bool(r, rhs_ty)?;
+            let lb = self.cast_int_to_type(l, lhs_ty, &Ty::Bool)?;
+            let rb = self.cast_int_to_type(r, rhs_ty, &Ty::Bool)?;
             let res = match op {
                 SyntaxKind::AMPAMP => self
                     .builder
@@ -565,34 +562,19 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         op: SyntaxKind,
         l: inkwell::values::IntValue<'ctx>,
         r: inkwell::values::IntValue<'ctx>,
-        lhs_ty_unwrapped: &Ty,
-        rhs_ty_unwrapped: &Ty,
+        lhs_ty: &Ty,
+        rhs_ty: &Ty,
     ) -> Result<BasicValueEnum<'ctx>> {
-        match (lhs_ty_unwrapped, rhs_ty_unwrapped) {
-            // 相同类型保持不变
-            (Ty::I32, Ty::I32) | (Ty::I8, Ty::I8) => self.build_int_arithmetic_op(op, l, r),
-            // i32 混合类型：提升到 i32
-            (Ty::I32, Ty::I8 | Ty::Bool) | (Ty::I8 | Ty::Bool, Ty::I32) => {
-                let l_i32 = self.cast_int_to_i32(l, lhs_ty_unwrapped)?;
-                let r_i32 = self.cast_int_to_i32(r, rhs_ty_unwrapped)?;
-                self.build_int_arithmetic_op(op, l_i32, r_i32)
-            }
-            // i8 + bool：提升到 i8
-            (Ty::I8, Ty::Bool) | (Ty::Bool, Ty::I8) => {
-                let l_i8 = self.cast_int_to_i8(l, lhs_ty_unwrapped)?;
-                let r_i8 = self.cast_int_to_i8(r, rhs_ty_unwrapped)?;
-                self.build_int_arithmetic_op(op, l_i8, r_i8)
-            }
-            // bool + bool：提升到 i32
-            (Ty::Bool, Ty::Bool) => {
-                let l_i32 = self.cast_int_to_i32(l, lhs_ty_unwrapped)?;
-                let r_i32 = self.cast_int_to_i32(r, rhs_ty_unwrapped)?;
-                self.build_int_arithmetic_op(op, l_i32, r_i32)
-            }
-            _ => Err(CodegenError::TypeMismatch(
-                "invalid arithmetic types".into(),
-            )),
-        }
+        // 确定结果类型（使用 analyzer 的类型提升规则）
+        let result_ty = Ty::compute_binary_result_type(lhs_ty, rhs_ty, op)
+            .ok_or_else(|| CodegenError::TypeMismatch("incompatible types".into()))?;
+
+        // 将操作数转换到结果类型
+        let l_casted = self.cast_int_to_type(l, lhs_ty, &result_ty)?;
+        let r_casted = self.cast_int_to_type(r, rhs_ty, &result_ty)?;
+
+        // 执行运算（根据类型选择有符号/无符号指令）
+        self.build_int_arithmetic_op(op, l_casted, r_casted, &result_ty)
     }
 
     /// 编译整数比较运算
@@ -601,33 +583,21 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         op: SyntaxKind,
         l: inkwell::values::IntValue<'ctx>,
         r: inkwell::values::IntValue<'ctx>,
-        lhs_ty_unwrapped: &Ty,
-        rhs_ty_unwrapped: &Ty,
+        lhs_ty: &Ty,
+        rhs_ty: &Ty,
     ) -> Result<BasicValueEnum<'ctx>> {
-        match (lhs_ty_unwrapped, rhs_ty_unwrapped) {
-            // 相同类型直接比较
-            (Ty::I32, Ty::I32) | (Ty::I8, Ty::I8) | (Ty::Bool, Ty::Bool) => {
-                let cmp = self.build_int_comparison_op(op, l, r)?;
-                Ok(cmp.into())
-            }
-            // i32 混合类型：提升到 i32
-            (Ty::I32, Ty::I8 | Ty::Bool) | (Ty::I8 | Ty::Bool, Ty::I32) => {
-                let l_i32 = self.cast_int_to_i32(l, lhs_ty_unwrapped)?;
-                let r_i32 = self.cast_int_to_i32(r, rhs_ty_unwrapped)?;
-                let cmp = self.build_int_comparison_op(op, l_i32, r_i32)?;
-                Ok(cmp.into())
-            }
-            // i8 + bool：提升到 i8
-            (Ty::I8, Ty::Bool) | (Ty::Bool, Ty::I8) => {
-                let l_i8 = self.cast_int_to_i8(l, lhs_ty_unwrapped)?;
-                let r_i8 = self.cast_int_to_i8(r, rhs_ty_unwrapped)?;
-                let cmp = self.build_int_comparison_op(op, l_i8, r_i8)?;
-                Ok(cmp.into())
-            }
-            _ => Err(CodegenError::TypeMismatch(
-                "invalid comparison types".into(),
-            )),
-        }
+        // 使用新方法计算提升类型
+        let promoted_ty = Ty::compute_promotion_type(lhs_ty, rhs_ty).ok_or_else(|| {
+            CodegenError::TypeMismatch("incompatible types for comparison".into())
+        })?;
+
+        // 将操作数转换到提升类型
+        let l_casted = self.cast_int_to_type(l, lhs_ty, &promoted_ty)?;
+        let r_casted = self.cast_int_to_type(r, rhs_ty, &promoted_ty)?;
+
+        // 执行比较（根据提升后的类型选择有符号/无符号谓词）
+        let cmp = self.build_int_comparison_op(op, l_casted, r_casted, &promoted_ty)?;
+        Ok(cmp.into())
     }
 
     /// 构建整数算术运算指令
@@ -636,7 +606,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         op: SyntaxKind,
         l: inkwell::values::IntValue<'ctx>,
         r: inkwell::values::IntValue<'ctx>,
+        ty: &Ty,
     ) -> Result<BasicValueEnum<'ctx>> {
+        let is_unsigned = matches!(ty, Ty::U8 | Ty::U32 | Ty::U64);
+
         let res = match op {
             SyntaxKind::PLUS => self
                 .builder
@@ -650,14 +623,28 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 .builder
                 .build_int_mul(l, r, "mul")
                 .map_err(|_| CodegenError::LlvmBuild("int mul"))?,
-            SyntaxKind::SLASH => self
-                .builder
-                .build_int_signed_div(l, r, "div")
-                .map_err(|_| CodegenError::LlvmBuild("int div"))?,
-            SyntaxKind::PERCENT => self
-                .builder
-                .build_int_signed_rem(l, r, "rem")
-                .map_err(|_| CodegenError::LlvmBuild("int rem"))?,
+            SyntaxKind::SLASH => {
+                if is_unsigned {
+                    self.builder
+                        .build_int_unsigned_div(l, r, "udiv")
+                        .map_err(|_| CodegenError::LlvmBuild("int udiv"))?
+                } else {
+                    self.builder
+                        .build_int_signed_div(l, r, "sdiv")
+                        .map_err(|_| CodegenError::LlvmBuild("int sdiv"))?
+                }
+            }
+            SyntaxKind::PERCENT => {
+                if is_unsigned {
+                    self.builder
+                        .build_int_unsigned_rem(l, r, "urem")
+                        .map_err(|_| CodegenError::LlvmBuild("int urem"))?
+                } else {
+                    self.builder
+                        .build_int_signed_rem(l, r, "srem")
+                        .map_err(|_| CodegenError::LlvmBuild("int srem"))?
+                }
+            }
             _ => unreachable!(),
         };
         Ok(res.into())
@@ -669,20 +656,50 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         op: SyntaxKind,
         l: inkwell::values::IntValue<'ctx>,
         r: inkwell::values::IntValue<'ctx>,
+        ty: &Ty,
     ) -> Result<inkwell::values::IntValue<'ctx>> {
         use inkwell::IntPredicate;
-        match op {
-            SyntaxKind::LT => self.build_int_cmp(IntPredicate::SLT, l, r, "lt"),
-            SyntaxKind::GT => self.build_int_cmp(IntPredicate::SGT, l, r, "gt"),
-            SyntaxKind::LTEQ => self.build_int_cmp(IntPredicate::SLE, l, r, "le"),
-            SyntaxKind::GTEQ => self.build_int_cmp(IntPredicate::SGE, l, r, "ge"),
-            SyntaxKind::EQEQ => self.build_int_cmp(IntPredicate::EQ, l, r, "eq"),
-            SyntaxKind::NEQ => self.build_int_cmp(IntPredicate::NE, l, r, "ne"),
+
+        let is_unsigned = matches!(ty, Ty::U8 | Ty::U32 | Ty::U64);
+
+        let predicate = match op {
+            SyntaxKind::LT => {
+                if is_unsigned {
+                    IntPredicate::ULT
+                } else {
+                    IntPredicate::SLT
+                }
+            }
+            SyntaxKind::GT => {
+                if is_unsigned {
+                    IntPredicate::UGT
+                } else {
+                    IntPredicate::SGT
+                }
+            }
+            SyntaxKind::LTEQ => {
+                if is_unsigned {
+                    IntPredicate::ULE
+                } else {
+                    IntPredicate::SLE
+                }
+            }
+            SyntaxKind::GTEQ => {
+                if is_unsigned {
+                    IntPredicate::UGE
+                } else {
+                    IntPredicate::SGE
+                }
+            }
+            SyntaxKind::EQEQ => IntPredicate::EQ,
+            SyntaxKind::NEQ => IntPredicate::NE,
             _ => unreachable!(),
-        }
+        };
+
+        self.build_int_cmp(predicate, l, r, "cmp")
     }
 
-    /// 将两个指针转换为 i64 整数
+    /// 将两个指针转换为整数用于比较
     /// 返回 (i1, i2)
     fn ptr_to_int_pair(
         &self,
@@ -692,6 +709,7 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         inkwell::values::IntValue<'ctx>,
         inkwell::values::IntValue<'ctx>,
     )> {
+        // 使用 i64 类型进行指针比较
         let i64_ty = self.context.i64_type();
         let i1 = self
             .builder

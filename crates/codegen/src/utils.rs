@@ -80,6 +80,10 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         match ntype {
             Ty::I32 => Ok(self.context.i32_type().into()),
             Ty::I8 => Ok(self.context.i8_type().into()),
+            Ty::U8 => Ok(self.context.i8_type().into()),
+            Ty::U32 => Ok(self.context.i32_type().into()),
+            Ty::I64 => Ok(self.context.i64_type().into()),
+            Ty::U64 => Ok(self.context.i64_type().into()),
             Ty::Bool => Ok(self.context.bool_type().into()),
             Ty::Void => Ok(self.context.i8_type().into()),
             Ty::Array(ntype, count) => {
@@ -368,8 +372,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         ty: Option<BasicTypeEnum<'ctx>>,
     ) -> Result<BasicValueEnum<'ctx>> {
         match value {
-            Value::I32(x) => Ok(self.context.i32_type().const_int(*x as u64, false).into()),
-            Value::I8(x) => Ok(self.context.i8_type().const_int(*x as u64, false).into()),
+            Value::I32(x) => Ok(self.context.i32_type().const_int(*x as u64, true).into()),
+            Value::I8(x) => Ok(self.context.i8_type().const_int(*x as u64, true).into()),
+            Value::U8(x) => Ok(self.context.i8_type().const_int(*x as u64, false).into()),
+            Value::U32(x) => Ok(self.context.i32_type().const_int(*x as u64, false).into()),
+            Value::I64(x) => Ok(self.context.i64_type().const_int(*x as u64, true).into()),
+            Value::U64(x) => Ok(self.context.i64_type().const_int(*x, false).into()),
             Value::Bool(x) => Ok(self.context.bool_type().const_int(*x as u64, false).into()),
             Value::String(s) => {
                 // 字符串常量
@@ -485,72 +493,75 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         Ok(())
     }
 
-    /// 将整数值统一转换为 i32（用于二元运算）
-    pub(crate) fn cast_int_to_i32(&self, val: IntValue<'ctx>, ty: &Ty) -> Result<IntValue<'ctx>> {
-        match ty.unwrap_const() {
-            Ty::I32 => Ok(val), // 已经是 i32
-            Ty::I8 => {
-                // i8 → i32: sext
-                let i32_ty = self.context.i32_type();
-                self.builder
-                    .build_int_s_extend(val, i32_ty, "i8_to_i32")
-                    .map_err(|_| CodegenError::LlvmBuild("sext"))
-            }
-            Ty::Bool => {
-                // bool (i1) → i32: zext
-                let i32_ty = self.context.i32_type();
-                self.builder
-                    .build_int_z_extend(val, i32_ty, "bool_to_i32")
-                    .map_err(|_| CodegenError::LlvmBuild("zext"))
-            }
-            _ => Ok(val),
-        }
-    }
+    /// 将整数值转换到指定类型（用于二元运算的类型提升）
+    pub(crate) fn cast_int_to_type(
+        &self,
+        val: IntValue<'ctx>,
+        from_ty: &Ty,
+        to_ty: &Ty,
+    ) -> Result<IntValue<'ctx>> {
+        let from = from_ty.unwrap_const();
+        let to = to_ty.unwrap_const();
 
-    /// 将整数值转换为 i8（用于二元运算）
-    pub(crate) fn cast_int_to_i8(&self, val: IntValue<'ctx>, ty: &Ty) -> Result<IntValue<'ctx>> {
-        match ty.unwrap_const() {
-            Ty::I8 => Ok(val), // 已经是 i8
-            Ty::I32 => {
-                // i32 → i8: trunc
-                let i8_ty = self.context.i8_type();
+        // 相同类型，无需转换
+        if from == to {
+            return Ok(val);
+        }
+
+        // 获取目标 LLVM 类型
+        let target_llvm_ty = match to {
+            Ty::I8 => self.context.i8_type(),
+            Ty::U8 => self.context.i8_type(),
+            Ty::I32 => self.context.i32_type(),
+            Ty::U32 => self.context.i32_type(),
+            Ty::I64 => self.context.i64_type(),
+            Ty::U64 => self.context.i64_type(),
+            Ty::Bool => self.context.bool_type(),
+            _ => return Ok(val),
+        };
+
+        // 获取源和目标的位宽
+        let from_bits = match from {
+            Ty::Bool => 1,
+            Ty::I8 | Ty::U8 => 8,
+            Ty::I32 | Ty::U32 => 32,
+            Ty::I64 | Ty::U64 => 64,
+            _ => return Ok(val),
+        };
+
+        let to_bits = match to {
+            Ty::Bool => 1,
+            Ty::I8 | Ty::U8 => 8,
+            Ty::I32 | Ty::U32 => 32,
+            Ty::I64 | Ty::U64 => 64,
+            _ => return Ok(val),
+        };
+
+        // 执行转换
+        if from_bits < to_bits {
+            // 扩展：有符号用 sext，无符号用 zext
+            let is_signed = matches!(from, Ty::I8 | Ty::I32 | Ty::I64);
+            if is_signed {
                 self.builder
-                    .build_int_truncate(val, i8_ty, "i32_to_i8")
-                    .map_err(|_| CodegenError::LlvmBuild("trunc"))
-            }
-            Ty::Bool => {
-                // bool (i1) → i8: zext
-                let i8_ty = self.context.i8_type();
+                    .build_int_s_extend(val, target_llvm_ty, "sext")
+                    .map_err(|_| CodegenError::LlvmBuild("sext"))
+            } else {
                 self.builder
-                    .build_int_z_extend(val, i8_ty, "bool_to_i8")
+                    .build_int_z_extend(val, target_llvm_ty, "zext")
                     .map_err(|_| CodegenError::LlvmBuild("zext"))
             }
-            _ => Ok(val),
+        } else if from_bits > to_bits {
+            // 截断
+            self.builder
+                .build_int_truncate(val, target_llvm_ty, "trunc")
+                .map_err(|_| CodegenError::LlvmBuild("trunc"))
+        } else {
+            // 位宽相同，无需转换（如 i32 ↔ u32）
+            Ok(val)
         }
     }
 
     /// 将整数值转换为 bool（用于逻辑运算和条件）
-    pub(crate) fn cast_int_to_bool(&self, val: IntValue<'ctx>, ty: &Ty) -> Result<IntValue<'ctx>> {
-        match ty.unwrap_const() {
-            Ty::Bool => Ok(val), // 已经是 bool
-            Ty::I32 => {
-                // i32 → bool: icmp ne 0
-                let zero = self.context.i32_type().const_zero();
-                self.builder
-                    .build_int_compare(IntPredicate::NE, val, zero, "i32_to_bool")
-                    .map_err(|_| CodegenError::LlvmBuild("icmp"))
-            }
-            Ty::I8 => {
-                // i8 → bool: icmp ne 0
-                let zero = self.context.i8_type().const_zero();
-                self.builder
-                    .build_int_compare(IntPredicate::NE, val, zero, "i8_to_bool")
-                    .map_err(|_| CodegenError::LlvmBuild("icmp"))
-            }
-            _ => Ok(val),
-        }
-    }
-
     /// 通用类型转换
     /// 整数向上转换
     pub(crate) fn cast_value(

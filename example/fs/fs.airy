@@ -19,7 +19,7 @@ struct FAT {
 }
 
 struct FCB {
-    filename: [i8; 100],
+    filename: [u8; 100],
     not_empty: i8,
     attrbute: i8,
     time: i32,
@@ -31,7 +31,7 @@ struct FCB {
 
 struct USEROPEN {
     fcb: *mut struct FCB,
-    dir: [i8; 100],
+    dir: [u8; 100],
     topenfile: i8,
     buf: *mut i8,
     buf_ptr: i32,
@@ -39,7 +39,7 @@ struct USEROPEN {
 }
 
 struct BLOCK0 {
-    information: [i8; 10],
+    information: [u8; 10],
     block0: *mut i8,
     block0_ed: *mut i8,
     fat0: *mut i8,
@@ -58,7 +58,7 @@ struct BLOCK {
 // 全局变量
 let open_file_list: [struct USEROPEN; 100];
 let curdir: i32;
-let current_dir: [i8; 100];
+let current_dir: [u8; 100];
 let fcb_stk: [*mut struct FCB; 30];
 let fcb_top: i32;
 let boot: *mut struct BLOCK0;
@@ -67,7 +67,7 @@ let mem: [i8; 1024000];
 // get_fcb 函数使用的静态变量
 let get_fcb_stk: [*mut struct FCB; 30];
 let get_fcb_top: i32;
-let get_fcb_temp_path: [i8; 3000];
+let get_fcb_temp_path: [u8; 3000];
 
 // sizeof 常量定义
 let SIZEOF_FAT: const i32 = 4;
@@ -106,7 +106,7 @@ fn cast_to_block0(ptr: *mut i8) -> *mut struct BLOCK0 {
 }
 
 // 初始化 BLOCK0
-fn block0_Init(p: *mut struct BLOCK0, info: *const i8, vhead: *mut i8) {
+fn block0_Init(p: *mut struct BLOCK0, info: *const u8, vhead: *mut i8) {
     if (info != null) {
         memmove(p->information, info, strlen(info) + 1);
     }
@@ -122,7 +122,7 @@ fn block0_Init(p: *mut struct BLOCK0, info: *const i8, vhead: *mut i8) {
 }
 
 // 创建 FCB
-fn fcb_set(name: *const i8, free: i8, attrbute: i8, time: i32, date: i32, first_block: i32, length: i32) -> *mut struct FCB {
+fn fcb_set(name: *const u8, free: i8, attrbute: i8, time: i32, date: i32, first_block: i32, length: i32) -> *mut struct FCB {
     let p: *mut struct FCB = cast_to_fcb(null);
     
     let it: *mut struct FCB = cast_to_fcb(boot->root);
@@ -152,7 +152,7 @@ fn fcb_set(name: *const i8, free: i8, attrbute: i8, time: i32, date: i32, first_
 }
 
 // 遍历目录，寻找子目录或者文件
-fn travel_dir(dir: *mut struct FCB, name: *const i8) -> *mut struct FCB {
+fn travel_dir(dir: *mut struct FCB, name: *const u8) -> *mut struct FCB {
     let fat_p: i32 = dir->first_block;
     if (fat_p == -1) {
         return null;
@@ -183,17 +183,17 @@ fn travel_dir(dir: *mut struct FCB, name: *const i8) -> *mut struct FCB {
 }
 
 // 获取 FCB
-fn get_fcb(path: *const i8, chdir: i32) -> *mut struct FCB {
+fn get_fcb(path: *const u8, chdir: i32) -> *mut struct FCB {
     if (strspn(path, " \r\n") >= strlen(path)) {
         return null;
     }
     
     strncpy(get_fcb_temp_path, path, 2999);
-    get_fcb_temp_path[2999] = 0i8;
+    get_fcb_temp_path[2999] = 0u8;
     
-    let token: *mut i8 = strtok(get_fcb_temp_path, " /");
+    let token: *mut u8 = strtok(get_fcb_temp_path, " /");
     
-    if (path[strspn(path, " ")] != 47) {
+    if (path[strspn(path, " ")] != 47u8) {
         get_fcb_top = fcb_top;
         let i: i32 = 0;
         while (i <= get_fcb_top) {
@@ -239,7 +239,7 @@ fn get_fcb(path: *const i8, chdir: i32) -> *mut struct FCB {
 }
 
 // 检查目录是否为空
-fn is_empty_dir(path: *const i8) -> i32 {
+fn is_empty_dir(path: *const u8) -> i32 {
     let fat_p: i32 = get_fcb(path, 0)->first_block;
     if (fat_p == -1) {
         return -1;
@@ -278,7 +278,7 @@ fn in_open_list(fcb: *mut struct FCB) -> i32 {
 }
 
 // 打开文件
-fn my_open(path: *const i8, chdir: i32) -> i32 {
+fn my_open(path: *const u8, chdir: i32) -> i32 {
     let file_fcb: *mut struct FCB = get_fcb(path, chdir);
     
     if (file_fcb == null) {
@@ -454,8 +454,8 @@ fn startsys() {
     
     fcb_stk[0] = cast_to_fcb(boot->root);
     fcb_top = 0;
-    current_dir[0] = 47i8;
-    current_dir[1] = 0i8;
+    current_dir[0] = 47u8;
+    current_dir[1] = 0u8;
     
     let i: i32 = 0;
     while (i < MAXOPENFILE) {
@@ -480,7 +480,7 @@ fn startsys() {
 }
 
 // cd 命令
-fn my_cd(path: *const i8) {
+fn my_cd(path: *const u8) {
     let tmp: i32 = my_open(path, 1);
     if (tmp == -1) {
         printf("[cd]: invalid path\n");
@@ -493,7 +493,7 @@ fn my_cd(path: *const i8) {
 }
 
 // mkdir 命令
-fn my_mkdir(dirname: *const i8) {
+fn my_mkdir(dirname: *const u8) {
     let op: *mut struct USEROPEN = &open_file_list[curdir];
     
     if (travel_dir(fcb_stk[fcb_top], dirname) == null && strcmp(dirname, ".") != 0 && strcmp(dirname, "..") != 0) {
@@ -507,7 +507,7 @@ fn my_mkdir(dirname: *const i8) {
 }
 
 // touch 命令
-fn my_touch(filename: *const i8) {
+fn my_touch(filename: *const u8) {
     let op: *mut struct USEROPEN = &open_file_list[curdir];
     
     if (travel_dir(fcb_stk[fcb_top], filename) == null) {
@@ -537,7 +537,7 @@ fn my_ls() {
                 let fcb_ptr: *mut i8 = &mem[0] + *it;
                 let fcb: *mut struct FCB = cast_to_fcb(fcb_ptr);
                 if (fcb->not_empty != 0) {
-                    let type_str: *mut i8 = "FILE";
+                    let type_str: *mut u8 = "FILE";
                     if (fcb->attrbute != 0) {
                         type_str = "DIR";
                     }
@@ -635,7 +635,7 @@ fn clean_data(fat_p: i32) {
 }
 
 // write 命令
-fn my_write(filename: *const i8, type: i32) {
+fn my_write(filename: *const u8, type: i32) {
     let file_fcb: *mut struct FCB = get_fcb(filename, 0);
     
     if (file_fcb == null) {
@@ -674,7 +674,7 @@ fn my_write(filename: *const i8, type: i32) {
 }
 
 // rm 命令
-fn my_rm(filename: *const i8) {
+fn my_rm(filename: *const u8) {
     let file_fcb: *mut struct FCB = get_fcb(filename, 0);
     
     if (file_fcb == null) {
@@ -717,7 +717,7 @@ fn my_rm(filename: *const i8) {
 }
 
 // cat 命令
-fn my_read(filename: *const i8) {
+fn my_read(filename: *const u8) {
     let file_fcb: *mut struct FCB = get_fcb(filename, 0);
     
     if (file_fcb == null) {
@@ -794,9 +794,9 @@ fn my_help() {
 // 主函数
 fn main() -> i32 {
     startsys();
-    let op: [i8; 20];
-    let path: [i8; 101];
-    let arg: [i8; 101];
+    let op: [u8; 20];
+    let path: [u8; 101];
+    let arg: [u8; 101];
     
     while (1) {
         printf("Naive@FAT ");

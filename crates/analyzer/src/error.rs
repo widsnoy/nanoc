@@ -7,24 +7,24 @@ use tools::TextRange;
 
 use crate::{array::ArrayInitError, r#type::Ty};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error, Diagnostic)]
+#[error(
+    "function '{}' argument {} ('{}') type mismatch: expected {}, found {}",
+    function_name,
+    arg_index,
+    param_name,
+    expected,
+    found
+)]
+#[diagnostic(code(semantic::argument_type_mismatch))]
 pub struct ArgumentTypeMismatchData {
     pub function_name: String,
     pub param_name: String,
     pub arg_index: usize,
     pub expected: Ty,
     pub found: Ty,
+    #[label("here")]
     pub range: TextRange,
-}
-
-impl std::fmt::Display for ArgumentTypeMismatchData {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "function '{}' argument {} ('{}') type mismatch: expected {}, found {}",
-            self.function_name, self.arg_index, self.param_name, self.expected, self.found
-        )
-    }
 }
 
 #[derive(Debug, Error, Diagnostic)]
@@ -54,6 +54,15 @@ pub enum AnalyzeError {
     IntegerLiteralOverflow {
         literal: String,
         ty: String,
+        #[label("here")]
+        range: TextRange,
+    },
+
+    #[error("invalid character literal: {reason}")]
+    #[diagnostic(code(semantic::invalid_char_literal))]
+    InvalidCharLiteral {
+        literal: String,
+        reason: String,
         #[label("here")]
         range: TextRange,
     },
@@ -226,8 +235,8 @@ pub enum AnalyzeError {
         range: TextRange,
     },
 
-    #[error("{0}")]
-    #[diagnostic(code(semantic::argument_type_mismatch))]
+    #[error(transparent)]
+    #[diagnostic(transparent)]
     ArgumentTypeMismatch(Box<ArgumentTypeMismatchData>),
 
     #[error("can't assign to const variable '{name}'")]
@@ -356,6 +365,7 @@ impl AnalyzeError {
             Self::TypeMismatch { range, .. }
             | Self::ConstantExprExpected { range }
             | Self::IntegerLiteralOverflow { range, .. }
+            | Self::InvalidCharLiteral { range, .. }
             | Self::ConstArithmeticOverflow { range, .. }
             | Self::VariableDefined { range, .. }
             | Self::FunctionDefined { range, .. }

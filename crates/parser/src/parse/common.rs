@@ -59,7 +59,14 @@ impl Parser<'_> {
 
         let success = if matches!(
             current_token,
-            SyntaxKind::I32_KW | SyntaxKind::I8_KW | SyntaxKind::BOOL_KW | SyntaxKind::VOID_KW
+            SyntaxKind::I32_KW
+                | SyntaxKind::I8_KW
+                | SyntaxKind::U8_KW
+                | SyntaxKind::U32_KW
+                | SyntaxKind::I64_KW
+                | SyntaxKind::U64_KW
+                | SyntaxKind::BOOL_KW
+                | SyntaxKind::VOID_KW
         ) {
             self.bump();
             true

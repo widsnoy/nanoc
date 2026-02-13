@@ -1,6 +1,6 @@
 // 测试类型转换和 bool 运算
 
-fn printf(t: *const i8, ...);
+fn printf(t: *const u8, ...);
 
 fn main() -> i32 {
     // 测试 bool 和整数混合运算

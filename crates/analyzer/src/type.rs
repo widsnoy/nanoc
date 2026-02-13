@@ -15,6 +15,10 @@ pub enum UnaryOpError {
 pub enum Ty {
     I32,
     I8,
+    U8,
+    U32,
+    I64,
+    U64,
     Bool,
     Void,
     Array(Box<Ty>, Option<i32>),
@@ -28,6 +32,10 @@ impl fmt::Display for Ty {
         match self {
             Ty::I32 => write!(f, "i32"),
             Ty::I8 => write!(f, "i8"),
+            Ty::U8 => write!(f, "u8"),
+            Ty::U32 => write!(f, "u32"),
+            Ty::I64 => write!(f, "i64"),
+            Ty::U64 => write!(f, "u64"),
             Ty::Bool => write!(f, "bool"),
             Ty::Void => write!(f, "void"),
             Ty::Array(inner, size) => {
@@ -125,6 +133,10 @@ impl Ty {
         match self {
             Ty::I32 => Value::I32(0),
             Ty::I8 => Value::I8(0),
+            Ty::U8 => Value::U8(0),
+            Ty::U32 => Value::U32(0),
+            Ty::I64 => Value::I64(0),
+            Ty::U64 => Value::U64(0),
             Ty::Bool => Value::Bool(false),
             Ty::Void => unreachable!("void type should not have a constant zero value"),
             Ty::Array(ntype, _) => ntype.const_zero(),
@@ -148,14 +160,24 @@ impl Ty {
     /// 判断两种类型是否兼容
     pub fn assign_to_me_is_ok(&self, other: &Self) -> bool {
         match (self, other) {
+            // 精确匹配
             (Ty::Void, Ty::Void) => true,
             (Ty::I32, Ty::I32) => true,
             (Ty::I8, Ty::I8) => true,
+            (Ty::U8, Ty::U8) => true,
+            (Ty::U32, Ty::U32) => true,
+            (Ty::I64, Ty::I64) => true,
+            (Ty::U64, Ty::U64) => true,
             (Ty::Bool, Ty::Bool) => true,
 
-            // 整数类型隐式转
+            // 有符号整数无损扩展
             (Ty::I32, Ty::I8 | Ty::Bool) => true,
+            (Ty::I64, Ty::I8 | Ty::I32 | Ty::Bool) => true,
             (Ty::I8, Ty::Bool) => true,
+
+            // 无符号整数无损扩展
+            (Ty::U32, Ty::U8) => true,
+            (Ty::U64, Ty::U8 | Ty::U32) => true,
 
             // 指针类型：*void 可以与任何指针互转
             (Ty::Pointer { pointee: p1, .. }, Ty::Pointer { pointee: p2, .. }) => {
@@ -173,7 +195,7 @@ impl Ty {
     }
 
     /// 计算二元表达式的结果类型  
-    /// 支持 i8/i32/bool 之间的隐式类型转换
+    /// 支持整数类型之间的隐式类型转换（Rust 风格：只允许无损扩展）
     /// 结果总是非 const
     pub fn compute_binary_result_type(lhs: &Ty, rhs: &Ty, op: SyntaxKind) -> Option<Ty> {
         use SyntaxKind::*;
@@ -184,34 +206,55 @@ impl Ty {
 
         match op {
             // 算术运算符: +, -, *, /, %
-            PLUS | MINUS | STAR | SLASH | PERCENT => match (&lhs_unwrapped, &rhs_unwrapped) {
-                // 指针算术：支持 i8 和 i32
-                (l, Ty::I32 | Ty::I8) if l.is_pointer() && matches!(op, PLUS | MINUS) => {
-                    Some(l.clone())
+            PLUS | MINUS | STAR | SLASH | PERCENT => {
+                match (&lhs_unwrapped, &rhs_unwrapped) {
+                    // 指针算术：支持所有整数类型
+                    (l, Ty::I32 | Ty::I8 | Ty::U8 | Ty::U32 | Ty::I64 | Ty::U64)
+                        if l.is_pointer() && matches!(op, PLUS | MINUS) =>
+                    {
+                        Some(l.clone())
+                    }
+                    (Ty::I32 | Ty::I8 | Ty::U8 | Ty::U32 | Ty::I64 | Ty::U64, r)
+                        if r.is_pointer() && op == PLUS =>
+                    {
+                        Some(r.clone())
+                    }
+                    (l, r) if l.is_pointer() && r.is_pointer() && op == MINUS => Some(Ty::I32),
+
+                    // 相同类型保持不变
+                    (Ty::I32, Ty::I32) => Some(Ty::I32),
+                    (Ty::I8, Ty::I8) => Some(Ty::I8),
+                    (Ty::U8, Ty::U8) => Some(Ty::U8),
+                    (Ty::U32, Ty::U32) => Some(Ty::U32),
+                    (Ty::I64, Ty::I64) => Some(Ty::I64),
+                    (Ty::U64, Ty::U64) => Some(Ty::U64),
+                    (Ty::Bool, Ty::Bool) => Some(Ty::I32),
+
+                    // 有符号整数混合类型提升规则
+                    (Ty::I32, Ty::I8 | Ty::Bool) | (Ty::I8 | Ty::Bool, Ty::I32) => Some(Ty::I32),
+                    (Ty::I64, Ty::I8 | Ty::I32 | Ty::Bool)
+                    | (Ty::I8 | Ty::I32 | Ty::Bool, Ty::I64) => Some(Ty::I64),
+                    (Ty::I8, Ty::Bool) | (Ty::Bool, Ty::I8) => Some(Ty::I8),
+
+                    // 无符号整数混合类型提升规则
+                    (Ty::U32, Ty::U8 | Ty::Bool) | (Ty::U8 | Ty::Bool, Ty::U32) => Some(Ty::U32),
+                    (Ty::U64, Ty::U8 | Ty::U32 | Ty::Bool)
+                    | (Ty::U8 | Ty::U32 | Ty::Bool, Ty::U64) => Some(Ty::U64),
+
+                    // 有符号和无符号混合 - 不允许
+                    _ => None,
                 }
-                (Ty::I32 | Ty::I8, r) if r.is_pointer() && op == PLUS => Some(r.clone()),
-                (l, r) if l.is_pointer() && r.is_pointer() && op == MINUS => Some(Ty::I32),
-
-                // 相同类型保持不变
-                (Ty::I32, Ty::I32) => Some(Ty::I32),
-                (Ty::I8, Ty::I8) => Some(Ty::I8),
-
-                // 混合类型提升规则
-                (Ty::I32, Ty::I8 | Ty::Bool) | (Ty::I8 | Ty::Bool, Ty::I32) => Some(Ty::I32),
-                (Ty::I8, Ty::Bool) | (Ty::Bool, Ty::I8) => Some(Ty::I8),
-
-                // bool 算术运算提升到 i32
-                (Ty::Bool, Ty::Bool) => Some(Ty::I32),
-
-                // 其他情况不合法
-                _ => None,
-            },
+            }
 
             // 比较运算符: <, >, <=, >=, ==, !=
             LT | GT | LTEQ | GTEQ | EQEQ | NEQ => match (&lhs_unwrapped, &rhs_unwrapped) {
-                // 整数/bool 比较：允许混合
-                (Ty::I32 | Ty::I8 | Ty::Bool, Ty::I32 | Ty::I8 | Ty::Bool) => Some(Ty::Bool),
-
+                // 整数/bool 比较：允许混合（但有符号和无符号不能混合）
+                (Ty::I64 | Ty::I32 | Ty::I8 | Ty::Bool, Ty::I64 | Ty::I32 | Ty::I8 | Ty::Bool) => {
+                    Some(Ty::Bool)
+                }
+                (Ty::U64 | Ty::U8 | Ty::U32 | Ty::Bool, Ty::U64 | Ty::U8 | Ty::U32 | Ty::Bool) => {
+                    Some(Ty::Bool)
+                }
                 // 指针比较
                 (l, r) if l.is_pointer() && r.is_pointer() => Some(Ty::Bool),
 
@@ -221,7 +264,10 @@ impl Ty {
             // 逻辑运算符: &&, ||
             AMPAMP | PIPEPIPE => match (&lhs_unwrapped, &rhs_unwrapped) {
                 // 接受整数类型，返回 bool
-                (Ty::I32 | Ty::I8 | Ty::Bool, Ty::I32 | Ty::I8 | Ty::Bool) => Some(Ty::Bool),
+                (
+                    Ty::I32 | Ty::I8 | Ty::U8 | Ty::U32 | Ty::I64 | Ty::U64 | Ty::Bool,
+                    Ty::I32 | Ty::I8 | Ty::U8 | Ty::U32 | Ty::I64 | Ty::U64 | Ty::Bool,
+                ) => Some(Ty::Bool),
                 _ => None,
             },
 
@@ -229,6 +275,39 @@ impl Ty {
             _ => None,
         }
         // 注意：结果总是非 const，不需要包装
+    }
+
+    /// 计算整数类型的提升类型（用于算术和比较运算）
+    pub fn compute_promotion_type(lhs: &Ty, rhs: &Ty) -> Option<Ty> {
+        let lhs_unwrapped = lhs.unwrap_const();
+        let rhs_unwrapped = rhs.unwrap_const();
+
+        match (&lhs_unwrapped, &rhs_unwrapped) {
+            // 相同类型保持不变
+            (Ty::I32, Ty::I32) => Some(Ty::I32),
+            (Ty::I8, Ty::I8) => Some(Ty::I8),
+            (Ty::U8, Ty::U8) => Some(Ty::U8),
+            (Ty::U32, Ty::U32) => Some(Ty::U32),
+            (Ty::I64, Ty::I64) => Some(Ty::I64),
+            (Ty::U64, Ty::U64) => Some(Ty::U64),
+            (Ty::Bool, Ty::Bool) => Some(Ty::Bool),
+
+            // 有符号整数混合类型提升
+            (Ty::I32, Ty::I8 | Ty::Bool) | (Ty::I8 | Ty::Bool, Ty::I32) => Some(Ty::I32),
+            (Ty::I64, Ty::I8 | Ty::I32 | Ty::Bool) | (Ty::I8 | Ty::I32 | Ty::Bool, Ty::I64) => {
+                Some(Ty::I64)
+            }
+            (Ty::I8, Ty::Bool) | (Ty::Bool, Ty::I8) => Some(Ty::I8),
+
+            // 无符号整数混合类型提升
+            (Ty::U8, Ty::Bool) | (Ty::Bool, Ty::U8) => Some(Ty::U8),
+            (Ty::U32, Ty::U8 | Ty::Bool) | (Ty::U8 | Ty::Bool, Ty::U32) => Some(Ty::U32),
+            (Ty::U64, Ty::U8 | Ty::U32 | Ty::Bool) | (Ty::U8 | Ty::U32 | Ty::Bool, Ty::U64) => {
+                Some(Ty::U64)
+            }
+
+            _ => None,
+        }
     }
 
     /// 验证一元操作符并计算结果类型        
@@ -245,12 +324,18 @@ impl Ty {
 
         match (&unwrapped, op) {
             // 算术运算符: +, -
-            (Ty::I32, PLUS | MINUS) => Ok(Ty::I32),
             (Ty::I8, PLUS | MINUS) => Ok(Ty::I8),
-            (Ty::Bool, PLUS | MINUS) => Ok(Ty::I32), // bool 提升到 i32
+            (Ty::U8, PLUS | MINUS) => Ok(Ty::U8),
+            (Ty::I32, PLUS | MINUS) => Ok(Ty::I32),
+            (Ty::U32, PLUS | MINUS) => Ok(Ty::U32),
+            (Ty::I64, PLUS | MINUS) => Ok(Ty::I64),
+            (Ty::U64, PLUS | MINUS) => Ok(Ty::U64),
+            (Ty::Bool, PLUS | MINUS) => Ok(Ty::I32),
 
             // 逻辑非: ! - 接受整数类型
-            (Ty::Bool | Ty::I32 | Ty::I8, BANG) => Ok(Ty::Bool),
+            (Ty::Bool | Ty::I32 | Ty::I8 | Ty::U8 | Ty::U32 | Ty::I64 | Ty::U64, BANG) => {
+                Ok(Ty::Bool)
+            }
 
             // 取地址: &
             // 注意：这里生成的指针类型是 *mut，不继承 const

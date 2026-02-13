@@ -134,7 +134,7 @@ impl ExprVisitor for Module {
             let lhs_val = self.value_table.get(&lhs.text_range()).unwrap();
             let rhs_val = self.value_table.get(&rhs.text_range()).unwrap();
 
-            match Value::eval(lhs_val, rhs_val, op.op().kind()) {
+            match Value::calc_binary_expr(lhs_val, rhs_val, op.op().kind(), self) {
                 Ok(val) => {
                     self.value_table.insert(node.text_range(), val);
                 }
@@ -240,6 +240,7 @@ impl ExprVisitor for Module {
                     let is_min_value = match val {
                         Value::I8(v) => v == i8::MIN,
                         Value::I32(v) => v == i32::MIN,
+                        Value::I64(v) => v == i64::MIN,
                         _ => false,
                     };
 
@@ -247,7 +248,11 @@ impl ExprVisitor for Module {
                         // 不是特例，报告溢出错误
                         let ty_str = match val {
                             Value::I8(_) => "i8",
+                            Value::U8(_) => "u8",
                             Value::I32(_) => "i32",
+                            Value::U32(_) => "u32",
+                            Value::I64(_) => "i64",
+                            Value::U64(_) => "u64",
                             _ => unreachable!(),
                         };
                         self.new_error(AnalyzeError::IntegerLiteralOverflow {
@@ -518,11 +523,11 @@ impl ExprVisitor for Module {
             );
             Value::Null
         } else if node.string_token().is_some() {
-            // 字符串字面量类型为 *const i8
+            // 字符串字面量类型为 *const u8（修改：从 i8 改为 u8）
             self.set_expr_type(
                 range,
                 Ty::Pointer {
-                    pointee: Box::new(Ty::I8),
+                    pointee: Box::new(Ty::U8),
                     is_const: true,
                 },
             );
@@ -540,6 +545,53 @@ impl ExprVisitor for Module {
                 }
             };
             Value::String(content)
+        } else if node.char_token().is_some() {
+            // 字符字面量类型为 u8
+            self.set_expr_type(range, Ty::U8);
+            // 获取字符内容（去掉单引号）
+            let char_token = node.char_token().unwrap();
+            let s = char_token.text().to_string();
+            let content = match snailquote::unescape(&s) {
+                Ok(s) => s,
+                Err(e) => {
+                    self.new_error(AnalyzeError::InvalidCharLiteral {
+                        literal: s.clone(),
+                        reason: format!("Invalid escape sequence: {}", e),
+                        range: utils::trim_node_text_range(&node),
+                    });
+                    return;
+                }
+            };
+
+            // 验证是单个 ASCII 字符
+            let chars: Vec<char> = content.chars().collect();
+            if chars.len() != 1 {
+                self.new_error(AnalyzeError::InvalidCharLiteral {
+                    literal: s.clone(),
+                    reason: format!(
+                        "Character literal must contain exactly one character, found {}",
+                        chars.len()
+                    ),
+                    range: utils::trim_node_text_range(&node),
+                });
+                return;
+            }
+
+            let ch = chars[0];
+            if !ch.is_ascii() {
+                self.new_error(AnalyzeError::InvalidCharLiteral {
+                    literal: s.clone(),
+                    reason: format!(
+                        "Character literal must be ASCII (0-127), found '{}' (U+{:04X}). \
+                        Consider using a string literal or byte array for multi-byte characters.",
+                        ch, ch as u32
+                    ),
+                    range: utils::trim_node_text_range(&node),
+                });
+                return;
+            }
+
+            Value::U8(ch as u8)
         } else if node.true_token().is_some() {
             self.set_expr_type(range, Ty::Bool);
             Value::Bool(true)
@@ -553,10 +605,18 @@ impl ExprVisitor for Module {
             let s = n.text();
 
             // 分离后缀
-            let (num_part, suffix) = if let Some(ss) = s.strip_suffix("i8") {
-                (ss, Some("i8"))
+            let (num_part, suffix) = if let Some(ss) = s.strip_suffix("i64") {
+                (ss, Some("i64"))
+            } else if let Some(ss) = s.strip_suffix("u64") {
+                (ss, Some("u64"))
             } else if let Some(ss) = s.strip_suffix("i32") {
                 (ss, Some("i32"))
+            } else if let Some(ss) = s.strip_suffix("u32") {
+                (ss, Some("u32"))
+            } else if let Some(ss) = s.strip_suffix("i8") {
+                (ss, Some("i8"))
+            } else if let Some(ss) = s.strip_suffix("u8") {
+                (ss, Some("u8"))
             } else {
                 (s, None)
             };
@@ -565,7 +625,8 @@ impl ExprVisitor for Module {
             let (num_str, radix) = match num_part.chars().next() {
                 Some('0') => match num_part.chars().nth(1) {
                     Some('x') | Some('X') => (&num_part[2..], 16),
-                    Some(_) if num_part.len() > 1 => (&num_part[1..], 8),
+                    Some('o') | Some('O') => (&num_part[2..], 8),
+                    Some('b') | Some('B') => (&num_part[2..], 2),
                     _ => (num_part, 10),
                 },
                 _ => (num_part, 10),
@@ -574,7 +635,11 @@ impl ExprVisitor for Module {
             // 根据后缀确定类型（默认 i32）
             let ty = match suffix {
                 Some("i8") => Ty::I8,
+                Some("u8") => Ty::U8,
                 Some("i32") | None => Ty::I32,
+                Some("u32") => Ty::U32,
+                Some("i64") => Ty::I64,
+                Some("u64") => Ty::U64,
                 _ => unreachable!(),
             };
 
@@ -588,7 +653,11 @@ impl ExprVisitor for Module {
                             literal: s.to_string(),
                             ty: match ty {
                                 Ty::I8 => "i8",
+                                Ty::U8 => "u8",
                                 Ty::I32 => "i32",
+                                Ty::U32 => "u32",
+                                Ty::I64 => "i64",
+                                Ty::U64 => "u64",
                                 _ => unreachable!(),
                             }
                             .to_string(),
@@ -598,17 +667,25 @@ impl ExprVisitor for Module {
                 }
             };
 
-            // 检查是否溢出（超出有符号类型的正数范围）
+            // 检查是否溢出
             let overflows = match ty {
                 Ty::I8 => value_u128 > i8::MAX as u128,
+                Ty::U8 => value_u128 > u8::MAX as u128,
                 Ty::I32 => value_u128 > i32::MAX as u128,
+                Ty::U32 => value_u128 > u32::MAX as u128,
+                Ty::I64 => value_u128 > i64::MAX as u128,
+                Ty::U64 => value_u128 > u64::MAX as u128,
                 _ => unreachable!(),
             };
 
             // 截断到目标类型
             let value = match ty {
                 Ty::I8 => Value::I8(value_u128 as i8),
+                Ty::U8 => Value::U8(value_u128 as u8),
                 Ty::I32 => Value::I32(value_u128 as i32),
+                Ty::U32 => Value::U32(value_u128 as u32),
+                Ty::I64 => Value::I64(value_u128 as i64),
+                Ty::U64 => Value::U64(value_u128 as u64),
                 _ => unreachable!(),
             };
 

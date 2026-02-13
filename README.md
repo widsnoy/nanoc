@@ -73,7 +73,7 @@ ParenExpr   := '(' Expr ')'
 IndexVal    := Name {'[' Expr ']'}
 FieldAccess := Name {'[' Expr ']'}
 
-Literal     := IntConst | FloatConst | 'null'
+Literal     := IntLiteral | 'null'
 Name        := Ident
 ```
 

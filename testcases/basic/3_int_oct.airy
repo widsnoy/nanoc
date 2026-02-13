@@ -1,3 +1,3 @@
 fn main() -> i32 {
-  return 01234;
+  return 0O1234;
 }

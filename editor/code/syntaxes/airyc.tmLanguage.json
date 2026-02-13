@@ -6,6 +6,7 @@
     { "include": "#comments" },
     { "include": "#strings" },
     { "include": "#keywords" },
+    { "include": "#constants" },
     { "include": "#struct-definition" },
     { "include": "#function-definition" },
     { "include": "#function-call" },
@@ -43,6 +44,17 @@
               "match": "\\\\."
             }
           ]
+        },
+        {
+          "name": "string.quoted.single.airyc",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.airyc",
+              "match": "\\\\."
+            }
+          ]
         }
       ]
     },
@@ -59,6 +71,18 @@
         {
           "name": "storage.modifier.airyc",
           "match": "\\b(const|mut)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.airyc",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.airyc",
+          "match": "\\bnull\\b"
         }
       ]
     },
@@ -126,7 +150,7 @@
       "patterns": [
         {
           "name": "storage.type.primitive.airyc",
-          "match": "\\b(i32|f32|void)\\b"
+          "match": "\\b(i32|i8|u8|u32|i64|u64|f32|bool|void)\\b"
         },
         {
           "match": "\\b(struct)\\s+([A-Za-z_][A-Za-z0-9_]*)",
@@ -148,11 +172,15 @@
       "patterns": [
         {
           "name": "constant.numeric.hex.airyc",
-          "match": "\\b0[xX][0-9a-fA-F]+\\b"
+          "match": "\\b0[xX][0-9a-fA-F]+(i8|u8|i32|u32|i64|u64)?\\b"
         },
         {
           "name": "constant.numeric.octal.airyc",
-          "match": "\\b0[oO][0-7]+\\b"
+          "match": "\\b0[oO][0-7]+(i8|u8|i32|u32|i64|u64)?\\b"
+        },
+        {
+          "name": "constant.numeric.binary.airyc",
+          "match": "\\b0[bB][01]+(i8|u8|i32|u32|i64|u64)?\\b"
         },
         {
           "name": "constant.numeric.float.airyc",
@@ -160,7 +188,7 @@
         },
         {
           "name": "constant.numeric.decimal.airyc",
-          "match": "\\b[0-9]+\\b"
+          "match": "\\b[0-9]+(i8|u8|i32|u32|i64|u64)?\\b"
         }
       ]
     },
