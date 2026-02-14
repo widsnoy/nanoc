@@ -1,6 +1,10 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use parser::parse::Parser;
+use rayon::prelude::*;
 use syntax::{
     AstNode as _, SyntaxNode,
     ast::{FuncDef, StructDef},
@@ -37,31 +41,41 @@ impl Project {
         self.metadata = Default::default();
 
         // 初始化所有 module，语法分析
-        vfs.for_each_file(|file_id, file| {
-            let parser = Parser::new(&file.text);
-            let (green_tree, errors) = parser.parse();
+        let file_ids = vfs.file_ids();
+        let modules = RwLock::new(HashMap::new());
 
-            let mut module = Module::new(green_tree.clone());
-            module.file_id = file_id;
-            errors.into_iter().for_each(|e| {
-                module
-                    .semantic_errors
-                    .push(crate::error::AnalyzeError::ParserError(Box::new(e)))
-            });
+        file_ids.par_iter().for_each(|&file_id| {
+            if let Some(file) = vfs.get_file_by_file_id(&file_id) {
+                let parser = Parser::new(&file.text);
+                let (green_tree, errors) = parser.parse();
 
-            // 收集符号并分配 ID
-            Self::allocate_module_symbols(&mut module);
+                let mut module = Module::new(green_tree.clone());
+                module.file_id = file_id;
+                errors.into_iter().for_each(|e| {
+                    module
+                        .semantic_errors
+                        .push(crate::error::AnalyzeError::ParserError(Box::new(e)))
+                });
 
-            self.modules.insert(file_id, module);
+                // 收集符号并分配 ID
+                Self::allocate_module_symbols(&mut module);
+
+                modules.write().unwrap().insert(file_id, module);
+            }
         });
 
+        self.modules = modules.into_inner().unwrap();
+
         // 分析头文件
-        let mut all_imports = Vec::with_capacity(self.modules.len());
-        for (file_id, module) in &self.modules {
-            let module_imports =
-                HeaderAnalyzer::collect_module_imports(module, *file_id, vfs, &self.modules);
-            all_imports.push((*file_id, module_imports));
-        }
+        let all_imports: Vec<_> = self
+            .modules
+            .par_iter()
+            .map(|(file_id, module)| {
+                let module_imports =
+                    HeaderAnalyzer::collect_module_imports(module, *file_id, vfs, &self.modules);
+                (*file_id, module_imports)
+            })
+            .collect();
         for (file_id, module_imports) in all_imports {
             if let Some(module) = self.modules.get_mut(&file_id) {
                 HeaderAnalyzer::apply_module_imports(module, module_imports);
@@ -69,62 +83,106 @@ impl Project {
         }
 
         // 预处理元数据，跨文件使用
-        for module in self.modules.values_mut() {
+        self.modules.par_iter_mut().for_each(|(_, module)| {
             Self::fill_definitions(module);
-        }
+        });
 
-        let mut metadata: HashMap<FileID, ThinModule> = HashMap::new();
-        for (file_id, module) in &self.modules {
-            metadata.insert(*file_id, ThinModule::new(module));
-        }
+        let metadata: HashMap<FileID, ThinModule> = self
+            .modules
+            .par_iter()
+            .map(|(file_id, module)| (*file_id, ThinModule::new(module)))
+            .collect();
 
         // 语义分析
         let metadata_rc = Arc::new(metadata);
-        for module in self.modules.values_mut() {
+        self.modules.par_iter_mut().for_each(|(_, module)| {
             module.metadata = Some(Arc::clone(&metadata_rc));
             module.analyze();
             module.metadata = None;
-        }
+        });
 
         // 重新拷贝分析完成的元数据
-        let mut metadata: HashMap<FileID, ThinModule> = HashMap::new();
-        for (file_id, module) in &self.modules {
-            metadata.insert(*file_id, ThinModule::new(module));
-        }
+        let metadata: HashMap<FileID, ThinModule> = self
+            .modules
+            .par_iter()
+            .map(|(file_id, module)| (*file_id, ThinModule::new(module)))
+            .collect();
         self.metadata = Arc::new(metadata);
 
-        // 构建索引
-        let mut temp: HashMap<FileID, ModuleIndex> = Default::default();
-        for module in self.modules.values() {
-            for (_, refer) in &module.reference {
-                match refer.tag {
-                    crate::module::ReferenceTag::VarRead(variable_id) => {
-                        let target_file_id = module.file_id;
-                        let index = temp.entry(target_file_id).or_default();
-                        index
-                            .variable_reference
-                            .entry(variable_id)
-                            .or_default()
-                            .push(CiterInfo::new(module.file_id, refer.range));
+        // 构建索引（并行收集 + 串行合并）
+        let local_indices: Vec<_> = self
+            .modules
+            .par_iter()
+            .map(|(_file_id, module)| {
+                let mut local_temp: HashMap<FileID, ModuleIndex> = HashMap::new();
+
+                for (_, refer) in &module.reference {
+                    match refer.tag {
+                        crate::module::ReferenceTag::VarRead(variable_id) => {
+                            let target_file_id = module.file_id;
+                            let index = local_temp.entry(target_file_id).or_default();
+                            index
+                                .variable_reference
+                                .entry(variable_id)
+                                .or_default()
+                                .push(CiterInfo::new(module.file_id, refer.range));
+                        }
+                        crate::module::ReferenceTag::FieldRead(field_id) => {
+                            let target_file_id = field_id.module;
+                            let index = local_temp.entry(target_file_id).or_default();
+                            index
+                                .field_reference
+                                .entry(field_id)
+                                .or_default()
+                                .push(CiterInfo::new(module.file_id, refer.range));
+                        }
+                        crate::module::ReferenceTag::FuncCall(function_id) => {
+                            let target_file_id = function_id.module;
+                            let index = local_temp.entry(target_file_id).or_default();
+                            index
+                                .function_reference
+                                .entry(function_id)
+                                .or_default()
+                                .push(CiterInfo::new(module.file_id, refer.range));
+                        }
                     }
-                    crate::module::ReferenceTag::FieldRead(field_id) => {
-                        let target_file_id = field_id.module;
-                        let index = temp.entry(target_file_id).or_default();
-                        index
-                            .field_reference
-                            .entry(field_id)
-                            .or_default()
-                            .push(CiterInfo::new(module.file_id, refer.range));
-                    }
-                    crate::module::ReferenceTag::FuncCall(function_id) => {
-                        let target_file_id = function_id.module;
-                        let index = temp.entry(target_file_id).or_default();
-                        index
-                            .function_reference
-                            .entry(function_id)
-                            .or_default()
-                            .push(CiterInfo::new(module.file_id, refer.range));
-                    }
+                }
+
+                local_temp
+            })
+            .collect();
+
+        // 串行合并所有本地索引
+        let mut temp: HashMap<FileID, ModuleIndex> = HashMap::new();
+        for local_temp in local_indices {
+            for (file_id, local_index) in local_temp {
+                let index = temp.entry(file_id).or_default();
+
+                // 合并 variable_reference
+                for (var_id, citers) in local_index.variable_reference {
+                    index
+                        .variable_reference
+                        .entry(var_id)
+                        .or_default()
+                        .extend(citers);
+                }
+
+                // 合并 field_reference
+                for (field_id, citers) in local_index.field_reference {
+                    index
+                        .field_reference
+                        .entry(field_id)
+                        .or_default()
+                        .extend(citers);
+                }
+
+                // 合并 function_reference
+                for (func_id, citers) in local_index.function_reference {
+                    index
+                        .function_reference
+                        .entry(func_id)
+                        .or_default()
+                        .extend(citers);
                 }
             }
         }

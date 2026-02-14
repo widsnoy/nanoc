@@ -10,6 +10,7 @@ use inkwell::passes::PassBuilderOptions;
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
+use rayon::prelude::*;
 use rowan::GreenNode;
 use syntax::SyntaxNode;
 use syntax::ast::{AstNode, CompUnit};
@@ -106,26 +107,30 @@ pub fn compile_project_to_object_bytes(
     vfs: &Vfs,
     opt_level: OptLevel,
 ) -> Result<Vec<(String, Vec<u8>)>> {
-    let mut object_files = Vec::new();
+    project
+        .modules
+        .par_iter()
+        .map(|(file_id, module)| {
+            let module_name = vfs
+                .get_file_by_file_id(file_id)
+                .and_then(|file| {
+                    std::path::Path::new(&file.path)
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .map(|s| s.to_string())
+                })
+                .unwrap_or_else(|| "unknown".to_string());
 
-    for (file_id, module) in &project.modules {
-        let module_name = vfs
-            .get_file_by_file_id(file_id)
-            .and_then(|file| {
-                std::path::Path::new(&file.path)
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .map(|s| s.to_string())
-            })
-            .unwrap_or_else(|| "unknown".to_string());
+            let object_bytes = compile_to_object_bytes(
+                &module_name,
+                module.green_tree.clone(),
+                module,
+                opt_level,
+            )?;
 
-        let object_bytes =
-            compile_to_object_bytes(&module_name, module.green_tree.clone(), module, opt_level)?;
-
-        object_files.push((module_name, object_bytes));
-    }
-
-    Ok(object_files)
+            Ok((module_name, object_bytes))
+        })
+        .collect::<Result<Vec<_>>>()
 }
 
 /// 创建目标机器

@@ -8,6 +8,7 @@ use std::fs;
 
 use clap::Parser;
 use cli::{Args, EmitTarget};
+use rayon::prelude::*;
 use syntax::SyntaxNode;
 use vfs::Vfs;
 
@@ -69,30 +70,34 @@ fn main() {
     // 代码生成
     match args.emit {
         EmitTarget::Ir => {
-            // 为每个模块生成 IR 文件
-            for (file_id, module) in project.modules {
-                // 获取模块名称
-                let module_name = vfs
-                    .get_file_by_file_id(&file_id)
-                    .and_then(|file| {
-                        std::path::Path::new(&file.path)
-                            .file_stem()
-                            .and_then(|s| s.to_str())
-                            .map(|s| s.to_string())
-                    })
-                    .unwrap_or_else(|| "unknown".to_string());
+            // 为每个模块生成 IR 文件（并行）
+            if let Err(e) = project
+                .modules
+                .par_iter()
+                .map(|(file_id, module)| {
+                    let module_name = vfs
+                        .get_file_by_file_id(file_id)
+                        .and_then(|file| {
+                            std::path::Path::new(&file.path)
+                                .file_stem()
+                                .and_then(|s| s.to_str())
+                                .map(|s| s.to_string())
+                        })
+                        .unwrap_or_else(|| "unknown".to_string());
 
-                let output_path = args.output_dir.join(format!("{}.ll", module_name));
-                if let Err(e) = compile_to_ir_file(
-                    &module_name,
-                    module.green_tree.clone(),
-                    &module,
-                    opt_level,
-                    &output_path,
-                ) {
-                    eprintln!("Error: {}", e);
-                    std::process::exit(1);
-                }
+                    let output_path = args.output_dir.join(format!("{}.ll", module_name));
+                    compile_to_ir_file(
+                        &module_name,
+                        module.green_tree.clone(),
+                        module,
+                        opt_level,
+                        &output_path,
+                    )
+                })
+                .collect::<codegen::error::Result<Vec<_>>>()
+            {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
             }
         }
         EmitTarget::Exe => {
