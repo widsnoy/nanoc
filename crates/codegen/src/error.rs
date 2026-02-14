@@ -34,6 +34,9 @@ pub enum CodegenError {
     #[error("target machine error: {0}")]
     TargetMachine(String),
 
+    #[error("LLVM optimization failed: {0}")]
+    LlvmOptimization(String),
+
     #[error("root node is not CompUnit")]
     InvalidRoot,
 }

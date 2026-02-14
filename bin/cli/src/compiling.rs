@@ -6,6 +6,7 @@ use analyzer::project::Project;
 use codegen::error::{CodegenError, Result};
 use codegen::llvm_ir::Program;
 use inkwell::context::Context as LlvmContext;
+use inkwell::passes::PassBuilderOptions;
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
@@ -92,6 +93,9 @@ fn generate_and_optimize<'ctx>(
     module.set_triple(&machine.get_triple());
     module.set_data_layout(&machine.get_target_data().get_data_layout());
 
+    // 运行 LLVM IR 优化 pass
+    run_optimization_passes(&module, &machine, opt_level)?;
+
     Ok(module)
 }
 
@@ -142,4 +146,48 @@ fn create_target_machine(opt_level: OptLevel) -> Result<TargetMachine> {
             CodeModel::Default,
         )
         .ok_or_else(|| CodegenError::TargetMachine("failed to create target machine".to_string()))
+}
+
+/// 运行 LLVM IR 优化 pass
+/// 根据优化等级运行相应的优化 pass pipeline
+fn run_optimization_passes(
+    module: &inkwell::module::Module,
+    machine: &TargetMachine,
+    opt_level: OptLevel,
+) -> Result<()> {
+    // None 不运行任何优化
+    if matches!(opt_level, OptLevel::None) {
+        return Ok(());
+    }
+
+    // 创建 PassBuilderOptions
+    let options = PassBuilderOptions::create();
+
+    // 根据优化等级设置选项
+    match opt_level {
+        OptLevel::None => {
+            unreachable!()
+        }
+        OptLevel::Less | OptLevel::Default | OptLevel::Aggressive => {
+            // 启用循环向量化和循环展开
+            options.set_loop_vectorization(true);
+            options.set_loop_unrolling(true);
+        }
+    }
+
+    // 构建 pass pipeline 字符串
+    // LLVM 的新 Pass Manager 使用 "default<OX>" 格式来指定标准优化等级
+    let passes = match opt_level {
+        OptLevel::None => "default<O0>",
+        OptLevel::Less => "default<O1>",
+        OptLevel::Default => "default<O2>",
+        OptLevel::Aggressive => "default<O3>",
+    };
+
+    // 运行优化 pass
+    module
+        .run_passes(passes, machine, options)
+        .map_err(|e| CodegenError::LlvmOptimization(e.to_string()))?;
+
+    Ok(())
 }
