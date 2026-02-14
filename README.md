@@ -1,15 +1,16 @@
 # airyc
 
-⚠️ **学习项目**：这是我的毕业设计项目
+⚠️ **学习项目**：这是我的毕业设计项目，仅供个人学习娱乐
 
-一个玩具编程语言，使用 Rust 编写，编译到 LLVM IR。
+一个玩具编程语言，编译到 LLVM IR。  
+基本覆盖所有错误类型的检查，并提供良好的编辑器支持。
 
 ## 特性
 
 - 🔗 **多文件编译**：通过 `import` 语句支持模块化开发
 - ⚡ **LLVM 后端**：编译到 LLVM IR 和原生可执行文件（基于 LLVM 21.1）
-- 🔍 **语言服务器**：LSP 支持，提供引用查找、跳转、诊断等功能 (`bin/language_server`)
-- 🎨 **VSCode 集成**：提供 VSCode 扩展插件（位于 `editor/code`）
+- 🔍 **语言服务器**：LSP 支持，提供引用查找、跳转、诊断等功能 (`bin/language_server`)  
+- 🎨 **编辑器集成**：[VSCode](editor/code/), [NVim](https://github.com/widsnoy/airyc.nvim)  
 - ✅ **友好的错误提示**：基于 miette 的美观错误报告
 
 ### 示例项目 
