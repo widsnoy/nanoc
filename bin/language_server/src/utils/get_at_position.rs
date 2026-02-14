@@ -110,6 +110,6 @@ pub fn get_token_at_offset(root: &SyntaxNode, offset: u32) -> Option<SyntaxToken
     match root.token_at_offset(TextSize::new(offset)) {
         rowan::TokenAtOffset::None => None,
         rowan::TokenAtOffset::Single(t) => Some(t),
-        rowan::TokenAtOffset::Between(t, _) => Some(t),
+        rowan::TokenAtOffset::Between(_, t) => Some(t),
     }
 }
