@@ -185,6 +185,8 @@ impl LanguageServer for Backend {
                 definition_provider: Some(OneOf::Left(true)),
                 references_provider: Some(OneOf::Left(true)),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
+                document_symbol_provider: Some(OneOf::Left(true)),
+                workspace_symbol_provider: Some(OneOf::Left(true)),
                 // completion_provider: Some(CompletionOptions {
                 //     trigger_characters: Some(vec![".".to_string(), "->".to_string()]),
                 //     all_commit_characters: None,
@@ -375,5 +377,32 @@ impl LanguageServer for Backend {
                 lsp_features::hover::hover(position, line_index, module)
             })
             .flatten())
+    }
+
+    async fn document_symbol(
+        &self,
+        params: DocumentSymbolParams,
+    ) -> Result<Option<DocumentSymbolResponse>> {
+        let uri = params.text_document.uri;
+
+        Ok(self
+            .with_module_and_line_index(&uri, |module, line_index| {
+                lsp_features::document_symbols::compute_document_symbols(module, line_index)
+            })
+            .flatten())
+    }
+
+    async fn symbol(
+        &self,
+        params: WorkspaceSymbolParams,
+    ) -> Result<Option<WorkspaceSymbolResponse>> {
+        let project = self.project.read();
+
+        Ok(lsp_features::workspace_symbols::search_workspace_symbols(
+            &params.query,
+            &project,
+            &self.vfs,
+            |file_id| self.get_uri_by_file_id(file_id),
+        ))
     }
 }

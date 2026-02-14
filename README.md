@@ -421,7 +421,7 @@ semantic::assign_to_const
 
 ## 参考
 [Rust](https://rust-lang.org/)  
-[rust-analyzer](https://github.com/rust-lang/rust-analyzer)
-[SysY](https://gitlab.eduxiji.net/csc1/nscscc/compiler2021/-/blob/master/SysY%E8%AF%AD%E8%A8%80%E5%AE%9A%E4%B9%89.pdf)  
-[北大编译实践在线文档](https://pku-minic.github.io/online-doc/#/)
-[compiler-dev-test-cases](https://github.com/pku-minic/compiler-dev-test-cases/tree/master/testcases)
+[rust-analyzer](https://github.com/rust-lang/rust-analyzer)  
+[SysY](https://gitlab.eduxiji.net/csc1/nscscc/compiler2021/-/blob/master/SysY%E8%AF%AD%E8%A8%80%E5%AE%9A%E4%B9%89.pdf)    
+[北大编译实践在线文档](https://pku-minic.github.io/online-doc/#/)  
+[compiler-dev-test-cases](https://github.com/pku-minic/compiler-dev-test-cases/tree/master/testcases)  
