@@ -1,0 +1,72 @@
+// 简单测试程序 - 测试计算器的各个组件
+
+import "stdlib.airy" :: printf
+import "lexer.airy" :: Token
+import "lexer.airy" :: lex
+import "lexer.airy" :: TOK_NUMBER
+import "lexer.airy" :: TOK_PLUS
+import "parser.airy" :: parse
+import "parser.airy" :: has_parse_error
+import "eval.airy" :: eval_expr
+import "eval.airy" :: has_eval_error
+
+fn test_expr(expr: *const u8, expected: i64) {
+    printf("测试: %s\n", expr);
+    
+    let tokens: [struct Token; 128];
+    let tok_count: i32 = lex(expr, &tokens[0], 128);
+    
+    let ast: *const void = parse(&tokens[0]);
+    
+    if (has_parse_error() || ast == null) {
+        printf("  解析失败\n\n");
+        return;
+    }
+    
+    let result: i64 = eval_expr(ast);
+    
+    if (has_eval_error()) {
+        printf("  求值失败\n\n");
+        return;
+    }
+    
+    if (result == expected) {
+        printf("  ✓ 结果: %lld (正确)\n\n", result);
+    } else {
+        printf("  ✗ 结果: %lld (期望: %lld)\n\n", result, expected);
+    }
+}
+
+fn main() -> i32 {
+    printf("=== 计算器测试 ===\n\n");
+    
+    // 基本运算
+    test_expr("1 + 2", 3);
+    test_expr("5 - 3", 2);
+    test_expr("4 * 3", 12);
+    test_expr("10 / 2", 5);
+    test_expr("17 % 5", 2);
+    
+    // 优先级
+    test_expr("2 + 3 * 4", 14);
+    test_expr("10 - 2 * 3", 4);
+    test_expr("20 / 4 + 3", 8);
+    
+    // 括号
+    test_expr("(2 + 3) * 4", 20);
+    test_expr("10 * (5 - 3)", 20);
+    
+    // 一元运算符
+    test_expr("-5", -5);
+    test_expr("+10", 10);
+    test_expr("-5 + 3", -2);
+    test_expr("-(2 + 3)", -5);
+    
+    // 复杂表达式
+    test_expr("2 + 3 * 4 - 5", 9);
+    test_expr("(10 + 20) / (2 + 3)", 6);
+    test_expr("100 - 50 + 25", 75);
+    
+    printf("=== 测试完成 ===\n");
+    return 0;
+}

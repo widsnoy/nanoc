@@ -1,0 +1,20 @@
+// C 标准库函数声明
+
+// 输入输出
+fn printf(format: *const u8, ...);
+fn scanf(format: *const u8, ...) -> i32;
+fn getchar() -> i32;
+fn putchar(c: i32);
+fn puts(s: *const u8) -> i32;
+
+// 字符串处理
+fn strlen(s: *const u8) -> i64;
+fn strcmp(s1: *const u8, s2: *const u8) -> i32;
+
+// 内存管理
+fn malloc(size: i64) -> *mut void;
+fn free(ptr: *mut void);
+
+// 其他
+fn exit(code: i32);
+fn atoi(s: *const u8) -> i32;

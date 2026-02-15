@@ -1,0 +1,112 @@
+import "stdlib.airy" :: printf
+import "ast.airy" :: Expr
+import "ast.airy" :: NumberExpr
+import "ast.airy" :: BinaryExpr
+import "ast.airy" :: UnaryExpr
+import "ast.airy" :: cast_e2n
+import "ast.airy" :: cast_e2b
+import "ast.airy" :: cast_e2u
+import "ast.airy" :: EXPR_NUMBER
+import "ast.airy" :: EXPR_BINARY
+import "ast.airy" :: EXPR_UNARY
+import "ast.airy" :: OP_ADD
+import "ast.airy" :: OP_SUB
+import "ast.airy" :: OP_MUL
+import "ast.airy" :: OP_DIV
+import "ast.airy" :: OP_MOD
+import "ast.airy" :: OP_POS
+import "ast.airy" :: OP_NEG
+
+// 全局错误标志
+let g_eval_error: bool = false;
+
+// 重置错误标志
+fn reset_eval_error() {
+    g_eval_error = false;
+}
+
+// 检查是否有求值错误
+fn has_eval_error() -> bool {
+    return g_eval_error;
+}
+
+// 递归求值表达式
+fn eval(expr: *const struct Expr) -> i64 {
+    if (expr == null) {
+        g_eval_error = true;
+        return 0i64;
+    }
+    
+    // 数字字面量
+    if (expr->ty_id == EXPR_NUMBER()) {
+        let num: *const struct NumberExpr = cast_e2n(expr);
+        return num->value;
+    }
+    
+    // 二元运算
+    if (expr->ty_id == EXPR_BINARY()) {
+        let binary: *const struct BinaryExpr = cast_e2b(expr);
+        let left: i64 = eval(binary->lhs);
+        let right: i64 = eval(binary->rhs);
+        
+        if (g_eval_error) {
+            return 0i64;
+        }
+        
+        if (binary->op == OP_ADD()) {
+            return left + right;
+        } else if (binary->op == OP_SUB()) {
+            return left - right;
+        } else if (binary->op == OP_MUL()) {
+            return left * right;
+        } else if (binary->op == OP_DIV()) {
+            if (right == 0i64) {
+                printf("Error: division by zero\n");
+                g_eval_error = true;
+                return 0i64;
+            }
+            return left / right;
+        } else if (binary->op == OP_MOD()) {
+            if (right == 0i64) {
+                printf("Error: modulo by zero\n");
+                g_eval_error = true;
+                return 0i64;
+            }
+            return left % right;
+        }
+        
+        printf("Error: unknown binary operator\n");
+        g_eval_error = true;
+        return 0i64;
+    }
+    
+    // 一元运算
+    if (expr->ty_id == EXPR_UNARY()) {
+        let unary: *const struct UnaryExpr = cast_e2u(expr);
+        let operand: i64 = eval(unary->expr);
+        
+        if (g_eval_error) {
+            return 0i64;
+        }
+        
+        if (unary->op == OP_POS()) {
+            return operand;
+        } else if (unary->op == OP_NEG()) {
+            return -operand;
+        }
+        
+        printf("Error: unknown unary operator\n");
+        g_eval_error = true;
+        return 0i64;
+    }
+    
+    printf("Error: unknown expression type\n");
+    g_eval_error = true;
+    return 0i64;
+}
+
+// 求值并返回结果（带错误检查）
+fn eval_expr(expr: *const struct Expr) -> i64 {
+    reset_eval_error();
+    return eval(expr);
+}

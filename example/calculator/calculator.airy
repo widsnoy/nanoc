@@ -1,0 +1,99 @@
+import "stdlib.airy" :: printf
+import "stdlib.airy" :: getchar
+import "stdlib.airy" :: strcmp
+import "lexer.airy" :: Token
+import "lexer.airy" :: lex
+import "parser.airy" :: parse
+import "parser.airy" :: has_parse_error
+import "eval.airy" :: eval_expr
+import "eval.airy" :: has_eval_error
+import "ast.airy" :: Expr
+
+// i32 转 u8 的辅助函数
+fn i32_to_u8(val: i32) -> u8 {
+    let v: *const i32 = &val;
+    let vp: *const void = v;
+    let up: *const u8 = vp;
+    return *up;
+}
+
+// 读取一行输入
+fn read_line(buffer: *mut u8, max_len: i32) -> bool {
+    let i: i32 = 0;
+    let c: i32 = 0;
+    
+    while (i < max_len - 1) {
+        c = getchar();
+        
+        // EOF
+        if (c == -1) {
+            if (i == 0) {
+                return false;
+            }
+            break;
+        }
+        
+        // 换行符 '\n' 是 u8 类型，值为 10
+        let newline: u8 = '\n';
+        let c_u8: u8 = i32_to_u8(c);
+        if (c_u8 == newline) {
+            break;
+        }
+        
+        buffer[i] = c_u8;
+        i = i + 1;
+    }
+    
+    buffer[i] = 0u8;
+    return true;
+}
+
+// 主函数
+fn main() -> i32 {
+    let input: [u8; 256];
+    let tokens: [struct Token; 128];
+    
+    printf("Calculator REPL\n");
+    printf("支持运算: + - * / %%\n");
+    printf("输入 'quit' 或 Ctrl+D 退出\n\n");
+    
+    while (true) {
+        printf("> ");
+        
+        // 读取输入
+        if (!read_line(&input[0], 256)) {
+            printf("\n");
+            break;
+        }
+        
+        // 检查是否退出
+        if (strcmp(&input[0], "quit") == 0 || strcmp(&input[0], "exit") == 0) {
+            break;
+        }
+        
+        // 跳过空行
+        if (input[0] == 0u8) {
+            continue;
+        }
+        
+        // 词法分析
+        let tok_count: i32 = lex(&input[0], &tokens[0], 128);
+        
+        // 语法分析
+        let expr: *mut struct Expr = parse(&tokens[0]);
+        
+        if (has_parse_error() || expr == null) {
+            continue;
+        }
+        
+        // 求值
+        let result: i64 = eval_expr(expr);
+        
+        if (!has_eval_error()) {
+            printf("%lld\n", result);
+        }
+    }
+    
+    printf("再见！\n");
+    return 0;
+}

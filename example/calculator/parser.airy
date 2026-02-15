@@ -1,0 +1,252 @@
+import "stdlib.airy" :: printf
+import "ast.airy" :: Expr
+import "ast.airy" :: NumberExpr
+import "ast.airy" :: BinaryExpr
+import "ast.airy" :: UnaryExpr
+import "ast.airy" :: EXPR_NUMBER
+import "ast.airy" :: EXPR_BINARY
+import "ast.airy" :: EXPR_UNARY
+import "ast.airy" :: OP_ADD
+import "ast.airy" :: OP_SUB
+import "ast.airy" :: OP_MUL
+import "ast.airy" :: OP_DIV
+import "ast.airy" :: OP_MOD
+import "ast.airy" :: OP_POS
+import "ast.airy" :: OP_NEG
+import "lexer.airy" :: Token
+import "lexer.airy" :: TOK_NUMBER
+import "lexer.airy" :: TOK_PLUS
+import "lexer.airy" :: TOK_MINUS
+import "lexer.airy" :: TOK_STAR
+import "lexer.airy" :: TOK_SLASH
+import "lexer.airy" :: TOK_PERCENT
+import "lexer.airy" :: TOK_LPAREN
+import "lexer.airy" :: TOK_RPAREN
+import "lexer.airy" :: TOK_EOF
+
+// 全局静态内存池
+let g_number_pool: [struct NumberExpr; 128];
+let g_binary_pool: [struct BinaryExpr; 128];
+let g_unary_pool: [struct UnaryExpr; 64];
+let g_expr_pool: [struct Expr; 256];
+let g_pool_idx: i32 = 0;
+
+// 解析器状态
+let g_tokens: *mut struct Token = null;
+let g_pos: i32 = 0;
+let g_has_error: bool = false;
+
+// 重置内存池
+fn reset_pools() {
+    g_pool_idx = 0;
+    g_pos = 0;
+    g_has_error = false;
+}
+
+// 分配 NumberExpr
+fn alloc_number(value: i64) -> *mut struct NumberExpr {
+    if (g_pool_idx >= 128) {
+        printf("Error: number pool exhausted\n");
+        g_has_error = true;
+        return null;
+    }
+    let n: *mut struct NumberExpr = &g_number_pool[g_pool_idx];
+    g_pool_idx = g_pool_idx + 1;
+    n->value = value;
+    return n;
+}
+
+// 分配 BinaryExpr
+fn alloc_binary(lhs: *mut struct Expr, rhs: *mut struct Expr, op: u8) -> *mut struct BinaryExpr {
+    if (g_pool_idx >= 128) {
+        printf("Error: binary pool exhausted\n");
+        g_has_error = true;
+        return null;
+    }
+    let b: *mut struct BinaryExpr = &g_binary_pool[g_pool_idx];
+    g_pool_idx = g_pool_idx + 1;
+    b->lhs = lhs;
+    b->rhs = rhs;
+    b->op = op;
+    return b;
+}
+
+// 分配 UnaryExpr
+fn alloc_unary(expr: *mut struct Expr, op: u8) -> *mut struct UnaryExpr {
+    if (g_pool_idx >= 64) {
+        printf("Error: unary pool exhausted\n");
+        g_has_error = true;
+        return null;
+    }
+    let u: *mut struct UnaryExpr = &g_unary_pool[g_pool_idx];
+    g_pool_idx = g_pool_idx + 1;
+    u->expr = expr;
+    u->op = op;
+    return u;
+}
+
+// 分配 Expr
+fn alloc_expr(ptr: *mut void, ty_id: i8) -> *mut struct Expr {
+    if (g_pool_idx >= 256) {
+        printf("Error: expr pool exhausted\n");
+        g_has_error = true;
+        return null;
+    }
+    let e: *mut struct Expr = &g_expr_pool[g_pool_idx];
+    g_pool_idx = g_pool_idx + 1;
+    e->ptr = ptr;
+    e->ty_id = ty_id;
+    return e;
+}
+
+// 获取当前 token
+fn current_token() -> *const struct Token {
+    return &g_tokens[g_pos];
+}
+
+// 前进到下一个 token
+fn advance() {
+    g_pos = g_pos + 1;
+}
+
+// 检查当前 token 类型
+fn check(ty: u8) -> bool {
+    return current_token()->ty == ty;
+}
+
+// 匹配并消费 token
+fn match(ty: u8) -> bool {
+    if (check(ty)) {
+        advance();
+        return true;
+    }
+    return false;
+}
+
+// 前向声明
+fn parse_expr() -> *mut struct Expr;
+fn parse_term() -> *mut struct Expr;
+
+// 解析 factor: number | '(' expr ')' | ('+' | '-') factor
+fn parse_factor() -> *mut struct Expr {
+    let tok: *const struct Token = current_token();
+    
+    // 数字
+    if (tok->ty == TOK_NUMBER()) {
+        let value: i64 = tok->value;
+        advance();
+        let num: *mut struct NumberExpr = alloc_number(value);
+        let num_void: *mut void = num;
+        return alloc_expr(num_void, EXPR_NUMBER());
+    }
+    
+    // 括号表达式
+    if (tok->ty == TOK_LPAREN()) {
+        advance();
+        let expr: *mut struct Expr = parse_expr();
+        if (!match(TOK_RPAREN())) {
+            printf("Error: expected ')'\n");
+            g_has_error = true;
+        }
+        return expr;
+    }
+    
+    // 一元运算符
+    if (tok->ty == TOK_PLUS()) {
+        advance();
+        let operand: *mut struct Expr = parse_factor();
+        let unary: *mut struct UnaryExpr = alloc_unary(operand, OP_POS());
+        let unary_void: *mut void = unary;
+        return alloc_expr(unary_void, EXPR_UNARY());
+    }
+    
+    if (tok->ty == TOK_MINUS()) {
+        advance();
+        let operand: *mut struct Expr = parse_factor();
+        let unary: *mut struct UnaryExpr = alloc_unary(operand, OP_NEG());
+        let unary_void: *mut void = unary;
+        return alloc_expr(unary_void, EXPR_UNARY());
+    }
+    
+    printf("Error: unexpected token\n");
+    g_has_error = true;
+    return null;
+}
+
+// 解析 term: factor (('*' | '/' | '%') factor)*
+attach parse_term {
+    let left: *mut struct Expr = parse_factor();
+    
+    while (true) {
+        let tok: *const struct Token = current_token();
+        let op: u8 = 0u8;
+        
+        if (tok->ty == TOK_STAR()) {
+            op = OP_MUL();
+        } else if (tok->ty == TOK_SLASH()) {
+            op = OP_DIV();
+        } else if (tok->ty == TOK_PERCENT()) {
+            op = OP_MOD();
+        } else {
+            break;
+        }
+        
+        advance();
+        let right: *mut struct Expr = parse_factor();
+        let binary: *mut struct BinaryExpr = alloc_binary(left, right, op);
+        let binary_void: *mut void = binary;
+        left = alloc_expr(binary_void, EXPR_BINARY());
+    }
+    
+    return left;
+}
+
+// 解析 expr: term (('+' | '-') term)*
+attach parse_expr {
+    let left: *mut struct Expr = parse_term();
+    
+    while (true) {
+        let tok: *const struct Token = current_token();
+        let op: u8 = 0u8;
+        
+        if (tok->ty == TOK_PLUS()) {
+            op = OP_ADD();
+        } else if (tok->ty == TOK_MINUS()) {
+            op = OP_SUB();
+        } else {
+            break;
+        }
+        
+        advance();
+        let right: *mut struct Expr = parse_term();
+        let binary: *mut struct BinaryExpr = alloc_binary(left, right, op);
+        let binary_void: *mut void = binary;
+        left = alloc_expr(binary_void, EXPR_BINARY());
+    }
+    
+    return left;
+}
+
+// 主解析函数
+fn parse(tokens: *mut struct Token) -> *mut struct Expr {
+    reset_pools();
+    g_tokens = tokens;
+    
+    let expr: *mut struct Expr = parse_expr();
+    
+    if (!check(TOK_EOF())) {
+        printf("Error: unexpected tokens after expression\n");
+        g_has_error = true;
+    }
+    
+    if (g_has_error) {
+        return null;
+    }
+    
+    return expr;
+}
+
+// 检查是否有错误
+fn has_parse_error() -> bool {
+    return g_has_error;
+}

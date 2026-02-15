@@ -1,0 +1,53 @@
+// 运算符常量函数
+fn OP_ADD() -> u8 { return 0u8; }
+fn OP_SUB() -> u8 { return 1u8; }
+fn OP_MUL() -> u8 { return 2u8; }
+fn OP_DIV() -> u8 { return 3u8; }
+fn OP_MOD() -> u8 { return 4u8; }
+fn OP_POS() -> u8 { return 5u8; }
+fn OP_NEG() -> u8 { return 6u8; }
+
+// 表达式类型常量函数
+fn EXPR_NUMBER() -> i8 { return 0i8; }
+fn EXPR_BINARY() -> i8 { return 1i8; }
+fn EXPR_UNARY() -> i8 { return 2i8; }
+
+// 数字字面量表达式
+struct NumberExpr {
+    value: i64,
+}
+
+// 二元运算表达式
+struct BinaryExpr {
+    lhs: *mut struct Expr,
+    rhs: *mut struct Expr,
+    op: u8,
+}
+
+// 一元运算表达式
+struct UnaryExpr {
+    expr: *mut struct Expr,
+    op: u8,
+}
+
+// 通用表达式节点
+struct Expr {
+    ptr: *mut void,
+    ty_id: i8,
+}
+
+// 类型转换函数
+fn cast_e2n(e: *const struct Expr) -> *const struct NumberExpr {
+    let n: *mut void = e->ptr;
+    return n;
+}
+
+fn cast_e2b(e: *const struct Expr) -> *const struct BinaryExpr {
+    let b: *mut void = e->ptr;
+    return b;
+}
+
+fn cast_e2u(e: *const struct Expr) -> *const struct UnaryExpr {
+    let u: *mut void = e->ptr;
+    return u;
+}
