@@ -108,8 +108,8 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let field_types: Vec<_> = struct_def
                     .fields
                     .iter()
-                    .map(|field_id| {
-                        let field = self.analyzer.fields.get(field_id.index).unwrap();
+                    .map(|&field_id| {
+                        let field = self.analyzer.get_field_by_id(field_id).unwrap();
                         self.convert_ntype_to_type(&field.ty)
                     })
                     .collect::<Result<Vec<_>>>()?;
@@ -438,8 +438,8 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
                 let field_values: Vec<_> = struct_def
                     .fields
                     .iter()
-                    .map(|field_id| {
-                        let field = self.analyzer.fields.get(field_id.index).unwrap();
+                    .map(|&field_id| {
+                        let field = self.analyzer.get_field_by_id(field_id).unwrap();
                         let field_llvm_ty = self.convert_ntype_to_type(&field.ty)?;
                         Ok(field_llvm_ty.const_zero())
                     })

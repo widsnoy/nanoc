@@ -162,12 +162,12 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
 
         let inits: Vec<_> = init_node.inits().collect();
 
-        for (idx, (init, field_id)) in inits
+        for (idx, (init, &field_id)) in inits
             .into_iter()
             .zip(unsafe { &*field_ids }.iter())
             .enumerate()
         {
-            let field = self.analyzer.fields.get(field_id.index).unwrap();
+            let field = self.analyzer.get_field_by_id(field_id).unwrap();
             let field_llvm_ty = self.convert_ntype_to_type(&field.ty)?;
 
             // 获取字段指针

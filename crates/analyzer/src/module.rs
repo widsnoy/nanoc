@@ -424,10 +424,9 @@ impl Struct {
     pub fn field_index(&self, module: &Module, name: &str) -> Option<u32> {
         self.fields
             .iter()
-            .position(|field_id| {
+            .position(|&field_id| {
                 module
-                    .fields
-                    .get(field_id.index)
+                    .get_field_by_id(field_id)
                     .map(|field| field.name == name)
                     .unwrap_or(false)
             })
@@ -438,10 +437,9 @@ impl Struct {
     pub fn field(&self, module: &Module, name: &str) -> Option<FieldID> {
         self.fields
             .iter()
-            .find(|field_id| {
+            .find(|&&field_id| {
                 module
-                    .fields
-                    .get(field_id.index)
+                    .get_field_by_id(field_id)
                     .map(|field| field.name == name)
                     .unwrap_or(false)
             })
