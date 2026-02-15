@@ -561,7 +561,6 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         }
     }
 
-    /// 将整数值转换为 bool（用于逻辑运算和条件）
     /// 通用类型转换
     /// 整数向上转换
     pub(crate) fn cast_value(
@@ -586,31 +585,11 @@ impl<'a, 'ctx> Program<'a, 'ctx> {
         // 整数类型转换
         let int_val = val.into_int_value();
 
-        match (from, to) {
-            // i8 → i32: sext
-            (Ty::I8, Ty::I32) => Ok(self
-                .builder
-                .build_int_s_extend(int_val, self.context.i32_type(), "cast")
-                .map_err(|_| CodegenError::LlvmBuild("sext"))?
-                .into()),
-            // bool → i32: zext
-            (Ty::Bool, Ty::I32) => Ok(self
-                .builder
-                .build_int_z_extend(int_val, self.context.i32_type(), "cast")
-                .map_err(|_| CodegenError::LlvmBuild("zext"))?
-                .into()),
-            // bool → i8: zext
-            (Ty::Bool, Ty::I8) => Ok(self
-                .builder
-                .build_int_z_extend(int_val, self.context.i8_type(), "cast")
-                .map_err(|_| CodegenError::LlvmBuild("zext"))?
-                .into()),
-            _ => Ok(val),
-        }
+        self.cast_int_to_type(int_val, &from, &to).map(|x| x.into())
     }
 
     /// 获取或创建全局字符串常量（带去重）
-    /// 返回指向字符串的 *const i8 指针
+    /// 返回指向字符串的 *const u8 指针
     pub(crate) fn get_or_create_string_constant(
         &mut self,
         content: &str,
