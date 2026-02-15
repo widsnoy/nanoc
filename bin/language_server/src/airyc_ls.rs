@@ -1,4 +1,6 @@
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use analyzer::checker::RecursiveTypeChecker;
 use analyzer::project::Project;
@@ -24,6 +26,8 @@ pub(crate) struct Backend {
     uri_to_file_id: DashMap<Uri, FileID>,
     /// FileID 到 URI 的反向映射
     file_id_to_uri: DashMap<FileID, Uri>,
+    /// 防抖版本号，用于取消过期的诊断任务
+    debounce_version: Arc<AtomicU64>,
 }
 
 impl Backend {
@@ -35,6 +39,7 @@ impl Backend {
             uri_to_file_id: DashMap::new(),
             file_id_to_uri: DashMap::new(),
             vfs: Default::default(),
+            debounce_version: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -241,21 +246,50 @@ impl LanguageServer for Backend {
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let uri = params.text_document.uri.clone();
 
-        if let Some(change) = params.content_changes.into_iter().next() {
-            // 获取 FileID
-            if let Some(file_id) = self.get_file_id(&uri) {
-                // 更新文件内容
-                self.vfs.update_file(&file_id, change.text);
+        let Some(change) = params.content_changes.into_iter().next() else {
+            return;
+        };
 
-                // 假设只改当前文件，可以只重新分析单文件
-                // 但是需要新增切换 watch 的文件时候，全量分析
-                self.rebuild_project();
-            } else {
-                self.client
-                    .log_message(MessageType::ERROR, "expect {uri} in vfs")
+        let Some(file_id) = self.get_file_id(&uri) else {
+            return;
+        };
+
+        // 更新文件内容
+        self.vfs.update_file(&file_id, change.text);
+
+        // 重新分析整个项目
+        self.rebuild_project();
+
+        // 提取诊断数据
+        let Some(diagnostics) = (|| {
+            let project = self.project.read();
+            let module = project.modules.get(&file_id)?;
+            let file = self.vfs.get_file_by_file_id(&file_id)?;
+
+            // 计算诊断信息
+            Some(lsp_features::diagnostics::compute_diagnostics(
+                &module.semantic_errors,
+                &file.line_index,
+            ))
+        })() else {
+            return;
+        };
+
+        let current_version = self.debounce_version.fetch_add(1, Ordering::SeqCst) + 1;
+
+        let debounce_version = Arc::clone(&self.debounce_version);
+        let client = self.client.clone();
+        let uri_clone = uri.clone();
+
+        tokio::spawn(async move {
+            // 等待 500ms
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            if debounce_version.load(Ordering::SeqCst) == current_version {
+                client
+                    .publish_diagnostics(uri_clone, diagnostics, None)
                     .await;
             }
-        }
+        });
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {

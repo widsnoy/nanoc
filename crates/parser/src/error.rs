@@ -17,7 +17,7 @@ fn format_kinds(kinds: &[SyntaxKind]) -> String {
 
 #[derive(Debug, Clone, Error, Diagnostic)]
 pub enum ParserError {
-    #[error("expected one of: {}", format_kinds(expected))]
+    #[error("Syntax: expect {}", format_kinds(expected))]
     #[diagnostic(code(parser::expected_token))]
     Expected {
         expected: Vec<SyntaxKind>,
