@@ -332,17 +332,14 @@ impl ExprVisitor for Module {
                 let Some(v) = self.get_value_by_range(range) else {
                     return;
                 };
-                let index = match v {
-                    Value::I32(v) => v.to_owned(),
-                    Value::I8(v) => *v as i32,
-                    _ => {
-                        self.new_error(AnalyzeError::TypeMismatch {
-                            expected: Ty::I32,
-                            found: Ty::I32, // 占位符，实际类型会在运行时确定
-                            range: utils::trim_node_text_range(&indice),
-                        });
-                        return;
-                    }
+
+                let Some(index) = v.get_array_size() else {
+                    self.new_error(AnalyzeError::TypeMismatch {
+                        expected: Ty::I32,
+                        found: v.get_type(self),
+                        range: utils::trim_node_text_range(&indice),
+                    });
+                    return;
                 };
                 indices.push(index);
             }
