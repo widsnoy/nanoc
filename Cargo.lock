@@ -28,7 +28,7 @@ dependencies = [
 
 [[package]]
 name = "airyc-cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "analyzer",
  "clap",
@@ -47,7 +47,7 @@ dependencies = [
 
 [[package]]
 name = "airyc-server"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "analyzer",
  "dashmap",
@@ -71,7 +71,7 @@ dependencies = [
 
 [[package]]
 name = "analyzer"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "insta",
  "miette",
@@ -249,7 +249,7 @@ checksum = "3a822ea5bc7590f9d40f1ba12c0dc3c2760f3482c6984db1573ad11031420831"
 
 [[package]]
 name = "codegen"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "analyzer",
  "inkwell",
@@ -604,7 +604,7 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 
 [[package]]
 name = "lexer"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "logos",
  "miette",
@@ -816,7 +816,7 @@ dependencies = [
 
 [[package]]
 name = "parser"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "insta",
  "lexer",
@@ -1142,7 +1142,7 @@ checksum = "0bf256ce5efdfa370213c1dabab5935a12e49f2c58d15e9eac2870d3b4f27263"
 
 [[package]]
 name = "syntax"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "rowan",
  "text-size",
@@ -1174,7 +1174,7 @@ dependencies = [
 
 [[package]]
 name = "test"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -1287,7 +1287,7 @@ dependencies = [
 
 [[package]]
 name = "tools"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "miette",
  "text-size",
@@ -1444,7 +1444,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "rowan",
  "syntax",
@@ -1460,7 +1460,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "vfs"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "parking_lot",
  "thunderdome",
