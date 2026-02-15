@@ -549,7 +549,7 @@ impl ExprVisitor for Module {
             let char_token = node.char_token().unwrap();
             let s = char_token.text().to_string();
             // 去掉单引号，转换为双引号格式供 snailquote 处理
-            let inner = &s[1..s.len()-1];
+            let inner = &s[1..s.len() - 1];
             let quoted = format!("\"{}\"", inner);
             let content = match snailquote::unescape(&quoted) {
                 Ok(s) => s,
