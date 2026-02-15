@@ -9,6 +9,7 @@ use syntax::{
     AstNode as _, SyntaxNode,
     ast::{FuncDef, StructDef},
 };
+use utils::extract_name_and_range;
 use vfs::{FileID, Vfs};
 
 use crate::{
@@ -261,7 +262,8 @@ impl Project {
 
                 let mut field_ids = Vec::new();
                 for field_node in struct_def.fields() {
-                    if let Some(field_name) = field_node.name().and_then(|n| n.var_name())
+                    if let Some((field_name, field_range)) =
+                        field_node.name().and_then(|n| extract_name_and_range(&n))
                         && let Some(ty_node) = field_node.ty()
                     {
                         match crate::utils::parse_type_node(module, &ty_node, None) {
@@ -269,7 +271,7 @@ impl Project {
                                 let field = Field {
                                     name: field_name,
                                     ty: field_ty,
-                                    range: field_node.text_range(),
+                                    range: field_range,
                                 };
 
                                 let idx = module.fields.insert(field);
